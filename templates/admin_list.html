@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>已有数据 - 现代汉语对话语料库</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="admin-page">
+    <div class="admin-container">
+        <div class="admin-title">已有语料数据</div>
+        <div class="admin-subtitle">当前数据库中的语料条目列表</div>
+
+        <div style="margin-bottom:18px;">
+            <a href="{{ url_for('admin') }}" class="back-home-link">返回后台录入</a>
+        </div>
+
+        <table style="width:100%; border-collapse: collapse; font-size:14px;">
+            <thead>
+                <tr style="background:#eef4ff;">
+                    <th style="border:1px solid #d8dee8; padding:10px;">ID</th>
+                    <th style="border:1px solid #d8dee8; padding:10px;">标题</th>
+                    <th style="border:1px solid #d8dee8; padding:10px;">语料类型</th>
+                    <th style="border:1px solid #d8dee8; padding:10px;">年份</th>
+                    <th style="border:1px solid #d8dee8; padding:10px;">分类</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in entries %}
+                <tr>
+                    <td style="border:1px solid #d8dee8; padding:10px;">{{ item.id }}</td>
+                    <td style="border:1px solid #d8dee8; padding:10px;">{{ item.title }}</td>
+                    <td style="border:1px solid #d8dee8; padding:10px;">{{ item.source }}</td>
+                    <td style="border:1px solid #d8dee8; padding:10px;">{{ item.year }}</td>
+                    <td style="border:1px solid #d8dee8; padding:10px;">{{ item.category }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="5" style="border:1px solid #d8dee8; padding:14px; text-align:center;">暂无数据</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

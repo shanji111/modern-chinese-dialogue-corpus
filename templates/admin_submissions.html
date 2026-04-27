@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>待审核语料投稿</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="admin-page">
+    <div class="admin-container admin-wide-container">
+        <div class="admin-title">待审核语料投稿</div>
+        <div class="admin-subtitle">在此查看、通过或拒绝用户提交的语料材料。</div>
+
+        <div class="admin-toolbar">
+            <a href="{{ url_for('admin') }}" class="back-home-link">返回后台</a>
+            <a href="{{ url_for('admin_submissions', status='pending') }}" class="status-filter {% if status == 'pending' %}active{% endif %}">待审核</a>
+            <a href="{{ url_for('admin_submissions', status='approved') }}" class="status-filter {% if status == 'approved' %}active{% endif %}">已通过</a>
+            <a href="{{ url_for('admin_submissions', status='rejected') }}" class="status-filter {% if status == 'rejected' %}active{% endif %}">已拒绝</a>
+            <a href="{{ url_for('admin_submissions', status='all') }}" class="status-filter {% if status == 'all' %}active{% endif %}">全部</a>
+        </div>
+
+        <table class="admin-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>标题</th>
+                    <th>投稿人</th>
+                    <th>模态</th>
+                    <th>文件</th>
+                    <th>提交时间</th>
+                    <th>状态</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in submissions %}
+                <tr>
+                    <td>{{ item.id }}</td>
+                    <td>{{ item.title }}</td>
+                    <td>{{ item.submitter_name or '' }}</td>
+                    <td>{{ item.modality }}</td>
+                    <td>{{ item.original_filename or '' }}</td>
+                    <td>{{ item.created_at }}</td>
+                    <td><span class="status-pill status-{{ item.status }}">{{ item.status }}</span></td>
+                    <td class="table-actions">
+                        <a href="{{ url_for('admin_submission_detail', submission_id=item.id) }}">查看</a>
+                        {% if item.status != 'approved' %}
+                        <form action="{{ url_for('approve_submission', submission_id=item.id) }}" method="post">
+                            <button type="submit">通过</button>
+                        </form>
+                        {% endif %}
+                        {% if item.status != 'rejected' %}
+                        <form action="{{ url_for('reject_submission', submission_id=item.id) }}" method="post">
+                            <button type="submit">拒绝</button>
+                        </form>
+                        {% endif %}
+                        <form action="{{ url_for('delete_submission', submission_id=item.id) }}" method="post">
+                            <button type="submit" class="danger-button">删除</button>
+                        </form>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="empty-cell">暂无投稿。</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

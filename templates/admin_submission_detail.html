@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>语料投稿详情</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="admin-page">
+    <div class="admin-container">
+        <div class="admin-title">语料投稿详情</div>
+        <div class="admin-subtitle">审核通过前，请查看投稿元数据、文本内容和上传文件。</div>
+
+        <div class="submission-nav">
+            <a href="{{ url_for('admin_submissions') }}" class="back-home-link">返回投稿列表</a>
+        </div>
+
+        {% if error %}
+        <div class="upload-success-box error-box">
+            <div class="success-title">错误</div>
+            <div class="success-line">{{ error }}</div>
+        </div>
+        {% elif submission %}
+            {% if request.args.get('approved') %}
+            <div class="upload-success-box">
+                <div class="success-title">已通过</div>
+                <div class="success-line">该投稿已加入正式语料区域。</div>
+            </div>
+            {% endif %}
+            {% if request.args.get('already_approved') %}
+            <div class="upload-success-box">
+                <div class="success-title">已审核通过</div>
+                <div class="success-line">该投稿此前已通过审核，本次不会重复写入正式语料库。</div>
+            </div>
+            {% endif %}
+            {% if request.args.get('rejected') %}
+            <div class="upload-success-box error-box">
+                <div class="success-title">已拒绝</div>
+                <div class="success-line">该投稿已标记为拒绝。</div>
+            </div>
+            {% endif %}
+
+            <dl class="detail-grid">
+                <dt>ID</dt><dd>{{ submission.id }}</dd>
+                <dt>状态</dt><dd><span class="status-pill status-{{ submission.status }}">{{ submission.status }}</span></dd>
+                <dt>标题</dt><dd>{{ submission.title }}</dd>
+                <dt>投稿人</dt><dd>{{ submission.submitter_name or '' }}</dd>
+                <dt>邮箱</dt><dd>{{ submission.submitter_email or '' }}</dd>
+                <dt>来源</dt><dd>{{ submission.source or '' }}</dd>
+                <dt>类别</dt><dd>{{ submission.category }}</dd>
+                <dt>体裁</dt><dd>{{ submission.genre or '' }}</dd>
+                <dt>语言</dt><dd>{{ submission.language or '' }}</dd>
+                <dt>模态</dt><dd>{{ submission.modality }}</dd>
+                <dt>文件</dt>
+                <dd>
+                    {% if submission.original_filename %}
+                    <a href="{{ url_for('download_submission_file', submission_id=submission.id) }}">{{ submission.original_filename }}</a>
+                    <span class="muted-text">{{ submission.file_mime_type or '' }} {{ submission.file_size or '' }} bytes</span>
+                    {% else %}
+                    未上传文件
+                    {% endif %}
+                </dd>
+                <dt>提交时间</dt><dd>{{ submission.created_at }}</dd>
+                <dt>审核时间</dt><dd>{{ submission.reviewed_at or '' }}</dd>
+                <dt>审核人</dt><dd>{{ submission.reviewed_by or '' }}</dd>
+                <dt>管理员备注</dt><dd>{{ submission.admin_note or '' }}</dd>
+            </dl>
+
+            <div class="form-row">
+                <label>文本内容</label>
+                <div class="text-preview">{{ submission.text_content or '暂无文本内容。' }}</div>
+            </div>
+
+            <form class="admin-form" method="post" action="{{ url_for('approve_submission', submission_id=submission.id) }}">
+                <div class="form-row">
+                    <label for="approve_note">管理员备注</label>
+                    <textarea id="approve_note" name="admin_note" rows="3">{{ submission.admin_note or '' }}</textarea>
+                </div>
+                <div class="form-actions">
+                    {% if submission.status != 'approved' %}
+                    <button type="submit">通过</button>
+                    {% else %}
+                    <button type="submit">再次通过</button>
+                    {% endif %}
+                </div>
+            </form>
+
+            <form class="admin-form inline-admin-form" method="post" action="{{ url_for('reject_submission', submission_id=submission.id) }}">
+                <div class="form-row">
+                    <label for="reject_note">拒绝备注</label>
+                    <textarea id="reject_note" name="admin_note" rows="3">{{ submission.admin_note or '' }}</textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="danger-button">拒绝</button>
+                </div>
+            </form>
+
+            <form class="admin-form inline-admin-form" method="post" action="{{ url_for('delete_submission', submission_id=submission.id) }}">
+                <div class="form-actions">
+                    <button type="submit" class="danger-button">删除投稿</button>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+</body>
+</html>

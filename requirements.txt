@@ -1,0 +1,9 @@
+Flask
+gunicorn
+Werkzeug
+MarkupSafe
+openai
+requests
+beautifulsoup4
+psycopg[binary]
+boto3

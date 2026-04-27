@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ keyword }} - 语料库搜索</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="result-page">
+
+    <div class="top-search-bar">
+        <form action="{{ url_for('search') }}" method="get">
+            <div class="tip-line">提示：输入更多关键词可以获得更精确的结果</div>
+
+            <input type="text" name="q" value="{{ keyword }}" class="query-input">
+
+            <select name="source">
+                <option value="">全部来源</option>
+                {% for s in sources %}
+                    <option value="{{ s }}" {% if s == source %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+
+            <select name="year">
+                <option value="">全部年份</option>
+                {% for y in years %}
+                    <option value="{{ y }}" {% if year == y|string %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+
+            话轮显示字数：
+            左<input type="text" name="left" value="{{ left_len }}" class="mini-input">
+            右<input type="text" name="right" value="{{ right_len }}" class="mini-input">
+
+            <button type="submit">查询</button>
+        </form>
+    </div>
+
+    <div class="nav-links result-nav">
+        <a href="{{ url_for('home') }}">普通查询</a>
+        <span>|</span>
+        <a href="#">高级查询</a>
+        <span>|</span>
+        <a href="#">批量查询</a>
+        <span>|</span>
+        <a href="#">模式查询</a>
+        <span>|</span>
+        <a href="#">搭配查询</a>
+    </div>
+
+    <div class="result-summary">
+        <div class="summary-left">查询：<b>“{{ keyword }}”</b></div>
+        <div class="summary-right">
+            共在 <b>{{ total }}</b> 条记录中出现，这是第 <b>{{ start_no }} - {{ end_no }}</b> 条
+        </div>
+    </div>
+
+    <div class="result-list">
+        <div class="result-head">
+            <div>序号</div>
+            <div>前序话轮</div>
+            <div>命中话轮</div>
+            <div>后续话轮</div>
+            <div>来源</div>
+            <div>上下文</div>
+        </div>
+        {% for item in results %}
+        <div class="result-row">
+            <div class="result-no">{{ start_no + loop.index0 }}.1</div>
+            <div class="prev-segment">{{ item.prev_segment or "—" }}</div>
+            <div class="hit-segment">{{ item.hit_segment_html|safe }}</div>
+            <div class="next-segment">{{ item.next_segment or "—" }}</div>
+            <div class="source-label">{{ item.source }}</div>
+            <div class="context-link">
+                <a href="#"
+                   onclick='openModal({
+                       title: {{ item.file_name|tojson }},
+                       source: {{ item.source|tojson }},
+                       year: {{ item.year|tojson }},
+                       category: {{ item.category|tojson }},
+                       datasetName: {{ item.dataset_name|tojson }},
+                       dialogueId: {{ item.dialogue_id|tojson }},
+                       audioFile: {{ item.audio_file|tojson }},
+                       audioUrl: {{ item.audio_url|tojson }},
+                       startTime: {{ item.start_time|tojson }},
+                       endTime: {{ item.end_time|tojson }},
+                       speaker: {{ item.speaker|tojson }},
+                       keyword: {{ keyword|tojson }},
+                       prevSegment: {{ item.prev_segment|tojson }},
+                       hitSegment: {{ item.hit_segment|tojson }},
+                       nextSegment: {{ item.next_segment|tojson }}
+                   }); return false;'>上下文</a>
+            </div>
+        </div>
+        {% else %}
+        <div class="no-result">暂无结果。</div>
+        {% endfor %}
+    </div>
+
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+            <a href="{{ url_for('search', q=keyword, source=source, year=year, category=category, left=left_len, right=right_len, page=page-1) }}">上一页</a>
+        {% endif %}
+
+        {% for p in range(page_window_start, page_window_end + 1) %}
+            {% if p == page %}
+                <span class="current-page">{{ p }}</span>
+            {% else %}
+                <a href="{{ url_for('search', q=keyword, source=source, year=year, category=category, left=left_len, right=right_len, page=p) }}">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+            <a href="{{ url_for('search', q=keyword, source=source, year=year, category=category, left=left_len, right=right_len, page=page+1) }}">下一页</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    <!-- 弹窗 -->
+    <div id="contextModal" class="modal-overlay" onclick="closeModal(event)">
+        <div class="modal-box">
+            <div class="modal-header">
+                <div>
+                    <div class="modal-kicker">语料上下文查看</div>
+                    <div id="modalTitle" class="modal-title">上下文详情</div>
+                </div>
+                <button class="modal-close" onclick="closeModalDirect()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="modal-meta-grid">
+                    <div>
+                        <span class="modal-meta-label">文件名</span>
+                        <span id="modalFileName"></span>
+                    </div>
+                    <div>
+                        <span class="modal-meta-label">来源</span>
+                        <span id="modalSource"></span>
+                    </div>
+                    <div>
+                        <span class="modal-meta-label">类型</span>
+                        <span id="modalCategory"></span>
+                    </div>
+                    <div>
+                        <span class="modal-meta-label">年份</span>
+                        <span id="modalYear"></span>
+                    </div>
+                    <div>
+                        <span class="modal-meta-label">数据集</span>
+                        <span id="modalDatasetName"></span>
+                    </div>
+                    <div>
+                        <span class="modal-meta-label">对话ID</span>
+                        <span id="modalDialogueId"></span>
+                    </div>
+                    <div>
+                        <span class="modal-meta-label">时间</span>
+                        <span id="modalTimeRange"></span>
+                    </div>
+                    <div>
+                        <span class="modal-meta-label">说话人</span>
+                        <span id="modalSpeaker"></span>
+                    </div>
+                </div>
+                <div class="modal-audio" id="modalAudioBox">
+                    <div class="modal-audio-label">音频话轮</div>
+                    <audio id="modalAudio" controls preload="metadata"></audio>
+                </div>
+                <div class="modal-segments">
+                    <div class="modal-segment-block">
+                        <div class="modal-segment-label">前序话轮</div>
+                        <div class="modal-segment-text" id="modalPrevSegment"></div>
+                    </div>
+                    <div class="modal-segment-block hit">
+                        <div class="modal-segment-label">命中话轮</div>
+                        <div class="modal-segment-text" id="modalHitSegment"></div>
+                    </div>
+                    <div class="modal-segment-block">
+                        <div class="modal-segment-label">后续话轮</div>
+                        <div class="modal-segment-text" id="modalNextSegment"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function escapeHtml(text) {
+            return String(text || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        function highlightKeyword(text, keyword) {
+            const safeText = escapeHtml(text || "—");
+            if (!keyword) {
+                return safeText;
+            }
+            const safeKeyword = escapeHtml(keyword);
+            return safeText.split(safeKeyword).join(
+                '<span class="segment-hit-word">' + safeKeyword + '</span>'
+            );
+        }
+
+        function openModal(item) {
+            document.getElementById("modalTitle").innerText = item.title;
+            document.getElementById("modalFileName").innerText = item.title;
+            document.getElementById("modalSource").innerText = item.source || "未知";
+            document.getElementById("modalCategory").innerText = item.category || "未分类";
+            document.getElementById("modalYear").innerText = item.year || "未知";
+            document.getElementById("modalDatasetName").innerText = item.datasetName || "—";
+            document.getElementById("modalDialogueId").innerText = item.dialogueId || "—";
+            document.getElementById("modalTimeRange").innerText = formatTimeRange(item.startTime, item.endTime);
+            document.getElementById("modalSpeaker").innerText = item.speaker || "—";
+            document.getElementById("modalPrevSegment").innerText = item.prevSegment || "—";
+            document.getElementById("modalHitSegment").innerHTML = highlightKeyword(item.hitSegment, item.keyword);
+            document.getElementById("modalNextSegment").innerText = item.nextSegment || "—";
+
+            const audioBox = document.getElementById("modalAudioBox");
+            const audio = document.getElementById("modalAudio");
+            if (item.audioUrl) {
+                audio.src = item.audioUrl;
+                audioBox.style.display = "block";
+                audio.onloadedmetadata = function () {
+                    if (item.startTime !== null && item.startTime !== undefined) {
+                        audio.currentTime = Number(item.startTime);
+                    }
+                };
+            } else {
+                audio.removeAttribute("src");
+                audioBox.style.display = "none";
+            }
+            document.getElementById("contextModal").style.display = "flex";
+        }
+
+        function formatSeconds(value) {
+            if (value === null || value === undefined || value === "") {
+                return "—";
+            }
+            const seconds = Number(value);
+            if (Number.isNaN(seconds)) {
+                return "—";
+            }
+            const minutes = Math.floor(seconds / 60);
+            const rest = (seconds % 60).toFixed(2).padStart(5, "0");
+            return minutes + ":" + rest;
+        }
+
+        function formatTimeRange(startTime, endTime) {
+            if ((startTime === null || startTime === undefined || startTime === "") &&
+                (endTime === null || endTime === undefined || endTime === "")) {
+                return "—";
+            }
+            return formatSeconds(startTime) + " - " + formatSeconds(endTime);
+        }
+
+        function closeModal(event) {
+            if (event.target.id === "contextModal") {
+                document.getElementById("contextModal").style.display = "none";
+            }
+        }
+
+        function closeModalDirect() {
+            document.getElementById("contextModal").style.display = "none";
+        }
+    </script>
+
+</body>
+</html>

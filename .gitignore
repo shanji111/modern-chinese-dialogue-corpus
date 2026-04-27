@@ -1,0 +1,56 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual environments
+venv/
+.venv/
+
+# Environment
+.env
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs and temp
+*.log
+*.tmp
+*.bak
+instance/
+
+# SQLite temporary files
+corpus.db
+demo_corpus.db
+*.db-journal
+*.db-wal
+*.db-shm
+
+# Codex test artifacts
+.codex_test_public_submissions/
+codex_test_public_submissions/
+codex_sqlite_write_probe.db
+codex_sqlite_write_probe.db-journal
+
+# User uploads
+uploads/submissions/*
+!uploads/submissions/.gitkeep
+
+# Raw corpus and large media
+talkdata/raw_chat_corpus/
+talkdata/audio_raw/
+talkdata/video_raw/
+static/audio_imports/
+
+# Media files
+*.mp3
+*.mp4
+*.wav
+*.m4a
+*.mov
+*.avi
+*.mkv

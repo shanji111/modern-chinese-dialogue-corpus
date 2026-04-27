@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>现代汉语对话语料库</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="home-page new-home-page">
+    <div class="landing-container">
+        <div class="site-title">现代汉语对话语料库</div>
+
+        <div class="category-tabs" id="category-tabs">
+            <button type="button" class="tab-item active" data-source="日常对话">日常对话</button>
+            <button type="button" class="tab-item" data-source="影视对白">影视对白</button>
+            <button type="button" class="tab-item" data-source="文本对话">文本对话</button>
+            <button type="button" class="tab-item" data-source="网络回帖">网络回帖</button>
+            <button type="button" class="tab-item" data-source="访谈语料">访谈语料</button>
+            <button type="button" class="tab-item" data-source="课堂互动">课堂互动</button>
+            <button type="button" class="tab-item" data-source="多模态语料">多模态语料</button>
+        </div>
+
+        <form action="{{ url_for('search') }}" method="get" class="bcc-search-form">
+            <input type="hidden" name="source" id="selected-source" value="日常对话">
+
+            <div class="bcc-search-box">
+                <input type="text" name="q" class="bcc-search-input" placeholder="输入检索词，如：你好 / 没关系 / 我觉得">
+                <button type="submit" class="bcc-search-button">检索</button>
+            </div>
+
+            <div class="bcc-search-extra legacy-search-examples">
+                <span class="example-label">检索示例：</span>
+                <a href="{{ url_for('search') }}?q=你好">你好</a>
+                <a href="{{ url_for('search') }}?q=谢谢">谢谢</a>
+                <a href="{{ url_for('search') }}?q=我觉得">我觉得</a>
+                <a href="{{ url_for('search') }}?q=没关系">没关系</a>
+                <a href="{{ url_for('search') }}?q=真的吗">真的吗</a>
+            </div>
+        </form>
+
+        <section class="corpus-card-section">
+            <div class="corpus-card-row corpus-card-row-two">
+                <article class="corpus-card">
+                    <h3 class="corpus-card-title">日常对话</h3>
+                    <p>本板块收录日常问答、闲聊与口语互动语料，主要选取青云语料、ChatterBot 等公开中文对话资源，以及可公开使用的生活场景对话整理文本，用于观察高频口语表达、回应方式和话轮衔接特征。</p>
+                </article>
+
+                <article class="corpus-card">
+                    <h3 class="corpus-card-title">影视对白</h3>
+                    <p>本板块汇集影视作品中的人物对白，主要依据公开字幕整理语料和可公开获取的字幕文本进行筛选与加工，适合考察不同情境中的人物互动、语气变化以及较强场景性的表达方式。</p>
+                </article>
+            </div>
+
+            <div class="corpus-card-row corpus-card-row-two">
+                <article class="corpus-card">
+                    <h3 class="corpus-card-title">文本对话</h3>
+                    <p>本板块展示书面作品中的人物对话，主要选取公开出版文学文本、网络文学公开章节及其他可公开获取的叙事文本中的对话话轮，可用于比较书面叙述环境下的人物言语组织和表达风格。</p>
+                </article>
+
+                <article class="corpus-card">
+                    <h3 class="corpus-card-title">网络回帖</h3>
+                    <p>本板块整理网络互动中的回帖语料，主要来源于贴吧、论坛及公开社交平台中的可获取互动文本，能够呈现网络语言、立场回应、跟帖链条和线上交流结构等较为鲜明的特点。</p>
+                </article>
+            </div>
+
+            <div class="corpus-card-row corpus-card-row-three">
+                <article class="corpus-card">
+                    <h3 class="corpus-card-title">访谈语料</h3>
+                    <p>本板块收录访谈与问答实录，主要选取公开专访、新闻发布会文字实录、媒体问答整理稿等公开来源文本，适合分析提问方式、回应策略以及访谈过程中主题推进的语言特点。</p>
+                </article>
+
+                <article class="corpus-card">
+                    <h3 class="corpus-card-title">课堂互动</h3>
+                    <p>本板块聚焦课堂教学中的师生互动，主要依据公开课程转写文本、教学实录和可公开获取的课堂问答材料整理而成，可用于观察课堂提问、即时回应以及教学话语组织方式。</p>
+                </article>
+
+                <article class="corpus-card">
+                    <h3 class="corpus-card-title">多模态语料</h3>
+                    <p>本板块整合音频、视频与转写文本，主要选取带时间戳的公开转写语料、公开视频字幕文本及相关音视频整理材料，便于结合语音时序、画面线索和文本内容开展综合检索与分析。</p>
+                </article>
+            </div>
+        </section>
+
+        <div class="contribution-panel">
+            <div class="contribution-text">
+                <strong>欢迎参与语料共建</strong>
+                <span>如果你拥有可用于研究或教学的文本、音频、视频等语料材料，可以提交给我们。所有投稿将在审核后进入语料库。</span>
+            </div>
+            <a href="{{ url_for('submit') }}" class="contribution-btn">提交语料</a>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const tabs = document.querySelectorAll('#category-tabs .tab-item');
+            const sourceInput = document.getElementById('selected-source');
+
+            tabs.forEach((tab) => {
+                tab.addEventListener('click', () => {
+                    const source = tab.dataset.source;
+                    sourceInput.value = source;
+
+                    tabs.forEach((item) => item.classList.remove('active'));
+                    tab.classList.add('active');
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

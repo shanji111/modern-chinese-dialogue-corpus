@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>提交语料材料</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="admin-page">
+    <div class="admin-container">
+        <div class="admin-title">提交语料材料</div>
+        <div class="admin-subtitle">
+            你可以向本平台提交文本、音频、视频或其他类型的语料材料。
+            所有提交内容都将先进入审核队列，审核通过后才会加入公开语料库。
+        </div>
+
+        <div class="submission-nav">
+            <a href="{{ url_for('home') }}" class="back-home-link">返回检索页</a>
+        </div>
+
+        {% if success %}
+        <div class="upload-success-box">
+            <div class="success-title">提交成功</div>
+            <div class="success-line">你的语料材料已提交成功，正在等待审核。感谢你参与语料库共建。</div>
+        </div>
+        {% else %}
+            {% if error %}
+            <div class="upload-success-box error-box">
+                <div class="success-title">请检查提交内容</div>
+                <div class="success-line">{{ error }}</div>
+            </div>
+            {% endif %}
+
+            <form action="{{ url_for('submit') }}" method="post" enctype="multipart/form-data" class="admin-form">
+                <div class="form-row">
+                    <label for="submitter_name">姓名</label>
+                    <input id="submitter_name" type="text" name="submitter_name" value="{{ form.submitter_name if form else '' }}">
+                </div>
+
+                <div class="form-row">
+                    <label for="submitter_email">邮箱</label>
+                    <input id="submitter_email" type="text" name="submitter_email" value="{{ form.submitter_email if form else '' }}">
+                </div>
+
+                <div class="form-row">
+                    <label for="title">材料标题 *</label>
+                    <input id="title" type="text" name="title" value="{{ form.title if form else '' }}" required>
+                </div>
+
+                <div class="form-row">
+                    <label for="source">材料来源</label>
+                    <input id="source" type="text" name="source" value="{{ form.source if form else '' }}">
+                </div>
+
+                <div class="form-row">
+                    <label for="category">语料类别 *</label>
+                    <select id="category" name="category" required>
+                        <option value="">请选择语料类别</option>
+                        {% for category in categories %}
+                        <option value="{{ category }}" {% if form and form.category == category %}selected{% endif %}>{{ category }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <label for="modality">语料模态 *</label>
+                    <select id="modality" name="modality" required>
+                        {% for modality in modalities %}
+                        <option value="{{ modality }}" {% if form and form.modality == modality %}selected{% endif %}>{{ modality_labels.get(modality, modality) }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="form-row">
+                    <label for="text_content">文本内容</label>
+                    <textarea id="text_content" name="text_content" rows="8">{{ form.text_content if form else '' }}</textarea>
+                    <div class="form-tip">如果上传 TXT 文件，系统会尽量读取其中的文本并写入待审核记录。</div>
+                </div>
+
+                <div class="form-row">
+                    <label for="file">上传文件</label>
+                    <input id="file" type="file" name="file" accept=".txt,.mp3,.wav,.m4a,.mp4,.mov,.json,.csv">
+                    <div class="form-tip">支持格式：txt、mp3、wav、m4a、mp4、mov、json、csv。单个文件不超过 200 MB。</div>
+                </div>
+
+                <label class="consent-row">
+                    <input type="checkbox" name="consent" value="1" required {% if form and form.consent %}checked{% endif %}>
+                    <span>我确认本人有权提交该材料，并同意该材料用于学术研究、教学展示和语料库建设。</span>
+                </label>
+
+                <div class="form-actions">
+                    <button type="submit">提交审核</button>
+                </div>
+            </form>
+        {% endif %}
+    </div>
+</body>
+</html>
