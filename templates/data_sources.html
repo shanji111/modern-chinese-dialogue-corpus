@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>数据来源与许可说明 - 现代汉语对话语料库</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="home-page new-home-page">
+    <div class="landing-container">
+        <div class="site-title data-source-title">数据来源与许可说明</div>
+
+        <div class="home-action-links">
+            <a href="{{ url_for('home') }}">返回首页</a>
+        </div>
+
+        <section class="license-summary-panel">
+            <p>
+                本站优先收录自建、授权提交或许可证边界清晰的语音与文本样例。公开语音数据仅用于研究、教学展示和检索样例说明；凡许可证限制再分发、商用或改编的数据，本站暂不公开托管其音频文件。
+            </p>
+            <p>
+                AISHELL-1 与 THCHS-30 仅作为“公开普通话朗读语音样例”候选，不包装为“对话语料”。MAGICDATA、Free ST、WenetSpeech、Common Voice Chinese 当前只列为参考来源，未直接托管音频。
+            </p>
+        </section>
+
+        <section class="source-license-list">
+            <article class="source-license-card">
+                <h2>自建录音样例</h2>
+                <div class="license-meta">来源：研究者自行上传或授权提交</div>
+                <p>适用于现代汉语对话、访谈、课堂互动和多模态样例展示。公开前需要确认提交者授权、隐私处理、说话人同意和可展示范围。</p>
+                <p class="license-boundary">展示边界：只展示已授权内容；涉及个人隐私、敏感信息或不完整授权的材料不公开播放。</p>
+            </article>
+
+            <article class="source-license-card">
+                <h2>AISHELL-1</h2>
+                <div class="license-meta">OpenSLR SLR33 / Apache License 2.0</div>
+                <p>适合作为公开普通话朗读语音样例，用于检索、播放器和转写展示测试。该数据集不是自然对话语料，不应归入对话语料主类别。</p>
+                <p class="license-boundary">展示边界：标明 OpenSLR SLR33、AISHELL-1 和 Apache License 2.0；只做少量朗读样例展示。</p>
+            </article>
+
+            <article class="source-license-card">
+                <h2>THCHS-30</h2>
+                <div class="license-meta">OpenSLR SLR18 / Apache License 2.0</div>
+                <p>适合作为公开普通话朗读语音样例，可用于普通话短句、声学样例和检索演示。该数据集不包装为“对话语料”。</p>
+                <p class="license-boundary">展示边界：标明 OpenSLR SLR18、THCHS-30 和 Apache License 2.0；不做全量导入。</p>
+            </article>
+
+            <article class="source-license-card source-license-card-muted">
+                <h2>MAGICDATA Mandarin Chinese Conversational Speech Corpus</h2>
+                <div class="license-meta">CC BY-NC-ND 4.0 / 暂不公开托管音频</div>
+                <p>该数据集具有对话价值，但许可证包含非商业、禁止演绎等限制。当前仅作为可参考公开资源列出，不在本站公开托管音频。</p>
+                <p class="license-boundary">展示边界：如后续使用，只展示来源说明或经许可的元数据；不上传音频到 R2，不公开播放样例。</p>
+            </article>
+
+            <article class="source-license-card source-license-card-muted">
+                <h2>Free ST Chinese Mandarin Corpus</h2>
+                <div class="license-meta">CC BY-NC-ND 4.0 / 暂不公开托管音频</div>
+                <p>当前仅作为参考来源，不直接托管音频。若后续评估使用，需要先确认具体下载页、许可证文本和是否允许网站展示。</p>
+                <p class="license-boundary">展示边界：不做公开播放、不做二次分发；仅保留参考链接和许可证说明。</p>
+            </article>
+
+            <article class="source-license-card source-license-card-muted">
+                <h2>Common Voice Chinese</h2>
+                <div class="license-meta">需遵守 Common Voice 数据使用限制 / 暂不重新托管音频</div>
+                <p>Common Voice 中文数据开放度较高，但仍需遵守其数据集条款和使用边界，包括不得尝试识别贡献者等限制。</p>
+                <p class="license-boundary">展示边界：当前不重新托管语音剪辑；如后续使用，只展示合规的小样本元数据和许可证说明。</p>
+            </article>
+        </section>
+
+        <p class="data-notice">
+            如数据来源、许可证或展示边界发生变化，本站将先更新本说明页，再决定是否开放音频播放。任何公开样例都应保留来源、许可证和必要的引用信息。
+        </p>
+    </div>
+</body>
+</html>

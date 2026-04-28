@@ -163,7 +163,7 @@
                 </div>
                 <div class="modal-audio" id="modalAudioBox">
                     <div class="modal-audio-label">音频话轮</div>
-                    <audio id="modalAudio" controls preload="metadata"></audio>
+                    <audio id="modalAudio" controls preload="none"></audio>
                     <div class="modal-audio-unavailable" id="modalAudioUnavailable">该音频暂不可播放。</div>
                 </div>
                 <div class="modal-segments">
@@ -205,7 +205,19 @@
             );
         }
 
+        function resetModalAudio() {
+            const audio = document.getElementById("modalAudio");
+            audio.pause();
+            audio.removeAttribute("src");
+            audio.onloadedmetadata = null;
+            audio.ontimeupdate = null;
+            audio.onerror = null;
+            audio.load();
+            return audio;
+        }
+
         function openModal(item) {
+            const audio = resetModalAudio();
             document.getElementById("modalTitle").innerText = item.title;
             document.getElementById("modalFileName").innerText = item.title;
             document.getElementById("modalSource").innerText = item.source || "未知";
@@ -220,30 +232,40 @@
             document.getElementById("modalNextSegment").innerText = item.nextSegment || "—";
 
             const audioBox = document.getElementById("modalAudioBox");
-            const audio = document.getElementById("modalAudio");
             const audioUnavailable = document.getElementById("modalAudioUnavailable");
             if (item.audioUrl) {
-                audio.src = item.audioUrl;
                 audio.style.display = "block";
                 audioUnavailable.style.display = "none";
                 audioBox.style.display = "block";
                 audio.onloadedmetadata = function () {
                     if (item.startTime !== null && item.startTime !== undefined) {
-                        audio.currentTime = Number(item.startTime);
+                        const startTime = Number(item.startTime);
+                        if (!Number.isNaN(startTime)) {
+                            audio.currentTime = startTime;
+                        }
+                    }
+                };
+                audio.ontimeupdate = function () {
+                    if (item.endTime === null || item.endTime === undefined || item.endTime === "") {
+                        return;
+                    }
+                    const endTime = Number(item.endTime);
+                    if (!Number.isNaN(endTime) && audio.currentTime >= endTime) {
+                        audio.pause();
                     }
                 };
                 audio.onerror = function () {
-                    audio.removeAttribute("src");
+                    resetModalAudio();
                     audio.style.display = "none";
                     audioUnavailable.style.display = "block";
                 };
+                audio.src = item.audioUrl;
+                audio.load();
             } else if (item.audioFile) {
-                audio.removeAttribute("src");
                 audio.style.display = "none";
                 audioUnavailable.style.display = "block";
                 audioBox.style.display = "block";
             } else {
-                audio.removeAttribute("src");
                 audio.style.display = "none";
                 audioUnavailable.style.display = "none";
                 audioBox.style.display = "none";
@@ -274,11 +296,13 @@
 
         function closeModal(event) {
             if (event.target.id === "contextModal") {
+                resetModalAudio();
                 document.getElementById("contextModal").style.display = "none";
             }
         }
 
         function closeModalDirect() {
+            resetModalAudio();
             document.getElementById("contextModal").style.display = "none";
         }
     </script>

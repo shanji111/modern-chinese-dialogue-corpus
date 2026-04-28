@@ -1,8 +1,10 @@
-from flask import Flask, render_template, request, redirect, session, url_for
+from flask import Flask, abort, render_template, request, redirect, send_file, session, url_for
 from hmac import compare_digest
+import mimetypes
 import os
 import math
 import re
+from pathlib import Path
 
 from markupsafe import Markup, escape
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -28,6 +30,14 @@ app.secret_key = os.getenv("SECRET_KEY") or "dev-only-temporary-secret-key"
 FTS_TABLE = "corpus_entries_fts"
 MAX_RESULT_SIDE_CHARS = 70
 MAX_RESULT_HIT_CHARS = 150
+LOCAL_AUDIO_DIR = Path(app.root_path) / "static" / "audio_imports"
+LOCAL_AUDIO_MIMETYPES = {
+    ".m4a": "audio/mp4",
+    ".mp3": "audio/mpeg",
+    ".wav": "audio/wav",
+    ".ogg": "audio/ogg",
+    ".flac": "audio/flac",
+}
 TEXT_FILE_EXTENSIONS = {".txt"}
 CATEGORY_OPTIONS = [
     "日常对话",
@@ -156,7 +166,7 @@ def build_corpus_audio_url(audio_file):
         return audio_file
     if STORAGE_BACKEND == "local" and not corpus_audio_exists_locally(audio_file):
         return ""
-    return url_for("corpus_audio", filename=audio_file)
+    return url_for("audio_file", filename=audio_file)
 
 
 def load_all_data():
@@ -610,6 +620,11 @@ def home():
     return render_template("home.html", sources=sources, years=years)
 
 
+@app.route("/data-sources")
+def data_sources():
+    return render_template("data_sources.html")
+
+
 @app.route("/submit", methods=["GET", "POST"])
 def submit():
     if request.method == "GET":
@@ -816,6 +831,18 @@ def search():
         end_no=end_no,
         search_backend=search_backend,
     )
+
+
+@app.route("/audio/<path:filename>")
+def audio_file(filename):
+    audio_root = LOCAL_AUDIO_DIR.resolve()
+    target = (audio_root / (filename or "")).resolve()
+    if audio_root not in target.parents or not target.is_file():
+        abort(404)
+
+    extension = target.suffix.lower()
+    mimetype = LOCAL_AUDIO_MIMETYPES.get(extension) or mimetypes.guess_type(target.name)[0] or "application/octet-stream"
+    return send_file(target, mimetype=mimetype, conditional=True)
 
 
 @app.route("/corpus/audio/<path:filename>")

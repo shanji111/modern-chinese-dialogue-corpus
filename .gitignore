@@ -31,6 +31,7 @@ demo_corpus.db
 *.db-shm
 
 # Codex test artifacts
+.codex_pycache/
 .codex_test_public_submissions/
 codex_test_public_submissions/
 codex_sqlite_write_probe.db
@@ -41,6 +42,8 @@ uploads/submissions/*
 !uploads/submissions/.gitkeep
 
 # Raw corpus and large media
+talkdata/.llm_fulltext_extract_cache/
+talkdata/.llm_review_cache/
 talkdata/raw_chat_corpus/
 talkdata/audio_raw/
 talkdata/video_raw/
