@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, session, url_for
+from hmac import compare_digest
 import os
 import math
 import re
@@ -18,6 +19,7 @@ from storage_utils import (
 )
 
 app = Flask(__name__)
+app.secret_key = os.getenv("SECRET_KEY") or "dev-only-temporary-secret-key"
 
 FTS_TABLE = "corpus_entries_fts"
 MAX_RESULT_SIDE_CHARS = 70
@@ -36,13 +38,13 @@ MODALITY_OPTIONS = ["text", "txt", "audio", "video", "mixed", "other"]
 MODALITY_LABELS = {
     "text": "文本",
     "txt": "TXT 文件",
-    "audio": "音频",
+    "audio": "录音 / 音频",
     "video": "视频",
     "mixed": "混合材料",
     "other": "其他",
 }
 app.config["SEARCH_BACKEND"] = os.getenv("CORPUS_SEARCH_BACKEND", "fts").strip().lower() or "fts"
-app.config["MAX_CONTENT_LENGTH"] = 200 * 1024 * 1024
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 
 
 @app.errorhandler(RequestEntityTooLarge)
@@ -52,8 +54,27 @@ def handle_file_too_large(error):
         categories=CATEGORY_OPTIONS,
         modalities=MODALITY_OPTIONS,
         modality_labels=MODALITY_LABELS,
-        error="上传文件过大，请将单个文件控制在 200 MB 以内。",
+        error="上传文件过大，请将单个文件控制在 5 MB 以内。",
     ), 413
+
+
+def get_admin_next_url():
+    next_url = request.args.get("next") or url_for("admin_submissions")
+    if not next_url.startswith("/admin") or next_url.startswith("/admin/login"):
+        return url_for("admin_submissions")
+    return next_url
+
+
+@app.before_request
+def require_admin_login():
+    if not request.path.startswith("/admin"):
+        return None
+    if request.endpoint in {"admin_login", "admin_logout"}:
+        return None
+    if session.get("admin_logged_in"):
+        return None
+    next_url = request.full_path if request.query_string else request.path
+    return redirect(url_for("admin_login", next=next_url))
 
 
 def init_submission_tables():
@@ -780,6 +801,34 @@ def search():
         end_no=end_no,
         search_backend=search_backend,
     )
+
+
+@app.route("/admin/login", methods=["GET", "POST"])
+def admin_login():
+    error = ""
+    if request.method == "POST":
+        expected_username = os.getenv("ADMIN_USERNAME", "")
+        expected_password = os.getenv("ADMIN_PASSWORD", "")
+        username = clean_form_value("username")
+        password = request.form.get("password", "")
+
+        if not expected_username or not expected_password:
+            error = "请先在环境变量中设置管理员账号和密码。"
+        elif compare_digest(username, expected_username) and compare_digest(password, expected_password):
+            session.clear()
+            session["admin_logged_in"] = True
+            session["admin_username"] = username
+            return redirect(get_admin_next_url())
+        else:
+            error = "账号或密码不正确，请重新输入。"
+
+    return render_template("admin_login.html", error=error)
+
+
+@app.route("/admin/logout")
+def admin_logout():
+    session.clear()
+    return redirect(url_for("admin_login"))
 
 
 @app.route("/admin")

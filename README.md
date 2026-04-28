@@ -49,9 +49,14 @@ gunicorn app:app
 DATABASE_PATH=/opt/render/project/src/corpus.db
 UPLOAD_FOLDER=/opt/render/project/src/uploads/submissions
 CORPUS_SEARCH_BACKEND=fts
+SECRET_KEY=请在生产环境设置一个足够长的随机字符串
+ADMIN_USERNAME=请设置管理员账号
+ADMIN_PASSWORD=请设置管理员密码
 ```
 
 ## 注意事项
+
+生产环境必须设置 `SECRET_KEY`、`ADMIN_USERNAME` 和 `ADMIN_PASSWORD`。不要把管理员密码、数据库连接串或对象存储密钥写入代码或提交到仓库。
 
 Render 免费 Web Service 的本地文件系统不是长期持久存储。预览网站中新增的 SQLite 写入和上传文件，在服务重启或重新部署后可能丢失。
 

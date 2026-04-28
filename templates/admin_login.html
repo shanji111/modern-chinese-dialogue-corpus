@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>管理员登录 - 现代汉语对话语料库</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="admin-page">
+    <div class="admin-container admin-login-container">
+        <div class="admin-title">管理员登录</div>
+        <div class="admin-subtitle">请输入管理员账号和密码后进入后台审核与维护页面。</div>
+
+        {% if error %}
+        <div class="upload-success-box error-box">
+            <div class="success-title">登录失败</div>
+            <div class="success-line">{{ error }}</div>
+        </div>
+        {% endif %}
+
+        <form action="{{ url_for('admin_login', next=request.args.get('next', '')) }}" method="post" class="admin-form">
+            <div class="form-row">
+                <label for="username">管理员账号</label>
+                <input id="username" type="text" name="username" autocomplete="username" required>
+            </div>
+
+            <div class="form-row">
+                <label for="password">管理员密码</label>
+                <input id="password" type="password" name="password" autocomplete="current-password" required>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit">登录</button>
+                <a href="{{ url_for('home') }}" class="back-home-link">返回首页</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

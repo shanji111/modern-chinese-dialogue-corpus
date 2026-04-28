@@ -206,6 +206,14 @@ a:hover {
     text-decoration: none;
 }
 
+.data-notice {
+    width: 840px;
+    margin: 12px auto 0 auto;
+    color: #6b7280;
+    font-size: 12px;
+    line-height: 1.7;
+}
+
 .corpus-card-section {
     width: 840px;
     margin: 26px auto 0 auto;
@@ -259,7 +267,8 @@ a:hover {
     .category-tabs,
     .bcc-search-form,
     .corpus-card-section,
-    .contribution-panel {
+    .contribution-panel,
+    .data-notice {
         width: 100%;
     }
 
@@ -692,6 +701,10 @@ a:hover {
     width: 1120px;
 }
 
+.admin-login-container {
+    width: 520px;
+}
+
 .admin-title {
     font-size: 30px;
     font-weight: 700;
@@ -722,6 +735,7 @@ a:hover {
 }
 
 .form-row input[type="text"],
+.form-row input[type="password"],
 .form-row input[type="file"],
 .form-row select,
 .form-row textarea {
