@@ -164,6 +164,7 @@
                 <div class="modal-audio" id="modalAudioBox">
                     <div class="modal-audio-label">音频话轮</div>
                     <audio id="modalAudio" controls preload="metadata"></audio>
+                    <div class="modal-audio-unavailable" id="modalAudioUnavailable">该音频暂不可播放。</div>
                 </div>
                 <div class="modal-segments">
                     <div class="modal-segment-block">
@@ -220,16 +221,31 @@
 
             const audioBox = document.getElementById("modalAudioBox");
             const audio = document.getElementById("modalAudio");
+            const audioUnavailable = document.getElementById("modalAudioUnavailable");
             if (item.audioUrl) {
                 audio.src = item.audioUrl;
+                audio.style.display = "block";
+                audioUnavailable.style.display = "none";
                 audioBox.style.display = "block";
                 audio.onloadedmetadata = function () {
                     if (item.startTime !== null && item.startTime !== undefined) {
                         audio.currentTime = Number(item.startTime);
                     }
                 };
+                audio.onerror = function () {
+                    audio.removeAttribute("src");
+                    audio.style.display = "none";
+                    audioUnavailable.style.display = "block";
+                };
+            } else if (item.audioFile) {
+                audio.removeAttribute("src");
+                audio.style.display = "none";
+                audioUnavailable.style.display = "block";
+                audioBox.style.display = "block";
             } else {
                 audio.removeAttribute("src");
+                audio.style.display = "none";
+                audioUnavailable.style.display = "none";
                 audioBox.style.display = "none";
             }
             document.getElementById("contextModal").style.display = "flex";

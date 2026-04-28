@@ -614,6 +614,13 @@ a:hover {
     width: 100%;
 }
 
+.modal-audio-unavailable {
+    display: none;
+    color: #7a8390;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
 .modal-meta-grid > div {
     padding: 8px 10px;
     border-right: 1px solid #dfe5ee;

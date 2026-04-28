@@ -12,10 +12,14 @@ from database import get_db_connection
 from db_utils import compute_content_hash, utc_timestamp
 from storage_utils import (
     allowed_file,
+    corpus_audio_exists_locally,
     delete_submission_file,
+    get_corpus_audio_response,
     get_submission_download_response,
+    is_remote_url,
     print_upload_debug,
     save_submission_file,
+    STORAGE_BACKEND,
 )
 
 app = Flask(__name__)
@@ -142,6 +146,17 @@ def read_text_file(path):
         except UnicodeDecodeError:
             continue
     return path.read_text(encoding="utf-8", errors="replace")
+
+
+def build_corpus_audio_url(audio_file):
+    audio_file = (audio_file or "").strip()
+    if not audio_file:
+        return ""
+    if is_remote_url(audio_file):
+        return audio_file
+    if STORAGE_BACKEND == "local" and not corpus_audio_exists_locally(audio_file):
+        return ""
+    return url_for("corpus_audio", filename=audio_file)
 
 
 def load_all_data():
@@ -773,7 +788,7 @@ def search():
         result["right_context"] = right
         result.update(build_segment_context(item, keyword, left_len, right_len))
         audio_file = result.get("audio_file")
-        result["audio_url"] = url_for("static", filename=f"audio_imports/{audio_file}") if audio_file else ""
+        result["audio_url"] = build_corpus_audio_url(audio_file)
         page_results.append(result)
 
     start_no = start_idx + 1 if total > 0 else 0
@@ -801,6 +816,14 @@ def search():
         end_no=end_no,
         search_backend=search_backend,
     )
+
+
+@app.route("/corpus/audio/<path:filename>")
+def corpus_audio(filename):
+    try:
+        return get_corpus_audio_response(filename)
+    except FileNotFoundError:
+        return "Audio file is not available.", 404
 
 
 @app.route("/admin/login", methods=["GET", "POST"])
