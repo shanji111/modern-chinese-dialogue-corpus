@@ -22,6 +22,7 @@ Thumbs.db
 *.tmp
 *.bak
 instance/
+.transcription_tmp/
 
 # SQLite temporary files
 corpus.db

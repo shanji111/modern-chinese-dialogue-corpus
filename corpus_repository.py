@@ -779,6 +779,23 @@ def get_submission_by_id(submission_id):
         close_connection(conn)
 
 
+def update_submission_text_content(submission_id, text_content):
+    marker = placeholder()
+    conn = get_db_connection()
+    try:
+        conn.execute(
+            f"""
+            UPDATE corpus_submissions
+            SET text_content = {marker}
+            WHERE id = {marker}
+            """,
+            (text_content, submission_id),
+        )
+        conn.commit()
+    finally:
+        close_connection(conn)
+
+
 def approve_submission_record(submission_id, admin_note=""):
     marker = placeholder()
     conn = get_db_connection()

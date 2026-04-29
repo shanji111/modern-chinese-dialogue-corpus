@@ -4,6 +4,9 @@ import mimetypes
 import os
 import math
 import re
+import shutil
+import subprocess
+import uuid
 from pathlib import Path
 
 from markupsafe import Markup, escape
@@ -13,6 +16,8 @@ import corpus_repository
 from database import get_db_connection
 from db_utils import compute_content_hash, utc_timestamp
 from storage_utils import (
+    S3StorageBackend,
+    UPLOAD_FOLDER,
     allowed_file,
     corpus_audio_exists_locally,
     delete_submission_file,
@@ -30,6 +35,10 @@ app.secret_key = os.getenv("SECRET_KEY") or "dev-only-temporary-secret-key"
 FTS_TABLE = "corpus_entries_fts"
 MAX_RESULT_SIDE_CHARS = 70
 MAX_RESULT_HIT_CHARS = 150
+INTERVIEW_SOURCE = "访谈语料"
+INTERVIEW_PUBLIC_SNIPPET_CHARS = 220
+INTERVIEW_RESULT_SIDE_CHARS = 45
+INTERVIEW_RESULT_HIT_CHARS = 160
 LOCAL_AUDIO_DIR = Path(app.root_path) / "static" / "audio_imports"
 LOCAL_AUDIO_MIMETYPES = {
     ".m4a": "audio/mp4",
@@ -38,6 +47,9 @@ LOCAL_AUDIO_MIMETYPES = {
     ".ogg": "audio/ogg",
     ".flac": "audio/flac",
 }
+TRANSCRIPTION_TEMP_DIR = Path(app.root_path) / ".transcription_tmp"
+AUDIO_TRANSCRIPTION_EXTENSIONS = {".mp3", ".wav", ".m4a"}
+VIDEO_TRANSCRIPTION_EXTENSIONS = {".mp4", ".mov"}
 TEXT_FILE_EXTENSIONS = {".txt"}
 CATEGORY_OPTIONS = [
     "日常对话",
@@ -156,6 +168,142 @@ def read_text_file(path):
         except UnicodeDecodeError:
             continue
     return path.read_text(encoding="utf-8", errors="replace")
+
+
+def get_file_extension(*names):
+    for name in names:
+        extension = Path(name or "").suffix.lower()
+        if extension:
+            return extension
+    return ""
+
+
+def is_transcribable_submission(submission):
+    if not submission or not submission.get("original_filename"):
+        return False
+    extension = get_file_extension(submission.get("original_filename"), submission.get("stored_filename"), submission.get("object_key"))
+    mime_type = (submission.get("file_mime_type") or "").lower()
+    return (
+        extension in AUDIO_TRANSCRIPTION_EXTENSIONS
+        or extension in VIDEO_TRANSCRIPTION_EXTENSIONS
+        or mime_type.startswith("audio/")
+        or mime_type.startswith("video/")
+    )
+
+
+def is_video_submission_file(path, submission):
+    extension = get_file_extension(path, submission.get("original_filename"))
+    mime_type = (submission.get("file_mime_type") or "").lower()
+    return extension in VIDEO_TRANSCRIPTION_EXTENSIONS or mime_type.startswith("video/")
+
+
+def safe_upload_file_path(stored_filename):
+    if not stored_filename:
+        return None
+    upload_root = UPLOAD_FOLDER.resolve()
+    target = (UPLOAD_FOLDER / stored_filename).resolve()
+    if upload_root not in target.parents and target != upload_root:
+        return None
+    return target
+
+
+def local_submission_file_path(submission):
+    target = safe_upload_file_path(submission.get("stored_filename") or submission.get("object_key"))
+    if target and target.exists() and target.is_file():
+        return target
+
+    file_path = submission.get("file_path")
+    if not file_path:
+        return None
+    upload_root = UPLOAD_FOLDER.resolve()
+    target = Path(file_path).resolve()
+    if upload_root not in target.parents and target != upload_root:
+        return None
+    if target.exists() and target.is_file():
+        return target
+    return None
+
+
+def copy_submission_file_to_temp(submission, temp_dir):
+    storage_backend = (submission.get("storage_backend") or "local").strip().lower()
+    extension = get_file_extension(submission.get("original_filename"), submission.get("stored_filename"), submission.get("object_key")) or ".bin"
+    temp_path = Path(temp_dir) / f"{uuid.uuid4().hex}{extension}"
+
+    if storage_backend == "s3":
+        object_key = submission.get("object_key") or submission.get("stored_filename")
+        if not object_key:
+            raise RuntimeError("未找到对象存储文件键，无法下载投稿文件。")
+        try:
+            backend = S3StorageBackend()
+            backend.client().download_file(backend.bucket, object_key, str(temp_path))
+        except Exception as exc:
+            raise RuntimeError("无法从对象存储读取投稿文件，请检查 R2/S3 配置和文件是否存在。") from exc
+        return temp_path
+
+    local_path = local_submission_file_path(submission)
+    if local_path is None:
+        raise RuntimeError("未找到本地投稿文件，无法生成转写。")
+    shutil.copyfile(local_path, temp_path)
+    return temp_path
+
+
+def extract_audio_from_video(video_path, temp_dir):
+    ffmpeg_path = shutil.which("ffmpeg")
+    if not ffmpeg_path:
+        raise RuntimeError("该投稿是视频文件，需要先安装 ffmpeg 才能提取音频。")
+
+    audio_path = Path(temp_dir) / f"{uuid.uuid4().hex}.m4a"
+    try:
+        subprocess.run(
+            [
+                ffmpeg_path,
+                "-y",
+                "-i",
+                str(video_path),
+                "-vn",
+                "-acodec",
+                "aac",
+                "-b:a",
+                "96k",
+                str(audio_path),
+            ],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError("ffmpeg 提取音频失败，请确认视频文件可播放且包含音轨。") from exc
+    return audio_path
+
+
+def transcribe_media_file(media_path, model_name):
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("未配置转写 API Key，请先设置 OPENAI_API_KEY。")
+
+    try:
+        from openai import OpenAI
+    except ImportError as exc:
+        raise RuntimeError("未安装 OpenAI Python SDK，请先安装 requirements.txt 中的依赖。") from exc
+
+    client = OpenAI(api_key=api_key)
+    with Path(media_path).open("rb") as media_file:
+        result = client.audio.transcriptions.create(
+            model=model_name,
+            file=media_file,
+            response_format="text",
+        )
+    return str(result or "").strip()
+
+
+def cleanup_transcription_temp_files(paths):
+    for path in paths:
+        if not path:
+            continue
+        try:
+            Path(path).unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 def build_corpus_audio_url(audio_file):
@@ -536,7 +684,41 @@ def highlight_keyword(text, keyword):
     return Markup("".join(highlighted))
 
 
+def is_interview_item(item):
+    return (item.get("source") or "") == INTERVIEW_SOURCE
+
+
+def public_interview_snippet(content, keyword="", left_len=30, right_len=30):
+    content = content or ""
+    left_len = min(left_len, INTERVIEW_RESULT_SIDE_CHARS)
+    right_len = min(right_len, INTERVIEW_RESULT_SIDE_CHARS)
+    if keyword:
+        left, hit, right = split_context(content, keyword, left_len, right_len)
+        snippet = "".join(part for part in (left, hit, right) if part)
+        if snippet:
+            return trim_text(snippet, INTERVIEW_PUBLIC_SNIPPET_CHARS)
+    return trim_text(content, INTERVIEW_PUBLIC_SNIPPET_CHARS)
+
+
 def build_segment_context(item, keyword, left_len=80, right_len=80):
+    if is_interview_item(item):
+        hit_segment = public_interview_snippet(
+            item["content"] or "",
+            keyword,
+            left_len,
+            right_len,
+        )
+        hit_segment = trim_text(hit_segment, INTERVIEW_RESULT_HIT_CHARS)
+        return {
+            "file_name": item["title"],
+            "dialogue_id": item["id"],
+            "prev_segment": "",
+            "hit_segment": hit_segment,
+            "hit_segment_html": highlight_keyword(hit_segment, keyword),
+            "next_segment": "",
+            "is_interview": True,
+        }
+
     left_len = min(left_len, MAX_RESULT_SIDE_CHARS)
     right_len = min(right_len, MAX_RESULT_SIDE_CHARS)
     prev_segment = get_optional(item, "prev_segment")
@@ -802,6 +984,11 @@ def search():
         result["hit"] = hit
         result["right_context"] = right
         result.update(build_segment_context(item, keyword, left_len, right_len))
+        result["source_url"] = result.get("source_url") or ""
+        result["crawl_source"] = result.get("crawl_source") or result.get("dataset_name") or result.get("category") or ""
+        result["crawl_date"] = result.get("crawl_date") or ""
+        result["license_note"] = result.get("license_note") or ""
+        result["is_interview"] = bool(result.get("is_interview") or is_interview_item(result))
         audio_file = result.get("audio_file")
         result["audio_url"] = build_corpus_audio_url(audio_file)
         page_results.append(result)
@@ -938,12 +1125,19 @@ def admin_submission_detail(submission_id):
     if submission is None:
         return render_template("admin_submission_detail.html", error="未找到该投稿。"), 404
 
-    return render_template("admin_submission_detail.html", submission=submission)
+    return render_template(
+        "admin_submission_detail.html",
+        submission=submission,
+        can_transcribe=is_transcribable_submission(submission),
+    )
 
 
 @app.route("/admin/submissions/<int:submission_id>/approve", methods=["POST"])
 def approve_submission(submission_id):
     admin_note = clean_form_value("admin_note")
+    edited_text_content = request.form.get("text_content")
+    if edited_text_content is not None:
+        corpus_repository.update_submission_text_content(submission_id, edited_text_content.strip())
     try:
         submission, result = corpus_repository.approve_submission_record(submission_id, admin_note)
         if result == "missing":
@@ -958,6 +1152,68 @@ def approve_submission(submission_id):
         ), 400
 
     return redirect(url_for("admin_submission_detail", submission_id=submission_id, approved=1))
+
+
+@app.route("/admin/submissions/<int:submission_id>/transcribe", methods=["POST"])
+def transcribe_submission(submission_id):
+    submission = corpus_repository.get_submission_by_id(submission_id)
+    if submission is None:
+        return render_template("admin_submission_detail.html", error="未找到该投稿。"), 404
+
+    if not is_transcribable_submission(submission):
+        return render_template(
+            "admin_submission_detail.html",
+            submission=submission,
+            can_transcribe=False,
+            transcription_error="该投稿不是可转写的音频或视频文件。",
+        ), 400
+
+    model_name = os.getenv("TRANSCRIBE_MODEL", "whisper-1").strip() or "whisper-1"
+    if not os.getenv("OPENAI_API_KEY", "").strip():
+        return render_template(
+            "admin_submission_detail.html",
+            submission=submission,
+            can_transcribe=True,
+            transcription_error="未配置转写 API Key，请先设置 OPENAI_API_KEY。",
+        ), 400
+
+    temp_paths = []
+    try:
+        TRANSCRIPTION_TEMP_DIR.mkdir(parents=True, exist_ok=True)
+        media_path = copy_submission_file_to_temp(submission, TRANSCRIPTION_TEMP_DIR)
+        temp_paths.append(media_path)
+        transcription_path = media_path
+        if is_video_submission_file(media_path, submission):
+            transcription_path = extract_audio_from_video(media_path, TRANSCRIPTION_TEMP_DIR)
+            temp_paths.append(transcription_path)
+        transcript = transcribe_media_file(transcription_path, model_name)
+        if not transcript:
+            raise RuntimeError("转写完成但结果为空，请确认文件中包含清晰语音。")
+        corpus_repository.update_submission_text_content(submission_id, transcript)
+    except RuntimeError as exc:
+        return render_template(
+            "admin_submission_detail.html",
+            submission=submission,
+            can_transcribe=True,
+            transcription_error=str(exc),
+        ), 400
+    except Exception:
+        return render_template(
+            "admin_submission_detail.html",
+            submission=submission,
+            can_transcribe=True,
+            transcription_error="转写失败，请稍后重试或检查文件格式与服务配置。",
+        ), 500
+    finally:
+        cleanup_transcription_temp_files(temp_paths)
+
+    updated_submission = corpus_repository.get_submission_by_id(submission_id)
+    return render_template(
+        "admin_submission_detail.html",
+        submission=updated_submission,
+        can_transcribe=is_transcribable_submission(updated_submission),
+        transcription_success=f"转写已生成，使用模型：{model_name}。投稿仍保持 pending，请人工检查后再审核。",
+    )
 
 
 @app.route("/admin/submissions/<int:submission_id>/reject", methods=["POST"])

@@ -38,6 +38,18 @@
                 <div class="success-line">该投稿已标记为拒绝。</div>
             </div>
             {% endif %}
+            {% if transcription_success %}
+            <div class="upload-success-box">
+                <div class="success-title">转写完成</div>
+                <div class="success-line">{{ transcription_success }}</div>
+            </div>
+            {% endif %}
+            {% if transcription_error %}
+            <div class="upload-success-box error-box">
+                <div class="success-title">转写失败</div>
+                <div class="success-line">{{ transcription_error }}</div>
+            </div>
+            {% endif %}
 
             <dl class="detail-grid">
                 <dt>ID</dt><dd>{{ submission.id }}</dd>
@@ -65,12 +77,21 @@
                 <dt>管理员备注</dt><dd>{{ submission.admin_note or '' }}</dd>
             </dl>
 
-            <div class="form-row">
-                <label>文本内容</label>
-                <div class="text-preview">{{ submission.text_content or '暂无文本内容。' }}</div>
-            </div>
+            {% if can_transcribe %}
+            <form class="admin-form transcription-form" method="post" action="{{ url_for('transcribe_submission', submission_id=submission.id) }}">
+                <div class="form-actions">
+                    <button type="submit">生成转写</button>
+                    <span class="muted-text">仅管理员手动点击后才会调用转写 API，完成后仍保持 pending。</span>
+                </div>
+            </form>
+            {% endif %}
 
             <form class="admin-form" method="post" action="{{ url_for('approve_submission', submission_id=submission.id) }}">
+                <div class="form-row">
+                    <label for="submission_text_content">文本内容 / 转写结果</label>
+                    <textarea id="submission_text_content" name="text_content" rows="10">{{ submission.text_content or '' }}</textarea>
+                    <div class="muted-text">管理员可在审核前编辑或复制转写文本；点击通过时会保存这里的文本内容。</div>
+                </div>
                 <div class="form-row">
                     <label for="approve_note">管理员备注</label>
                     <textarea id="approve_note" name="admin_note" rows="3">{{ submission.admin_note or '' }}</textarea>
