@@ -84,6 +84,11 @@
                        startTime: {{ item.start_time|tojson }},
                        endTime: {{ item.end_time|tojson }},
                        speaker: {{ item.speaker|tojson }},
+                       isInterview: {{ item.is_interview|tojson }},
+                       sourceUrl: {{ item.source_url|tojson }},
+                       crawlSource: {{ item.crawl_source|tojson }},
+                       crawlDate: {{ item.crawl_date|tojson }},
+                       licenseNote: {{ item.license_note|tojson }},
                        keyword: {{ keyword|tojson }},
                        prevSegment: {{ item.prev_segment|tojson }},
                        hitSegment: {{ item.hit_segment|tojson }},
@@ -148,6 +153,18 @@
                         <span class="modal-meta-label">数据集</span>
                         <span id="modalDatasetName"></span>
                     </div>
+                    <div class="interview-meta">
+                        <span class="modal-meta-label">原文来源</span>
+                        <span id="modalCrawlSource"></span>
+                    </div>
+                    <div class="interview-meta">
+                        <span class="modal-meta-label">抓取日期</span>
+                        <span id="modalCrawlDate"></span>
+                    </div>
+                    <div class="interview-meta">
+                        <span class="modal-meta-label">原文链接</span>
+                        <a id="modalSourceUrl" href="#" target="_blank" rel="noopener noreferrer">查看原文</a>
+                    </div>
                     <div>
                         <span class="modal-meta-label">对话ID</span>
                         <span id="modalDialogueId"></span>
@@ -180,6 +197,7 @@
                         <div class="modal-segment-text" id="modalNextSegment"></div>
                     </div>
                 </div>
+                <div class="interview-license-note" id="modalLicenseNote"></div>
             </div>
         </div>
     </div>
@@ -230,6 +248,23 @@
             document.getElementById("modalPrevSegment").innerText = item.prevSegment || "—";
             document.getElementById("modalHitSegment").innerHTML = highlightKeyword(item.hitSegment, item.keyword);
             document.getElementById("modalNextSegment").innerText = item.nextSegment || "—";
+            document.getElementById("modalCrawlSource").innerText = item.crawlSource || "—";
+            document.getElementById("modalCrawlDate").innerText = item.crawlDate || "—";
+            document.getElementById("modalLicenseNote").innerText = item.licenseNote || "";
+
+            const sourceUrl = document.getElementById("modalSourceUrl");
+            if (item.sourceUrl) {
+                sourceUrl.href = item.sourceUrl;
+                sourceUrl.style.display = "inline";
+            } else {
+                sourceUrl.removeAttribute("href");
+                sourceUrl.style.display = "none";
+            }
+
+            document.querySelectorAll(".interview-meta").forEach(function (element) {
+                element.style.display = item.isInterview ? "block" : "none";
+            });
+            document.getElementById("modalLicenseNote").style.display = item.isInterview ? "block" : "none";
 
             const audioBox = document.getElementById("modalAudioBox");
             const audioUnavailable = document.getElementById("modalAudioUnavailable");

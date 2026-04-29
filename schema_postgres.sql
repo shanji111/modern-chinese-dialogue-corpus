@@ -11,6 +11,10 @@ CREATE TABLE IF NOT EXISTS corpus_entries (
     created_at TIMESTAMP,
     import_batch TEXT,
     content_hash TEXT,
+    source_url TEXT,
+    crawl_source TEXT,
+    crawl_date TEXT,
+    license_note TEXT,
     audio_file TEXT,
     segment_text TEXT,
     current_segment TEXT,
@@ -73,16 +77,23 @@ CREATE TABLE IF NOT EXISTS multimodal_entries (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+ALTER TABLE corpus_entries
+    ADD COLUMN IF NOT EXISTS search_text TEXT,
+    ADD COLUMN IF NOT EXISTS source_url TEXT,
+    ADD COLUMN IF NOT EXISTS crawl_source TEXT,
+    ADD COLUMN IF NOT EXISTS crawl_date TEXT,
+    ADD COLUMN IF NOT EXISTS license_note TEXT;
+
 CREATE INDEX IF NOT EXISTS idx_corpus_category ON corpus_entries (category);
 CREATE INDEX IF NOT EXISTS idx_corpus_source ON corpus_entries (source);
 CREATE INDEX IF NOT EXISTS idx_corpus_year ON corpus_entries (year);
 CREATE INDEX IF NOT EXISTS idx_corpus_dataset_name ON corpus_entries (dataset_name);
 CREATE INDEX IF NOT EXISTS idx_corpus_conversation_segment ON corpus_entries (conversation_id, segment_index);
 CREATE INDEX IF NOT EXISTS idx_corpus_content_hash ON corpus_entries (content_hash);
+CREATE INDEX IF NOT EXISTS idx_corpus_source_url ON corpus_entries (source_url);
+CREATE INDEX IF NOT EXISTS idx_corpus_crawl_source ON corpus_entries (crawl_source);
+CREATE INDEX IF NOT EXISTS idx_corpus_crawl_date ON corpus_entries (crawl_date);
 CREATE INDEX IF NOT EXISTS idx_corpus_audio_file ON corpus_entries (audio_file);
-
-ALTER TABLE corpus_entries
-    ADD COLUMN IF NOT EXISTS search_text TEXT;
 
 ALTER TABLE corpus_submissions
     ADD COLUMN IF NOT EXISTS storage_backend TEXT DEFAULT 'local',

@@ -8,6 +8,7 @@ venv/
 
 # Environment
 .env
+.env.*
 
 # IDE
 .idea/
@@ -27,6 +28,9 @@ instance/
 # SQLite temporary files
 corpus.db
 demo_corpus.db
+*.db
+*.sqlite
+*.sqlite3
 *.db-journal
 *.db-wal
 *.db-shm

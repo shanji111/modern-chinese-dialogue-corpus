@@ -716,7 +716,7 @@ a:hover {
 
 .modal-meta-grid {
     display: grid;
-    grid-template-columns: 1.5fr 0.8fr 0.8fr 0.7fr 1fr 0.8fr 1fr 0.8fr;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     border: 1px solid #cfd7e3;
     border-bottom: none;
     background: #f8fafc;
@@ -814,6 +814,17 @@ a:hover {
 .modal-segment-block.hit .modal-segment-text {
     font-size: 16px;
     font-weight: 600;
+}
+
+.interview-license-note {
+    display: none;
+    margin-top: 10px;
+    padding: 9px 12px;
+    border: 1px solid #d7e0ec;
+    background: #f8fafc;
+    color: #566579;
+    font-size: 13px;
+    line-height: 1.6;
 }
 
 /* ========== 后台页 ========== */

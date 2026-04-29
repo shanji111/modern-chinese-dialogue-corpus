@@ -11,6 +11,9 @@ INDEX_SQL = (
     "CREATE INDEX IF NOT EXISTS idx_corpus_dataset_name ON corpus_entries (dataset_name)",
     "CREATE INDEX IF NOT EXISTS idx_corpus_import_batch ON corpus_entries (import_batch)",
     "CREATE INDEX IF NOT EXISTS idx_corpus_content_hash ON corpus_entries (content_hash)",
+    "CREATE INDEX IF NOT EXISTS idx_corpus_source_url ON corpus_entries (source_url)",
+    "CREATE INDEX IF NOT EXISTS idx_corpus_crawl_source ON corpus_entries (crawl_source)",
+    "CREATE INDEX IF NOT EXISTS idx_corpus_crawl_date ON corpus_entries (crawl_date)",
 )
 
 

@@ -13,7 +13,7 @@ from markupsafe import Markup, escape
 from werkzeug.exceptions import RequestEntityTooLarge
 
 import corpus_repository
-from database import get_db_connection
+from database import DATABASE_BACKEND, DATABASE_PATH, DATABASE_URL, get_db_connection
 from db_utils import compute_content_hash, utc_timestamp
 from storage_utils import (
     S3StorageBackend,
@@ -71,6 +71,54 @@ MODALITY_LABELS = {
 }
 app.config["SEARCH_BACKEND"] = os.getenv("CORPUS_SEARCH_BACKEND", "fts").strip().lower() or "fts"
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
+
+
+def print_startup_database_diagnostics():
+    def first_value(row):
+        if isinstance(row, dict):
+            return next(iter(row.values()))
+        try:
+            return row[0]
+        except KeyError:
+            return next(iter(dict(row).values()))
+
+    print("[startup-db] cwd:", os.getcwd())
+    print("[startup-db] DATABASE_BACKEND:", DATABASE_BACKEND)
+    print("[startup-db] DATABASE_PATH env:", os.getenv("DATABASE_PATH") or "")
+    print("[startup-db] DATABASE_URL env set:", bool(DATABASE_URL))
+    print("[startup-db] resolved database path:", DATABASE_PATH.resolve())
+    print("[startup-db] database exists:", DATABASE_PATH.exists())
+    if DATABASE_BACKEND != "sqlite":
+        print("[startup-db] resolved database path is not used because DATABASE_BACKEND is not sqlite")
+    elif not DATABASE_PATH.exists():
+        return
+
+    try:
+        conn = get_db_connection()
+        try:
+            marker = "%s" if DATABASE_BACKEND == "postgres" else "?"
+            interview_total = first_value(conn.execute(
+                f"SELECT COUNT(*) FROM corpus_entries WHERE source = {marker}",
+                (INTERVIEW_SOURCE,),
+            ).fetchone())
+            civil_aviation_hits = first_value(conn.execute(
+                f"""
+                SELECT COUNT(*)
+                FROM corpus_entries
+                WHERE source = {marker}
+                  AND content LIKE {marker}
+                """,
+                (INTERVIEW_SOURCE, "%民航%"),
+            ).fetchone())
+            print("[startup-db] source=访谈语料 total:", interview_total)
+            print("[startup-db] source=访谈语料 AND content LIKE %民航%:", civil_aviation_hits)
+        finally:
+            conn.close()
+    except Exception as exc:
+        print("[startup-db] diagnostic query failed:", repr(exc))
+
+
+print_startup_database_diagnostics()
 
 
 @app.errorhandler(RequestEntityTooLarge)

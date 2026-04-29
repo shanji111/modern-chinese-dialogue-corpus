@@ -14,6 +14,10 @@ NEW_COLUMNS = {
     "created_at": "TEXT",
     "import_batch": "TEXT",
     "content_hash": "TEXT",
+    "source_url": "TEXT",
+    "crawl_source": "TEXT",
+    "crawl_date": "TEXT",
+    "license_note": "TEXT",
 }
 
 
