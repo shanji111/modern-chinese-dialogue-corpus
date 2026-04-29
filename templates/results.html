@@ -89,10 +89,11 @@
                        crawlSource: {{ item.crawl_source|tojson }},
                        crawlDate: {{ item.crawl_date|tojson }},
                        licenseNote: {{ item.license_note|tojson }},
+                       labels: {{ item.labels|tojson }},
                        keyword: {{ keyword|tojson }},
-                       prevSegment: {{ item.prev_segment|tojson }},
-                       hitSegment: {{ item.hit_segment|tojson }},
-                       nextSegment: {{ item.next_segment|tojson }}
+                       prevSegment: {{ item.modal_prev_segment|tojson }},
+                       hitSegment: {{ item.modal_hit_segment|tojson }},
+                       nextSegment: {{ item.modal_next_segment|tojson }}
                    }); return false;'>上下文</a>
             </div>
         </div>
@@ -163,7 +164,8 @@
                     </div>
                     <div class="interview-meta">
                         <span class="modal-meta-label">原文链接</span>
-                        <a id="modalSourceUrl" href="#" target="_blank" rel="noopener noreferrer">查看原文</a>
+                        <a id="modalSourceUrl" target="_blank" rel="noopener noreferrer">查看原文</a>
+                        <span id="modalSourceUrlMissing">暂无原文链接</span>
                     </div>
                     <div>
                         <span class="modal-meta-label">对话ID</span>
@@ -185,15 +187,15 @@
                 </div>
                 <div class="modal-segments">
                     <div class="modal-segment-block">
-                        <div class="modal-segment-label">前序话轮</div>
+                        <div class="modal-segment-label" id="modalPrevLabel">前序话轮</div>
                         <div class="modal-segment-text" id="modalPrevSegment"></div>
                     </div>
                     <div class="modal-segment-block hit">
-                        <div class="modal-segment-label">命中话轮</div>
+                        <div class="modal-segment-label" id="modalHitLabel">命中话轮</div>
                         <div class="modal-segment-text" id="modalHitSegment"></div>
                     </div>
                     <div class="modal-segment-block">
-                        <div class="modal-segment-label">后续话轮</div>
+                        <div class="modal-segment-label" id="modalNextLabel">后续话轮</div>
                         <div class="modal-segment-text" id="modalNextSegment"></div>
                     </div>
                 </div>
@@ -245,20 +247,27 @@
             document.getElementById("modalDialogueId").innerText = item.dialogueId || "—";
             document.getElementById("modalTimeRange").innerText = formatTimeRange(item.startTime, item.endTime);
             document.getElementById("modalSpeaker").innerText = item.speaker || "—";
-            document.getElementById("modalPrevSegment").innerText = item.prevSegment || "—";
+            const labels = item.labels || {};
+            document.getElementById("modalPrevLabel").innerText = labels.modal_prev || "前序话轮";
+            document.getElementById("modalHitLabel").innerText = labels.modal_hit || "命中话轮";
+            document.getElementById("modalNextLabel").innerText = labels.modal_next || "后续话轮";
+            document.getElementById("modalPrevSegment").innerText = item.prevSegment || (item.isInterview ? "" : "—");
             document.getElementById("modalHitSegment").innerHTML = highlightKeyword(item.hitSegment, item.keyword);
-            document.getElementById("modalNextSegment").innerText = item.nextSegment || "—";
+            document.getElementById("modalNextSegment").innerText = item.nextSegment || (item.isInterview ? "" : "—");
             document.getElementById("modalCrawlSource").innerText = item.crawlSource || "—";
             document.getElementById("modalCrawlDate").innerText = item.crawlDate || "—";
             document.getElementById("modalLicenseNote").innerText = item.licenseNote || "";
 
             const sourceUrl = document.getElementById("modalSourceUrl");
+            const sourceUrlMissing = document.getElementById("modalSourceUrlMissing");
             if (item.sourceUrl) {
                 sourceUrl.href = item.sourceUrl;
                 sourceUrl.style.display = "inline";
+                sourceUrlMissing.style.display = "none";
             } else {
                 sourceUrl.removeAttribute("href");
                 sourceUrl.style.display = "none";
+                sourceUrlMissing.style.display = "inline";
             }
 
             document.querySelectorAll(".interview-meta").forEach(function (element) {

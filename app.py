@@ -36,9 +36,9 @@ FTS_TABLE = "corpus_entries_fts"
 MAX_RESULT_SIDE_CHARS = 70
 MAX_RESULT_HIT_CHARS = 150
 INTERVIEW_SOURCE = "访谈语料"
-INTERVIEW_PUBLIC_SNIPPET_CHARS = 220
-INTERVIEW_RESULT_SIDE_CHARS = 45
-INTERVIEW_RESULT_HIT_CHARS = 160
+INTERVIEW_RESULT_SIDE_CHARS = 34
+INTERVIEW_RESULT_HIT_CHARS = 96
+INTERVIEW_MODAL_SIDE_CHARS = 90
 LOCAL_AUDIO_DIR = Path(app.root_path) / "static" / "audio_imports"
 LOCAL_AUDIO_MIMETYPES = {
     ".m4a": "audio/mp4",
@@ -736,34 +736,102 @@ def is_interview_item(item):
     return (item.get("source") or "") == INTERVIEW_SOURCE
 
 
-def public_interview_snippet(content, keyword="", left_len=30, right_len=30):
+def split_interview_turns(content):
+    text = (content or "").replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not text:
+        return []
+
+    speaker_pattern = re.compile(
+        r"(^|[\n\s])(?P<label>"
+        r"(?:《[^》]{1,30}》)?"
+        r"[^：:\n]{0,30}"
+        r"(?:记者|主持人|发言人|毛宁|郭嘉昆|林剑|汪文斌|赵立坚|华春莹|耿爽|中国网)"
+        r"[^：:\n]{0,20}"
+        r"[：:])"
+    )
+    matches = list(speaker_pattern.finditer(text))
+    if not matches:
+        return []
+
+    turns = []
+    skip_speakers = {"相关链接", "附件", "来源", "责任编辑"}
+    for index, match in enumerate(matches):
+        start = match.start("label")
+        end = matches[index + 1].start("label") if index + 1 < len(matches) else len(text)
+        turn = text[start:end].strip()
+        speaker = re.split(r"[：:]", turn, maxsplit=1)[0].strip()
+        if speaker in skip_speakers:
+            continue
+        turns.append(turn)
+    return turns
+
+
+def clean_interview_turn(turn):
+    turn = (turn or "").strip()
+    for token in ("相关附件", "相关链接：", "相关链接:"):
+        index = turn.find(token)
+        if index >= 0:
+            turn = turn[:index].strip()
+    return turn
+
+
+def build_interview_context(content, keyword="", left_len=30, right_len=30):
     content = content or ""
-    left_len = min(left_len, INTERVIEW_RESULT_SIDE_CHARS)
-    right_len = min(right_len, INTERVIEW_RESULT_SIDE_CHARS)
     if keyword:
-        left, hit, right = split_context(content, keyword, left_len, right_len)
-        snippet = "".join(part for part in (left, hit, right) if part)
-        if snippet:
-            return trim_text(snippet, INTERVIEW_PUBLIC_SNIPPET_CHARS)
-    return trim_text(content, INTERVIEW_PUBLIC_SNIPPET_CHARS)
+        turns = split_interview_turns(content)
+        cleaned_turns = [clean_interview_turn(turn) for turn in turns]
+        for index, turn in enumerate(cleaned_turns):
+            if keyword in turn:
+                prev_turn = cleaned_turns[index - 1] if index > 0 else ""
+                next_turn = cleaned_turns[index + 1] if index + 1 < len(cleaned_turns) else ""
+                return prev_turn, turn, next_turn, prev_turn, next_turn
+
+    fallback_left, fallback_hit, fallback_right = split_context(
+        content,
+        keyword,
+        INTERVIEW_RESULT_SIDE_CHARS,
+        INTERVIEW_RESULT_SIDE_CHARS,
+    )
+    fallback = (fallback_left + fallback_hit + fallback_right).strip()
+    fallback = fallback or trim_text(content, INTERVIEW_RESULT_HIT_CHARS)
+    return "", fallback, "", "", ""
+
+
+def interview_label_set():
+    return dialogue_label_set()
+
+
+def dialogue_label_set():
+    return {
+        "prev": "前序话轮",
+        "hit": "命中话轮",
+        "next": "后续话轮",
+        "context": "上下文",
+        "modal_prev": "前序话轮",
+        "modal_hit": "命中话轮",
+        "modal_next": "后续话轮",
+    }
 
 
 def build_segment_context(item, keyword, left_len=80, right_len=80):
     if is_interview_item(item):
-        hit_segment = public_interview_snippet(
+        prev_segment, hit_segment, next_segment, modal_prev, modal_next = build_interview_context(
             item["content"] or "",
             keyword,
             left_len,
             right_len,
         )
-        hit_segment = trim_text(hit_segment, INTERVIEW_RESULT_HIT_CHARS)
         return {
             "file_name": item["title"],
             "dialogue_id": item["id"],
-            "prev_segment": "",
+            "prev_segment": prev_segment,
             "hit_segment": hit_segment,
             "hit_segment_html": highlight_keyword(hit_segment, keyword),
-            "next_segment": "",
+            "next_segment": next_segment,
+            "modal_prev_segment": modal_prev or prev_segment,
+            "modal_hit_segment": hit_segment,
+            "modal_next_segment": modal_next or next_segment,
+            "labels": interview_label_set(),
             "is_interview": True,
         }
 
@@ -782,6 +850,10 @@ def build_segment_context(item, keyword, left_len=80, right_len=80):
             "hit_segment": hit_segment,
             "hit_segment_html": highlight_keyword(hit_segment, keyword),
             "next_segment": next_segment or "",
+            "modal_prev_segment": prev_segment or "",
+            "modal_hit_segment": hit_segment,
+            "modal_next_segment": next_segment or "",
+            "labels": dialogue_label_set(),
         }
 
     content = item["content"] or ""
@@ -794,6 +866,10 @@ def build_segment_context(item, keyword, left_len=80, right_len=80):
             "hit_segment": "",
             "hit_segment_html": "",
             "next_segment": "",
+            "modal_prev_segment": "",
+            "modal_hit_segment": "",
+            "modal_next_segment": "",
+            "labels": dialogue_label_set(),
         }
 
     hit_index = 0
@@ -813,6 +889,10 @@ def build_segment_context(item, keyword, left_len=80, right_len=80):
                 "hit_segment": hit_text,
                 "hit_segment_html": highlight_keyword(hit_text, keyword),
                 "next_segment": right,
+                "modal_prev_segment": left,
+                "modal_hit_segment": hit_text,
+                "modal_next_segment": right,
+                "labels": dialogue_label_set(),
             }
 
     hit_segment = trim_text(hit_segment := units[hit_index], max(left_len + right_len, 80))
@@ -827,6 +907,10 @@ def build_segment_context(item, keyword, left_len=80, right_len=80):
         "hit_segment": hit_segment,
         "hit_segment_html": highlight_keyword(hit_segment, keyword),
         "next_segment": next_segment_text,
+        "modal_prev_segment": prev_segment_text,
+        "modal_hit_segment": hit_segment,
+        "modal_next_segment": next_segment_text,
+        "labels": dialogue_label_set(),
     }
 
 
