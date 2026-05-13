@@ -1,0 +1,56 @@
+{% for item in results %}
+<article class="resonance-result">
+    <div class="resonance-result-meta">
+        <span>#{{ start_no + loop.index0 }}</span>
+        <b>{{ item.preset_label }}</b>
+        <span>{{ item.source or "来源未标注" }}</span>
+        <span>{{ item.category or "类别未标注" }}</span>
+        <span>{{ item.dataset_name or "数据集未标注" }}</span>
+        <span>{{ item.fragment_label }}</span>
+    </div>
+    <div class="turn-pair">
+        <section>
+            <div class="turn-label">A轮{% if item.speaker_a %} · {{ item.speaker_a }}{% endif %}</div>
+            <div class="turn-text">{{ item.turn_a_html|safe }}</div>
+        </section>
+        <section>
+            <div class="turn-label">B轮{% if item.speaker_b %} · {{ item.speaker_b }}{% endif %}</div>
+            <div class="turn-text">{{ item.turn_b_html|safe }}</div>
+        </section>
+    </div>
+    <div class="result-action-links">
+        <details class="original-context" data-context-url="{{ url_for('resonance_context', entry_id=item.entry_id) }}">
+            <summary>查看原文上下文</summary>
+            <div class="original-context-text" data-context-content>点击后加载原文上下文...</div>
+            {% if item.source_url %}
+                <a href="{{ item.source_url }}" target="_blank" rel="noopener noreferrer">查看原始链接</a>
+            {% endif %}
+        </details>
+        <div class="diagraph-panel-shell">
+            <button type="button"
+                    class="diagraph-toggle-button"
+                    data-diagraph-toggle
+                    data-pair-id="{{ item.pair_id }}">
+                生成跨句图谱
+            </button>
+            <section class="diagraph-panel" data-diagraph-panel hidden>
+                <div class="diagraph-toolbar">
+                    <div class="diagraph-window-options">
+                        <button type="button" class="diagraph-window-button active" data-diagraph-window="pair">当前 A/B 两轮</button>
+                        <button type="button" class="diagraph-window-button" data-diagraph-window="context2">前后 2 轮</button>
+                        <button type="button" class="diagraph-window-button" data-diagraph-window="context5">前后 5 轮</button>
+                        <button type="button" class="diagraph-window-button" data-diagraph-window="full">当前完整片段</button>
+                    </div>
+                    <div class="diagraph-actions">
+                        <button type="button" class="diagraph-action-button" data-diagraph-copy>复制表格</button>
+                        <a class="diagraph-action-button secondary" data-diagraph-export target="_blank" rel="noopener noreferrer">导出 CSV</a>
+                    </div>
+                </div>
+                <div class="diagraph-loading" data-diagraph-loading hidden>正在生成跨句图谱...</div>
+                <div class="diagraph-error" data-diagraph-error hidden></div>
+                <div class="diagraph-content" data-diagraph-content></div>
+            </section>
+        </div>
+    </div>
+</article>
+{% endfor %}

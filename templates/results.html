@@ -8,43 +8,122 @@
 <body class="result-page">
 
     <div class="top-search-bar">
-        <form action="{{ url_for('search') }}" method="get">
+        <form action="{{ url_for('search') }}" method="get" class="search-panel" data-search-form>
+            <input type="hidden" name="advanced" value="{{ '1' if is_advanced_search else '' }}" data-advanced-flag>
+
             <div class="tip-line">提示：输入更多关键词可以获得更精确的结果</div>
 
-            <input type="text" name="q" value="{{ keyword }}" class="query-input">
+            <div class="quick-search-row">
+                <input type="text" name="q" value="{{ keyword }}" class="query-input" placeholder="输入检索词">
 
-            <select name="source">
-                <option value="">全部来源</option>
-                {% for s in sources %}
-                    <option value="{{ s }}" {% if s == source %}selected{% endif %}>{{ s }}</option>
-                {% endfor %}
-            </select>
+                <select name="source">
+                    <option value="">全部来源</option>
+                    {% for s in sources %}
+                        <option value="{{ s }}" {% if s == source %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
 
-            <select name="year">
-                <option value="">全部年份</option>
-                {% for y in years %}
-                    <option value="{{ y }}" {% if year == y|string %}selected{% endif %}>{{ y }}</option>
-                {% endfor %}
-            </select>
+                <select name="year">
+                    <option value="">全部年份</option>
+                    {% for y in years %}
+                        <option value="{{ y }}" {% if year == y|string %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
 
-            话轮显示字数：
-            左<input type="text" name="left" value="{{ left_len }}" class="mini-input">
-            右<input type="text" name="right" value="{{ right_len }}" class="mini-input">
+                <select name="category">
+                    <option value="">全部类别</option>
+                    {% for c in categories %}
+                        <option value="{{ c }}" {% if c == category %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
 
-            <button type="submit">查询</button>
+                <span class="context-size-label">话轮字数</span>
+                <input type="text" name="left" value="{{ left_len }}" class="mini-input" aria-label="左侧上下文字数">
+                <input type="text" name="right" value="{{ right_len }}" class="mini-input" aria-label="右侧上下文字数">
+
+                <button type="submit">查询</button>
+            </div>
+
+            <div class="category-tabs search-mode-tabs" data-search-mode-tabs data-default-mode="{{ 'advanced' if is_advanced_search else 'basic' }}">
+                <button type="button" class="tab-item {% if not is_advanced_search %}active{% endif %}" data-search-mode="basic">普通查询</button>
+                <button type="button" class="tab-item {% if is_advanced_search %}active{% endif %}" data-search-mode="advanced">高级检索</button>
+                <a href="{{ url_for('resonance_search') }}" class="tab-item">对话句法检索</a>
+            </div>
+
+            <div class="advanced-search-pane" data-advanced-panel {% if not is_advanced_search %}hidden{% endif %}>
+                <div class="advanced-search-grid">
+                    <label>
+                        <span>检索字段</span>
+                        <select name="field" data-advanced-field>
+                            <option value="content" {% if advanced_filters.field == 'content' %}selected{% endif %}>正文</option>
+                            <option value="all" {% if advanced_filters.field == 'all' %}selected{% endif %}>全部文本字段</option>
+                            <option value="title" {% if advanced_filters.field == 'title' %}selected{% endif %}>标题</option>
+                            <option value="speaker" {% if advanced_filters.field == 'speaker' %}selected{% endif %}>说话人</option>
+                            <option value="segment" {% if advanced_filters.field == 'segment' %}selected{% endif %}>当前话轮</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>匹配方式</span>
+                        <select name="mode" data-advanced-field>
+                            <option value="contains" {% if advanced_filters.mode == 'contains' %}selected{% endif %}>包含</option>
+                            <option value="exact" {% if advanced_filters.mode == 'exact' %}selected{% endif %}>完全匹配</option>
+                            <option value="starts_with" {% if advanced_filters.mode == 'starts_with' %}selected{% endif %}>以关键词开头</option>
+                            <option value="ends_with" {% if advanced_filters.mode == 'ends_with' %}selected{% endif %}>以关键词结尾</option>
+                        </select>
+                    </label>
+                    <label>
+                        <span>排除词</span>
+                        <input type="text" name="exclude" value="{{ advanced_filters.exclude }}" placeholder="结果中不包含" data-advanced-field>
+                    </label>
+                    <label>
+                        <span>数据集</span>
+                        <select name="dataset_name" data-advanced-field>
+                            <option value="">全部数据集</option>
+                            {% for d in datasets %}
+                                <option value="{{ d }}" {% if d == advanced_filters.dataset_name %}selected{% endif %}>{{ d }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label>
+                        <span>标题包含</span>
+                        <input type="text" name="title" value="{{ advanced_filters.title }}" data-advanced-field>
+                    </label>
+                    <label>
+                        <span>说话人包含</span>
+                        <input type="text" name="speaker" value="{{ advanced_filters.speaker }}" data-advanced-field>
+                    </label>
+                    <label>
+                        <span>年份范围</span>
+                        <div class="range-fields">
+                            <input type="text" name="year_from" value="{{ advanced_filters.year_from }}" placeholder="起" data-advanced-field>
+                            <input type="text" name="year_to" value="{{ advanced_filters.year_to }}" placeholder="止" data-advanced-field>
+                        </div>
+                    </label>
+                    <label>
+                        <span>正文长度</span>
+                        <div class="range-fields">
+                            <input type="text" name="content_min" value="{{ advanced_filters.content_min }}" placeholder="最小" data-advanced-field>
+                            <input type="text" name="content_max" value="{{ advanced_filters.content_max }}" placeholder="最大" data-advanced-field>
+                        </div>
+                    </label>
+                    <label>
+                        <span>排序</span>
+                        <select name="sort" data-advanced-field>
+                            <option value="id_desc" {% if advanced_filters.sort == 'id_desc' %}selected{% endif %}>最新导入优先</option>
+                            <option value="id_asc" {% if advanced_filters.sort == 'id_asc' %}selected{% endif %}>最早导入优先</option>
+                            <option value="year_desc" {% if advanced_filters.sort == 'year_desc' %}selected{% endif %}>年份从新到旧</option>
+                            <option value="year_asc" {% if advanced_filters.sort == 'year_asc' %}selected{% endif %}>年份从旧到新</option>
+                            <option value="title_asc" {% if advanced_filters.sort == 'title_asc' %}selected{% endif %}>标题升序</option>
+                            <option value="start_time_asc" {% if advanced_filters.sort == 'start_time_asc' %}selected{% endif %}>音视频时间顺序</option>
+                        </select>
+                    </label>
+                    <label class="checkbox-field">
+                        <input type="checkbox" name="has_audio" value="1" {% if advanced_filters.has_audio == '1' %}checked{% endif %} data-advanced-field>
+                        <span>只看带音频的语料</span>
+                    </label>
+                </div>
+            </div>
         </form>
-    </div>
-
-    <div class="nav-links result-nav">
-        <a href="{{ url_for('home') }}">普通查询</a>
-        <span>|</span>
-        <a href="#">高级查询</a>
-        <span>|</span>
-        <a href="#">批量查询</a>
-        <span>|</span>
-        <a href="#">模式查询</a>
-        <span>|</span>
-        <a href="#">搭配查询</a>
     </div>
 
     <div class="result-summary">
@@ -105,24 +184,23 @@
     {% if total_pages > 1 %}
     <div class="pagination">
         {% if page > 1 %}
-            <a href="{{ url_for('search', q=keyword, source=source, year=year, category=category, left=left_len, right=right_len, page=page-1) }}">上一页</a>
+            <a href="{{ url_for('search', **dict(query_args, page=page-1)) }}">上一页</a>
         {% endif %}
 
         {% for p in range(page_window_start, page_window_end + 1) %}
             {% if p == page %}
                 <span class="current-page">{{ p }}</span>
             {% else %}
-                <a href="{{ url_for('search', q=keyword, source=source, year=year, category=category, left=left_len, right=right_len, page=p) }}">{{ p }}</a>
+                <a href="{{ url_for('search', **dict(query_args, page=p)) }}">{{ p }}</a>
             {% endif %}
         {% endfor %}
 
         {% if page < total_pages %}
-            <a href="{{ url_for('search', q=keyword, source=source, year=year, category=category, left=left_len, right=right_len, page=page+1) }}">下一页</a>
+            <a href="{{ url_for('search', **dict(query_args, page=page+1)) }}">下一页</a>
         {% endif %}
     </div>
     {% endif %}
 
-    <!-- 弹窗 -->
     <div id="contextModal" class="modal-overlay" onclick="closeModal(event)">
         <div class="modal-box">
             <div class="modal-header">
@@ -168,7 +246,7 @@
                         <span id="modalSourceUrlMissing">暂无原文链接</span>
                     </div>
                     <div>
-                        <span class="modal-meta-label">对话ID</span>
+                        <span class="modal-meta-label">对话 ID</span>
                         <span id="modalDialogueId"></span>
                     </div>
                     <div>
@@ -205,8 +283,42 @@
     </div>
 
     <script>
+        function initSearchModeTabs() {
+            const tabs = document.querySelector("[data-search-mode-tabs]");
+            if (!tabs) {
+                return;
+            }
+
+            const advancedFlag = document.querySelector("[data-advanced-flag]");
+            const advancedPanel = document.querySelector("[data-advanced-panel]");
+            const advancedFields = document.querySelectorAll("[data-advanced-field]");
+            const toggleButtons = tabs.querySelectorAll("[data-search-mode]");
+
+            function applySearchMode(mode) {
+                const normalized = mode === "advanced" ? "advanced" : "basic";
+                toggleButtons.forEach((button) => {
+                    button.classList.toggle("active", button.dataset.searchMode === normalized);
+                });
+                if (advancedPanel) {
+                    advancedPanel.hidden = normalized !== "advanced";
+                }
+                if (advancedFlag) {
+                    advancedFlag.value = normalized === "advanced" ? "1" : "";
+                }
+                advancedFields.forEach((field) => {
+                    field.disabled = normalized !== "advanced";
+                });
+            }
+
+            toggleButtons.forEach((button) => {
+                button.addEventListener("click", () => applySearchMode(button.dataset.searchMode));
+            });
+
+            applySearchMode(tabs.dataset.defaultMode);
+        }
+
         function escapeHtml(text) {
-            return String(text || "")
+            return String(text || "—")
                 .replace(/&/g, "&amp;")
                 .replace(/</g, "&lt;")
                 .replace(/>/g, "&gt;")
@@ -349,6 +461,8 @@
             resetModalAudio();
             document.getElementById("contextModal").style.display = "none";
         }
+
+        initSearchModeTabs();
     </script>
 
 </body>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>对话句法检索 - 现代汉语对话语料库</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="result-page resonance-page">
+
+    <div class="top-search-bar resonance-hero">
+        <div>
+            <h1>对话句法检索</h1>
+            <p>围绕平行、共鸣、重现、选择、对比和类比，检索相邻话轮中的对话句法关系。</p>
+        </div>
+    </div>
+
+    <form action="{{ url_for('resonance_data') }}" method="get" class="resonance-controls" data-resonance-form data-auto-search="{{ '1' if should_auto_search else '0' }}">
+        <div class="preset-grid">
+            {% for preset in presets %}
+            <button type="button"
+                    class="preset-button {% if preset.key == active_preset %}active{% endif %}"
+                    data-preset="{{ preset.key }}">
+                <span>{{ preset.label }}</span>
+                <small>{{ preset.description }}</small>
+            </button>
+            {% endfor %}
+        </div>
+        <input type="hidden" name="preset" value="{{ active_preset }}" data-preset-input>
+        <input type="hidden" name="page_size" value="{{ query_args.page_size }}">
+        <div class="resonance-filter-row">
+            <input type="text" name="q" value="{{ keyword }}" class="resonance-query-input" placeholder="输入检索词，如：我觉得 / 台湾问题 / 不是">
+            <select name="source">
+                <option value="">全部来源</option>
+                {% for s in sources %}
+                    <option value="{{ s }}" {% if s == source %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+            <select name="category">
+                <option value="">全部类别</option>
+                {% for c in categories %}
+                    <option value="{{ c }}" {% if c == category %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+            <button type="submit" data-search-button>筛选 / 检索</button>
+        </div>
+        <div class="category-tabs search-mode-tabs result-mode-tabs">
+            <a href="{{ url_for('home') }}" class="tab-item">普通查询</a>
+            <a href="{{ url_for('search', advanced='1') }}" class="tab-item">高级检索</a>
+            <a href="{{ url_for('resonance_search') }}" class="tab-item active">对话句法检索</a>
+        </div>
+    </form>
+
+    <div class="result-summary resonance-summary" data-status-bar>
+        <div class="summary-left" data-summary>正在加载对话句法样例……</div>
+        <div class="summary-right" data-result-range>样例模式</div>
+    </div>
+
+    <div class="resonance-error" data-error hidden></div>
+    <div class="resonance-loading" data-loading hidden>正在加载对话句法样例……</div>
+
+    <div class="resonance-scroll-panel" data-results-panel>
+        <div class="resonance-list" data-results></div>
+    </div>
+
+    <div class="pagination resonance-pagination" data-pagination></div>
+
+    <script src="{{ url_for('static', filename='resonance.js') }}"></script>
+
+</body>
+</html>
