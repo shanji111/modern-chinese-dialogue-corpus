@@ -1,9 +1,8 @@
-from flask import Flask, abort, jsonify, render_template, request, redirect, send_file, session, url_for
+from flask import Flask, jsonify, render_template, request, redirect, session, url_for
 import csv
 from hmac import compare_digest
 import io
 import json
-import mimetypes
 import os
 import math
 import re
@@ -42,14 +41,6 @@ INTERVIEW_SOURCE = "璁胯皥璇枡"
 INTERVIEW_RESULT_SIDE_CHARS = 34
 INTERVIEW_RESULT_HIT_CHARS = 96
 INTERVIEW_MODAL_SIDE_CHARS = 90
-LOCAL_AUDIO_DIR = Path(app.root_path) / "static" / "audio_imports"
-LOCAL_AUDIO_MIMETYPES = {
-    ".m4a": "audio/mp4",
-    ".mp3": "audio/mpeg",
-    ".wav": "audio/wav",
-    ".ogg": "audio/ogg",
-    ".flac": "audio/flac",
-}
 TRANSCRIPTION_TEMP_DIR = Path(app.root_path) / ".transcription_tmp"
 AUDIO_TRANSCRIPTION_EXTENSIONS = {".mp3", ".wav", ".m4a"}
 VIDEO_TRANSCRIPTION_EXTENSIONS = {".mp4", ".mov"}
@@ -92,12 +83,12 @@ DIAGRAPH_SPLIT_NEGATION_BASES = {
 DIAGRAPH_PUNCTUATION = set("，。！？、；：,.!?;:…")
 CATEGORY_OPTIONS = [
     "日常对话",
-    "访谈语料",
     "影视对白",
+    "文本对话",
+    "网络回帖",
+    "访谈语料",
     "课堂互动",
     "多模态语料",
-    "外交部记者会",
-    "其他",
 ]
 MODALITY_OPTIONS = ["text", "txt", "audio", "video", "mixed", "other"]
 MODALITY_LABELS = {
@@ -1870,14 +1861,10 @@ def resonance_context(entry_id):
 
 @app.route("/audio/<path:filename>")
 def audio_file(filename):
-    audio_root = LOCAL_AUDIO_DIR.resolve()
-    target = (audio_root / (filename or "")).resolve()
-    if audio_root not in target.parents or not target.is_file():
-        abort(404)
-
-    extension = target.suffix.lower()
-    mimetype = LOCAL_AUDIO_MIMETYPES.get(extension) or mimetypes.guess_type(target.name)[0] or "application/octet-stream"
-    return send_file(target, mimetype=mimetype, conditional=True)
+    try:
+        return get_corpus_audio_response(filename)
+    except FileNotFoundError:
+        return "Audio file is not available.", 404
 
 
 @app.route("/corpus/audio/<path:filename>")
