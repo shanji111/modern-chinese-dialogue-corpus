@@ -91,22 +91,22 @@ DIAGRAPH_SPLIT_NEGATION_BASES = {
 }
 DIAGRAPH_PUNCTUATION = set("，。！？、；：,.!?;:…")
 CATEGORY_OPTIONS = [
-    "????",
-    "????",
-    "????",
-    "????",
-    "????",
-    "????",
-    "?????",
+    "日常对话",
+    "访谈语料",
+    "影视对白",
+    "课堂互动",
+    "多模态语料",
+    "外交部记者会",
+    "其他",
 ]
 MODALITY_OPTIONS = ["text", "txt", "audio", "video", "mixed", "other"]
 MODALITY_LABELS = {
-    "text": "??",
-    "txt": "TXT ??",
-    "audio": "?? / ??",
-    "video": "??",
-    "mixed": "????",
-    "other": "??",
+    "text": "文本",
+    "txt": "TXT 文档",
+    "audio": "音频 / 录音",
+    "video": "视频",
+    "mixed": "多模态",
+    "other": "其他",
 }
 app.config["SEARCH_BACKEND"] = os.getenv("CORPUS_SEARCH_BACKEND", "fts").strip().lower() or "fts"
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
@@ -169,7 +169,7 @@ def handle_file_too_large(error):
         categories=CATEGORY_OPTIONS,
         modalities=MODALITY_OPTIONS,
         modality_labels=MODALITY_LABELS,
-        error="涓婁紶鏂囦欢杩囧ぇ锛岃灏嗗崟涓枃浠舵帶鍒跺湪 5 MB 浠ュ唴銆?",
+        error="上传文件过大，请将单个文件控制在 5 MB 以内。",
     ), 413
 
 
@@ -1497,15 +1497,15 @@ def submit():
         ), 400
 
     if not title:
-        return render_error("璇峰～鍐欐潗鏂欐爣棰樸€?")
+        return render_error("请填写材料标题。")
     if not category:
-        return render_error("璇烽€夋嫨璇枡绫诲埆銆?")
+        return render_error("请选择语料类别。")
     if modality not in MODALITY_OPTIONS:
-        return render_error("璇烽€夋嫨鏈夋晥鐨勮鏂欐ā鎬併€?")
+        return render_error("请选择有效的语料模态。")
     if not consent:
-        return render_error("璇风‘璁ゆ巿鏉冭鏄庡悗鍐嶆彁浜ゃ€?")
+        return render_error("请确认授权说明后再提交。")
     if not text_content and not (upload and upload.filename):
-        return render_error("璇峰～鍐欐枃鏈唴瀹癸紝鎴栦笂浼犱竴涓枃浠躲€?")
+        return render_error("请填写文本内容，或上传一个文件。")
 
     file_info = None
     try:
