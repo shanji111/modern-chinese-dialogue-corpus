@@ -1,8 +1,30 @@
 from __future__ import annotations
 
 import argparse
+import sys
+import time
 
 import corpus_repository
+
+
+def render_progress(payload, started_at):
+    total = max(1, int(payload.get("total") or 0))
+    processed = min(total, int(payload.get("processed") or 0))
+    pairs = int(payload.get("pairs") or 0)
+    ratio = processed / total if total else 1.0
+    bar_width = 28
+    filled = min(bar_width, int(bar_width * ratio))
+    bar = "#" * filled + "-" * (bar_width - filled)
+    elapsed = max(0.0, time.perf_counter() - started_at)
+    line = (
+        f"\r[dialogue_pairs] [{bar}] {processed}/{total} "
+        f"({ratio * 100:5.1f}%) 已生成pairs={pairs} 耗时={elapsed:,.1f}s"
+    )
+    sys.stdout.write(line)
+    sys.stdout.flush()
+    if payload.get("phase") == "done":
+        sys.stdout.write("\n")
+        sys.stdout.flush()
 
 
 def main() -> None:
@@ -38,7 +60,11 @@ def main() -> None:
         print("dialogue_pairs indexes checked")
         return
 
-    stats = corpus_repository.rebuild_dialogue_pairs(batch_size=max(1, args.batch_size))
+    started_at = time.perf_counter()
+    stats = corpus_repository.rebuild_dialogue_pairs(
+        batch_size=max(1, args.batch_size),
+        progress_callback=lambda payload: render_progress(payload, started_at),
+    )
     corpus_repository.ensure_postgres_dialogue_pairs_trigram_indexes()
     print(f"dialogue_turns: {stats['turns']}")
     print(f"dialogue_pairs: {stats['pairs']}")

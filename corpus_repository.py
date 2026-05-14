@@ -102,6 +102,12 @@ TOKEN_STOPWORDS = {
 }
 TOKEN_STOP_CHARS = set("的一是在有和与及或就都也很不没吗呢啊吧呀嘛么着过了我你他她它这那")
 COMMON_PHRASE_MIN_CHARS = 2
+SPEAKER_LABEL_PATTERN = re.compile(
+    r"^\s*(?P<label>[^:：\s][^:：]{0,31})\s*[：:]\s*(?P<text>.+?)\s*$"
+)
+INLINE_SPEAKER_BOUNDARY_PATTERN = re.compile(
+    r"(?:^|(?<=[。！？!?；;]))\s*(?=[^:：\s][^:：]{0,31}\s*[：:])"
+)
 FUNCTION_PATTERNS = (
     ("我觉得...", re.compile(r"我觉得|我认为|我想|我感觉")),
     ("不是...而是...", re.compile(r"不是|而是|并非")),
@@ -172,6 +178,13 @@ def execute_many(conn, sql, rows):
         cursor.executemany(sql, rows)
 
 
+def safe_rollback(conn):
+    try:
+        conn.rollback()
+    except Exception:
+        pass
+
+
 def build_search_text(*values):
     return " ".join(str(value).strip() for value in values if value is not None and str(value).strip())
 
@@ -184,7 +197,18 @@ def split_inline_speaker_turns(line):
     line = (line or "").strip()
     if not line:
         return []
-    parts = [part.strip() for part in INLINE_SPEAKER_SPLIT_PATTERN.split(line) if part.strip()]
+    boundaries = [match.start() for match in INLINE_SPEAKER_BOUNDARY_PATTERN.finditer(line)]
+    if not boundaries or boundaries[0] != 0:
+        boundaries.insert(0, 0)
+    if len(boundaries) == 1:
+        return [line]
+
+    parts = []
+    for index, start in enumerate(boundaries):
+        end = boundaries[index + 1] if index + 1 < len(boundaries) else len(line)
+        piece = line[start:end].strip()
+        if piece:
+            parts.append(piece)
     return parts or [line]
 
 
@@ -458,7 +482,7 @@ def has_dialogue_turns_table():
         close_connection(conn)
 
 
-def rebuild_dialogue_turns(batch_size=1000):
+def rebuild_dialogue_turns(batch_size=1000, progress_callback=None):
     conn = get_db_connection()
     marker = placeholder()
     insert_columns = (
@@ -473,7 +497,11 @@ def rebuild_dialogue_turns(batch_size=1000):
     entries = 0
     try:
         create_dialogue_turns_schema(conn)
-        conn.execute(f"DELETE FROM {TURN_TABLE}")
+        if is_postgres():
+            conn.execute(f"TRUNCATE TABLE {TURN_TABLE} RESTART IDENTITY")
+            conn.commit()
+        else:
+            conn.execute(f"DELETE FROM {TURN_TABLE}")
         rows = conn.execute("""
             SELECT id, title, content, source, category, dataset_name,
                    current_segment, segment_text, speaker, conversation_id, segment_index
@@ -481,7 +509,16 @@ def rebuild_dialogue_turns(batch_size=1000):
             ORDER BY id
         """).fetchall()
         batch = []
-        for row in rows:
+        total_rows = len(rows)
+        if progress_callback:
+            progress_callback({
+                "phase": "start",
+                "processed": 0,
+                "total": total_rows,
+                "entries_with_turns": entries,
+                "inserted_turns": inserted,
+            })
+        for index, row in enumerate(rows, start=1):
             entry = row_to_dict(row)
             turns = split_entry_turns(entry)
             if turns:
@@ -501,14 +538,34 @@ def rebuild_dialogue_turns(batch_size=1000):
                     execute_many(conn, insert_sql, batch)
                     inserted += len(batch)
                     batch.clear()
+                    if is_postgres():
+                        conn.commit()
+            if progress_callback and (index % batch_size == 0 or index == total_rows):
+                progress_callback({
+                    "phase": "processing",
+                    "processed": index,
+                    "total": total_rows,
+                    "entries_with_turns": entries,
+                    "inserted_turns": inserted + len(batch),
+                })
         if batch:
             execute_many(conn, insert_sql, batch)
             inserted += len(batch)
+            if is_postgres():
+                conn.commit()
         set_corpus_stat(conn, "dialogue_turn_count", inserted)
         conn.commit()
+        if progress_callback:
+            progress_callback({
+                "phase": "done",
+                "processed": total_rows,
+                "total": total_rows,
+                "entries_with_turns": entries,
+                "inserted_turns": inserted,
+            })
         return {"entries": entries, "turns": inserted}
     except Exception:
-        conn.rollback()
+        safe_rollback(conn)
         raise
     finally:
         close_connection(conn)
@@ -1585,7 +1642,7 @@ def build_dialogue_pair_row(turn_a, turn_b):
     )
 
 
-def rebuild_dialogue_pairs(batch_size=5000):
+def rebuild_dialogue_pairs(batch_size=5000, progress_callback=None):
     conn = get_db_connection()
     marker = placeholder()
     columns = (
@@ -1610,7 +1667,11 @@ def rebuild_dialogue_pairs(batch_size=5000):
     }
     try:
         create_dialogue_pairs_schema(conn)
-        conn.execute(f"DELETE FROM {PAIR_TABLE}")
+        if is_postgres():
+            conn.execute(f"TRUNCATE TABLE {PAIR_TABLE} RESTART IDENTITY")
+            conn.commit()
+        else:
+            conn.execute(f"DELETE FROM {PAIR_TABLE}")
         rows = conn.execute(
             f"""
             SELECT id, entry_id, turn_index, speaker_label, turn_text,
@@ -1622,7 +1683,15 @@ def rebuild_dialogue_pairs(batch_size=5000):
         stats["turns"] = len(rows)
         previous = None
         batch = []
-        for row in rows:
+        total_rows = len(rows)
+        if progress_callback:
+            progress_callback({
+                "phase": "start",
+                "processed": 0,
+                "total": total_rows,
+                "pairs": stats["pairs"],
+            })
+        for index, row in enumerate(rows, start=1):
             current = row_to_dict(row)
             if (
                 previous
@@ -1640,16 +1709,34 @@ def rebuild_dialogue_pairs(batch_size=5000):
                 if len(batch) >= batch_size:
                     execute_many(conn, insert_sql, batch)
                     batch.clear()
+                    if is_postgres():
+                        conn.commit()
             previous = current
+            if progress_callback and (index % batch_size == 0 or index == total_rows):
+                progress_callback({
+                    "phase": "processing",
+                    "processed": index,
+                    "total": total_rows,
+                    "pairs": stats["pairs"],
+                })
         if batch:
             execute_many(conn, insert_sql, batch)
+            if is_postgres():
+                conn.commit()
         set_corpus_stat(conn, "dialogue_pairs_count", stats["pairs"])
         for key in ("lexical_echo", "pattern_reuse", "question_response", "negation_turn", "repair_repetition"):
             set_corpus_stat(conn, f"dialogue_pairs_{key}_count", stats[key])
         conn.commit()
+        if progress_callback:
+            progress_callback({
+                "phase": "done",
+                "processed": total_rows,
+                "total": total_rows,
+                "pairs": stats["pairs"],
+            })
         return stats
     except Exception:
-        conn.rollback()
+        safe_rollback(conn)
         raise
     finally:
         close_connection(conn)
