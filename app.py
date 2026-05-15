@@ -1254,7 +1254,7 @@ def split_interview_turns(content):
         return []
 
     speaker_pattern = re.compile(
-        r'(?m)(?:^|\n)\s*(?P<label>[\u4e00-\u9fffA-Za-z0-9\u00b7\uff08\uff09()\u300a\u300b\u201c\u201d"\u3001]{1,34})[\uff1a:]\s*'
+        r'(?m)(?:^|\n)[\u200b\ufeff]*\s*(?P<label>[\u4e00-\u9fffA-Za-z0-9+\u00b7\uff08\uff09()\u300a\u300b\u201c\u201d"\u3001 \u3000]{1,34})[\uff1a:]\s*'
     )
     matches = list(speaker_pattern.finditer(text))
     if not matches:
