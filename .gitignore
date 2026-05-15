@@ -25,6 +25,10 @@ Thumbs.db
 instance/
 .transcription_tmp/
 
+# Accidental local shell artifacts
+/python
+/set
+
 # SQLite temporary files
 corpus.db
 demo_corpus.db
@@ -49,6 +53,8 @@ uploads/submissions/*
 # Raw corpus and large media
 talkdata/.llm_fulltext_extract_cache/
 talkdata/.llm_review_cache/
+talkdata/import_ready/
+talkdata/review_exports/
 talkdata/raw_chat_corpus/
 talkdata/audio_raw/
 talkdata/video_raw/

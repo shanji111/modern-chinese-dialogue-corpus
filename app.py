@@ -37,7 +37,7 @@ app.secret_key = os.getenv("SECRET_KEY") or "dev-only-temporary-secret-key"
 FTS_TABLE = "corpus_entries_fts"
 MAX_RESULT_SIDE_CHARS = 70
 MAX_RESULT_HIT_CHARS = 150
-INTERVIEW_SOURCE = "璁胯皥璇枡"
+INTERVIEW_SOURCE = "访谈语料"
 INTERVIEW_RESULT_SIDE_CHARS = 34
 INTERVIEW_RESULT_HIT_CHARS = 96
 INTERVIEW_MODAL_SIDE_CHARS = 90
@@ -138,10 +138,10 @@ def print_startup_database_diagnostics():
                 WHERE source = {marker}
                   AND content LIKE {marker}
                 """,
-                (INTERVIEW_SOURCE, "%姘戣埅%"),
+                (INTERVIEW_SOURCE, "%民航%"),
             ).fetchone())
-            print("[startup-db] source=璁胯皥璇枡 total:", interview_total)
-            print("[startup-db] source=璁胯皥璇枡 AND content LIKE %姘戣埅%:", civil_aviation_hits)
+            print("[startup-db] source=访谈语料 total:", interview_total)
+            print("[startup-db] source=访谈语料 AND content LIKE %民航%:", civil_aviation_hits)
         finally:
             conn.close()
     except Exception as exc:
@@ -312,17 +312,17 @@ def copy_submission_file_to_temp(submission, temp_dir):
     if storage_backend == "s3":
         object_key = submission.get("object_key") or submission.get("stored_filename")
         if not object_key:
-            raise RuntimeError("鏈壘鍒板璞″瓨鍌ㄦ枃浠堕敭锛屾棤娉曚笅杞芥姇绋挎枃浠躲€?")
+            raise RuntimeError("未找到对象存储文件键，无法下载投稿文件。")
         try:
             backend = S3StorageBackend()
             backend.client().download_file(backend.bucket, object_key, str(temp_path))
         except Exception as exc:
-            raise RuntimeError("鏃犳硶浠庡璞″瓨鍌ㄨ鍙栨姇绋挎枃浠讹紝璇锋鏌?R2/S3 閰嶇疆鍜屾枃浠舵槸鍚﹀瓨鍦ㄣ€?") from exc
+            raise RuntimeError("无法从对象存储读取投稿文件，请检查 R2/S3 配置和文件是否存在。") from exc
         return temp_path
 
     local_path = local_submission_file_path(submission)
     if local_path is None:
-        raise RuntimeError("鏈壘鍒版湰鍦版姇绋挎枃浠讹紝鏃犳硶鐢熸垚杞啓銆?")
+        raise RuntimeError("未找到本地上传文件，无法继续处理。")
     shutil.copyfile(local_path, temp_path)
     return temp_path
 
@@ -330,7 +330,7 @@ def copy_submission_file_to_temp(submission, temp_dir):
 def extract_audio_from_video(video_path, temp_dir):
     ffmpeg_path = shutil.which("ffmpeg")
     if not ffmpeg_path:
-        raise RuntimeError("璇ユ姇绋挎槸瑙嗛鏂囦欢锛岄渶瑕佸厛瀹夎 ffmpeg 鎵嶈兘鎻愬彇闊抽銆?")
+        raise RuntimeError("该投稿是视频文件，需要先安装 ffmpeg 才能提取音频。")
 
     audio_path = Path(temp_dir) / f"{uuid.uuid4().hex}.m4a"
     try:
@@ -352,19 +352,19 @@ def extract_audio_from_video(video_path, temp_dir):
             stderr=subprocess.DEVNULL,
         )
     except subprocess.CalledProcessError as exc:
-        raise RuntimeError("ffmpeg 鎻愬彇闊抽澶辫触锛岃纭瑙嗛鏂囦欢鍙挱鏀句笖鍖呭惈闊宠建銆?") from exc
+        raise RuntimeError("ffmpeg 提取音频失败，请确认视频文件可播放且包含音轨。") from exc
     return audio_path
 
 
 def transcribe_media_file(media_path, model_name):
     api_key = os.getenv("OPENAI_API_KEY", "").strip()
     if not api_key:
-        raise RuntimeError("鏈厤缃浆鍐?API Key锛岃鍏堣缃?OPENAI_API_KEY銆?")
+        raise RuntimeError("未配置转写 API Key，请先设置 OPENAI_API_KEY。")
 
     try:
         from openai import OpenAI
     except ImportError as exc:
-        raise RuntimeError("鏈畨瑁?OpenAI Python SDK锛岃鍏堝畨瑁?requirements.txt 涓殑渚濊禆銆?") from exc
+        raise RuntimeError("未安装 OpenAI Python SDK，请先安装 requirements.txt 中的依赖。") from exc
 
     client = OpenAI(api_key=api_key)
     with Path(media_path).open("rb") as media_file:
@@ -634,7 +634,7 @@ def insert_entry(title, content, source, year, category):
 def insert_approved_text_submission(conn, submission):
     content = (submission["text_content"] or "").strip()
     if not content:
-        raise ValueError("鏂囨湰绫绘姇绋垮繀椤诲寘鍚枃鏈唴瀹广€?")
+        raise ValueError("文本类投稿必须包含文本内容。")
 
     if has_extended_schema(conn):
         conn.execute(""""
@@ -1254,24 +1254,33 @@ def split_interview_turns(content):
         return []
 
     speaker_pattern = re.compile(
-        r"(^|[\n\s])(?P<label>"
-        r"(?:銆奫^銆媇{1,30}銆??"
-        r"[^锛?\n]{0,30}"
-        r"(?:璁拌€厊涓绘寔浜簗鍙戣█浜簗姣涘畞|閮槈鏄唡鏋楀墤|姹枃鏂寍璧电珛鍧殀鍗庢槬鑾箌鑰跨埥|涓浗缃?"
-        r"[^锛?\n]{0,20}"
-        r"[锛?])"
+        r'(?m)(?:^|\n)\s*(?P<label>[\u4e00-\u9fffA-Za-z0-9\u00b7\uff08\uff09()\u300a\u300b\u201c\u201d"\u3001]{1,34})[\uff1a:]\s*'
     )
     matches = list(speaker_pattern.finditer(text))
     if not matches:
         return []
 
     turns = []
-    skip_speakers = {"鐩稿叧閾炬帴", "闄勪欢", "鏉ユ簮", "璐ｄ换缂栬緫"}
+    skip_speakers = {
+        "时间",
+        "地点",
+        "来源",
+        "责任编辑",
+        "编辑",
+        "记者来源",
+        "原标题",
+        "编者按",
+        "摘要",
+        "关键词",
+        "链接",
+        "网址",
+        "声明",
+    }
     for index, match in enumerate(matches):
         start = match.start("label")
         end = matches[index + 1].start("label") if index + 1 < len(matches) else len(text)
         turn = text[start:end].strip()
-        speaker = re.split(r"[锛?]", turn, maxsplit=1)[0].strip()
+        speaker = re.split(r"[：:]", turn, maxsplit=1)[0].strip()
         if speaker in skip_speakers:
             continue
         turns.append(turn)
@@ -1315,13 +1324,13 @@ def interview_label_set():
 
 def dialogue_label_set():
     return {
-        "prev": "鍓嶅簭璇濊疆",
-        "hit": "鍛戒腑璇濊疆",
-        "next": "鍚庣画璇濊疆",
+        "prev": "前序话轮",
+        "hit": "命中话轮",
+        "next": "后续话轮",
         "context": "",
-        "modal_prev": "鍓嶅簭璇濊疆",
-        "modal_hit": "鍛戒腑璇濊疆",
-        "modal_next": "鍚庣画璇濊疆",
+        "modal_prev": "前序话轮",
+        "modal_hit": "命中话轮",
+        "modal_next": "后续话轮",
     }
 
 
@@ -1514,7 +1523,7 @@ def submit():
         )
         return render_error(str(exc))
     except OSError:
-        return render_error("涓婁紶鏂囦欢淇濆瓨澶辫触锛岃绋嶅悗閲嶈瘯銆?")
+        return render_error("上传文件保存失败，请稍后重试。")
 
     corpus_repository.create_submission(
         {
@@ -1853,9 +1862,9 @@ def resonance_context(entry_id):
         context = corpus_repository.get_resonance_entry_context(entry_id)
     except Exception as exc:
         print(f"[resonance] context failed: {exc!r}", flush=True)
-        return jsonify({"error": "鍘熸枃涓婁笅鏂囨殏鏃舵棤娉曞姞杞斤紝璇风◢鍚庨噸璇曘€?}"}), 500
+        return jsonify({"error": "原文上下文暂时无法加载，请稍后重试。"}), 500
     if not context:
-        return jsonify({"error": "鏈壘鍒板搴斿師鏂囥€?}"}), 404
+        return jsonify({"error": "未找到对应原文。"}), 404
     return jsonify(context)
 
 
@@ -1885,14 +1894,14 @@ def admin_login():
         password = request.form.get("password", "")
 
         if not expected_username or not expected_password:
-            error = "璇峰厛鍦ㄧ幆澧冨彉閲忎腑璁剧疆绠＄悊鍛樿处鍙峰拰瀵嗙爜銆?"
+            error = "管理员账号未配置，请先设置 ADMIN_USERNAME 和 ADMIN_PASSWORD。"
         elif compare_digest(username, expected_username) and compare_digest(password, expected_password):
             session.clear()
             session["admin_logged_in"] = True
             session["admin_username"] = username
             return redirect(get_admin_next_url())
         else:
-            error = "璐﹀彿鎴栧瘑鐮佷笉姝ｇ‘锛岃閲嶆柊杈撳叆銆?"
+            error = "用户名或密码错误，请重试。"
 
     return render_template("admin_login.html", error=error)
 
@@ -1919,7 +1928,7 @@ def upload_demo():
     if not title or not content or not source_type:
         return render_template(
             "admin.html",
-            error="璇疯嚦灏戝～鍐欐爣棰樸€佸唴瀹瑰拰璇枡绫诲瀷銆?"
+            error="请填写标题、内容和来源。"
         )
 
     try:
@@ -1932,7 +1941,7 @@ def upload_demo():
     return render_template(
         "admin.html",
         success=True,
-        success_message="璇枡宸叉垚鍔熷啓鍏ユ暟鎹簱銆?"
+        success_message="语料已成功录入。"
     )
 
 
@@ -1958,7 +1967,7 @@ def admin_submission_detail(submission_id):
     submission = corpus_repository.get_submission_by_id(submission_id)
 
     if submission is None:
-        return render_template("admin_submission_detail.html", error="????????"), 404
+        return render_template("admin_submission_detail.html", error="未找到该投稿。"), 404
 
     return render_template(
         "admin_submission_detail.html",
@@ -1983,7 +1992,7 @@ def approve_submission(submission_id):
         return render_template(
             "admin_submission_detail.html",
             submission=corpus_repository.get_submission_by_id(submission_id),
-            error="璇ユ姇绋挎殏鏃舵棤娉曢€氳繃瀹℃牳锛岃纭鍏朵腑鍖呭惈鍙敤鐨勬枃鏈唴瀹规垨鏂囦欢淇℃伅銆?",
+            error="该投稿暂时无法通过审核，请确认其中包含可用的文本内容或文件信息。",
         ), 400
 
     return redirect(url_for("admin_submission_detail", submission_id=submission_id, approved=1))
@@ -1993,14 +2002,14 @@ def approve_submission(submission_id):
 def transcribe_submission(submission_id):
     submission = corpus_repository.get_submission_by_id(submission_id)
     if submission is None:
-        return render_template("admin_submission_detail.html", error="????????"), 404
+        return render_template("admin_submission_detail.html", error="未找到该投稿。"), 404
 
     if not is_transcribable_submission(submission):
         return render_template(
             "admin_submission_detail.html",
             submission=submission,
             can_transcribe=False,
-            transcription_error="璇ユ姇绋夸笉鏄彲杞啓鐨勯煶棰戞垨瑙嗛鏂囦欢銆?",
+            transcription_error="该投稿不是可转写的音频或视频文件。",
         ), 400
 
     model_name = os.getenv("TRANSCRIBE_MODEL", "whisper-1").strip() or "whisper-1"
@@ -2009,7 +2018,7 @@ def transcribe_submission(submission_id):
             "admin_submission_detail.html",
             submission=submission,
             can_transcribe=True,
-            transcription_error="鏈厤缃浆鍐?API Key锛岃鍏堣缃?OPENAI_API_KEY銆?",
+            transcription_error="未配置转写 API Key，请先设置 OPENAI_API_KEY。",
         ), 400
 
     temp_paths = []
@@ -2023,7 +2032,7 @@ def transcribe_submission(submission_id):
             temp_paths.append(transcription_path)
         transcript = transcribe_media_file(transcription_path, model_name)
         if not transcript:
-            raise RuntimeError("杞啓瀹屾垚浣嗙粨鏋滀负绌猴紝璇风‘璁ゆ枃浠朵腑鍖呭惈娓呮櫚璇煶銆?")
+            raise RuntimeError("转写结果为空，请检查媒体文件是否包含可识别语音。")
         corpus_repository.update_submission_text_content(submission_id, transcript)
     except RuntimeError as exc:
         return render_template(
@@ -2037,7 +2046,7 @@ def transcribe_submission(submission_id):
             "admin_submission_detail.html",
             submission=submission,
             can_transcribe=True,
-            transcription_error="杞啓澶辫触锛岃绋嶅悗閲嶈瘯鎴栨鏌ユ枃浠舵牸寮忎笌鏈嶅姟閰嶇疆銆?",
+            transcription_error="转写失败，请稍后重试，或检查媒体文件和转写配置。",
         ), 500
     finally:
         cleanup_transcription_temp_files(temp_paths)
@@ -2047,7 +2056,7 @@ def transcribe_submission(submission_id):
         "admin_submission_detail.html",
         submission=updated_submission,
         can_transcribe=is_transcribable_submission(updated_submission),
-        transcription_success=f"???????????{model_name}?????? pending???????????",
+        transcription_success=f"已使用 {model_name} 完成转写，内容已更新到待审核记录。",
     )
 
 
@@ -2089,7 +2098,7 @@ def download_submission_file(submission_id):
         return render_template(
             "admin_submission_detail.html",
             submission=submission,
-            error="鏈壘鍒颁笂浼犳枃浠躲€?",
+            error="未找到上传文件。",
         ), 404
 
 try:
