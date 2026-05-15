@@ -1,4 +1,5 @@
 (function () {
+    /* ========== State / DOM Cache ========== */
     const form = document.querySelector("[data-resonance-form]");
     const list = document.querySelector("[data-results]");
     const resultsPanel = document.querySelector("[data-results-panel]");
@@ -23,6 +24,7 @@
         return;
     }
 
+    /* ========== Utility Functions ========== */
     function setLoading(active, message) {
         if (loading) {
             loading.hidden = !active;
@@ -48,6 +50,7 @@
         return (new FormData(form).get("q") || "").trim();
     }
 
+    /* ========== API Requests ========== */
     function buildUrl({cursor = "", sample = false} = {}) {
         const url = new URL(form.action, window.location.origin);
         const data = new FormData(form);
@@ -79,6 +82,7 @@
         return requestCache.get(key);
     }
 
+    /* ========== Loading / Status UI ========== */
     function startSlowNotice() {
         clearTimeout(slowTimer);
         slowTimer = setTimeout(() => {
@@ -112,6 +116,7 @@
         }
     }
 
+    /* ========== Pagination ========== */
     function renderPagination(hasNext) {
         pagination.innerHTML = `
             <button type="button" class="page-nav-button" data-page-prev ${currentPage <= 1 ? "disabled" : ""}>‹ 上一页</button>
@@ -129,6 +134,7 @@
         }
     }
 
+    /* ========== Resonance Search ========== */
     async function runPage({page = 1, cursor = "", sample = currentMode === "sample"} = {}) {
         if (busy) {
             return;
@@ -185,6 +191,7 @@
         requestCache.clear();
     }
 
+    /* ========== Context Loading ========== */
     async function loadContext(details) {
         if (!details || details.dataset.loaded === "1") {
             return;
@@ -208,6 +215,7 @@
         }
     }
 
+    /* ========== Diagraph Helpers / API URLs ========== */
     function escapeHtml(value) {
         return (value || "")
             .replace(/&/g, "&amp;")
@@ -248,6 +256,7 @@
         errorBox.textContent = message || "";
     }
 
+    /* ========== Diagraph Rendering ========== */
     function renderDiagraphGrid(data) {
         const headers = data.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
         const rows = (data.grid || []).map((row) => {
@@ -324,6 +333,7 @@
         `;
     }
 
+    /* ========== Diagraph Export / Copy ========== */
     function serializeDiagraphText(data) {
         const lines = [];
         lines.push("跨句图谱");
@@ -346,6 +356,7 @@
         return lines.join("\n");
     }
 
+    /* ========== Diagraph Loading ========== */
     async function loadDiagraph(panel, pairId, windowMode) {
         if (!panel || !pairId) {
             return;
@@ -376,6 +387,7 @@
         }
     }
 
+    /* ========== Event Binding ========== */
     form.addEventListener("submit", (event) => {
         event.preventDefault();
         resetPaging();
@@ -461,6 +473,7 @@
         }
     }, true);
 
+    /* ========== Initialization ========== */
     resetPaging();
     runPage({sample: form.dataset.autoSearch !== "1" || getKeyword().length < 2});
 })();

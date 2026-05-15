@@ -177,10 +177,6 @@ a:hover {
     box-shadow: 0 4px 10px rgba(46, 99, 199, 0.18);
 }
 
-.tab-item:hover {
-    background: #dce6f8;
-}
-
 .bcc-search-form {
     width: 100%;
     margin: 0 auto;
