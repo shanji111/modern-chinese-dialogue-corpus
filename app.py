@@ -1302,6 +1302,8 @@ def build_segment_context(item, keyword, left_len=80, right_len=80):
 
 init_submission_tables = corpus_repository.init_submission_tables
 load_all_data = corpus_repository.load_all_data
+count_admin_entries = corpus_repository.count_admin_entries
+list_admin_entries_page = corpus_repository.list_admin_entries_page
 get_filter_options = corpus_repository.get_filter_options
 get_advanced_filter_options = corpus_repository.get_advanced_filter_options
 has_fts_table = corpus_repository.has_fts_table
@@ -1812,8 +1814,22 @@ def upload_demo():
 
 @app.route("/admin/list")
 def admin_list():
-    data = load_all_data()
-    return render_template("admin_list.html", entries=data)
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+    except (TypeError, ValueError):
+        page = 1
+    per_page = 50
+    offset = (page - 1) * per_page
+    rows = list_admin_entries_page(limit=per_page + 1, offset=offset)
+    has_next = len(rows) > per_page
+    data = rows[:per_page]
+    return render_template(
+        "admin_list.html",
+        entries=data,
+        page=page,
+        has_prev=page > 1,
+        has_next=has_next,
+    )
 
 
 @app.route("/admin/submissions")

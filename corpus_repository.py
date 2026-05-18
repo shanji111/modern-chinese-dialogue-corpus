@@ -828,6 +828,33 @@ def load_all_data():
         close_connection(conn)
 
 
+def count_admin_entries():
+    conn = get_db_connection()
+    try:
+        row = fetch_one_dict(conn.execute("SELECT COUNT(*) AS total FROM corpus_entries"))
+        return int((row or {}).get("total") or 0)
+    finally:
+        close_connection(conn)
+
+
+def list_admin_entries_page(limit=50, offset=0):
+    marker = placeholder()
+    conn = get_db_connection()
+    try:
+        rows = conn.execute(
+            f"""
+            SELECT id, title, source, year, category
+            FROM corpus_entries
+            ORDER BY id DESC
+            LIMIT {marker} OFFSET {marker}
+            """,
+            (limit, offset),
+        ).fetchall()
+        return [row_to_dict(row) for row in rows]
+    finally:
+        close_connection(conn)
+
+
 def get_filter_options():
     start = time.perf_counter()
     conn = timed_connection("get_filter_options")

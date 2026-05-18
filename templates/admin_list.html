@@ -14,6 +14,16 @@
             <a href="{{ url_for('admin') }}" class="back-home-link">返回后台录入</a>
         </div>
 
+        <div style="margin-bottom:14px; color:#5f6b7a; font-size:14px;">
+            当前第 {{ page }} 页，每页最多 50 条。
+            {% if has_prev %}
+            <a href="{{ url_for('admin_list', page=page-1) }}" class="back-home-link">上一页</a>
+            {% endif %}
+            {% if has_next %}
+            <a href="{{ url_for('admin_list', page=page+1) }}" class="back-home-link">下一页</a>
+            {% endif %}
+        </div>
+
         <table style="width:100%; border-collapse: collapse; font-size:14px;">
             <thead>
                 <tr style="background:#eef4ff;">
@@ -40,6 +50,15 @@
                 {% endfor %}
             </tbody>
         </table>
+
+        <div style="margin-top:14px; color:#5f6b7a; font-size:14px;">
+            {% if has_prev %}
+            <a href="{{ url_for('admin_list', page=page-1) }}" class="back-home-link">上一页</a>
+            {% endif %}
+            {% if has_next %}
+            <a href="{{ url_for('admin_list', page=page+1) }}" class="back-home-link">下一页</a>
+            {% endif %}
+        </div>
     </div>
 </body>
 </html>
