@@ -4,7 +4,7 @@ import subprocess
 import uuid
 from pathlib import Path
 
-from storage_utils import S3StorageBackend, UPLOAD_FOLDER
+from services.submission_storage_service import S3StorageBackend, UPLOAD_FOLDER
 
 
 AUDIO_TRANSCRIPTION_EXTENSIONS = {".mp3", ".wav", ".m4a"}

@@ -172,7 +172,7 @@ def print_route_probe():
 
 
 def print_key_normalization_probe():
-    from storage_utils import normalize_corpus_audio_object_key
+    from services.audio_service import normalize_corpus_audio_object_key
 
     print_heading("Object key normalization")
     for value in ("demo1.m4a", "demo2.m4a", "corpus/audio/demo1.m4a", "corpus/audio/demo2.m4a", "/corpus/audio/demo1.m4a"):

@@ -14,16 +14,12 @@ from werkzeug.exceptions import RequestEntityTooLarge
 import corpus_repository
 from database import DATABASE_BACKEND, DATABASE_PATH, DATABASE_URL, get_db_connection, print_database_identity
 from db_utils import compute_content_hash, utc_timestamp
-from storage_utils import (
-    allowed_file,
-    corpus_audio_exists_locally,
-    delete_submission_file,
-    get_corpus_audio_response,
-    get_submission_download_response,
-    is_remote_url,
+from services.audio_service import build_corpus_audio_url, get_corpus_audio_response
+from services.submission_storage_service import (
+    build_submission_download_response,
+    delete_submission_upload,
     print_upload_debug,
-    save_submission_file,
-    STORAGE_BACKEND,
+    save_submission_upload,
 )
 from services.transcription_service import (
     is_transcribable_submission,
@@ -245,17 +241,6 @@ def read_text_file(path):
         except UnicodeDecodeError:
             continue
     return path.read_text(encoding="utf-8", errors="replace")
-
-
-def build_corpus_audio_url(audio_file):
-    audio_file = (audio_file or "").strip()
-    if not audio_file:
-        return ""
-    if is_remote_url(audio_file):
-        return audio_file
-    if STORAGE_BACKEND == "local" and not corpus_audio_exists_locally(audio_file):
-        return ""
-    return url_for("audio_file", filename=audio_file)
 
 
 def load_all_data():
@@ -1372,7 +1357,7 @@ def submit():
 
     file_info = None
     try:
-        file_info = save_submission_file(upload)
+        file_info = save_submission_upload(upload)
         if file_info and file_info["extension"] in TEXT_FILE_EXTENSIONS and not text_content and file_info.get("path"):
             text_content = read_text_file(file_info["path"]).strip()
         elif file_info and file_info["extension"] in TEXT_FILE_EXTENSIONS and not text_content:
@@ -1938,7 +1923,7 @@ def reject_submission(submission_id):
 def delete_submission(submission_id):
     submission = corpus_repository.delete_submission_record(submission_id)
     if submission and submission["status"] != "approved":
-        delete_submission_file(
+        delete_submission_upload(
             submission["stored_filename"],
             object_key=submission.get("object_key"),
             storage_backend=submission.get("storage_backend"),
@@ -1954,7 +1939,7 @@ def download_submission_file(submission_id):
         return redirect(url_for("admin_submission_detail", submission_id=submission_id))
 
     try:
-        return get_submission_download_response(
+        return build_submission_download_response(
             submission["stored_filename"],
             submission["original_filename"] or submission["stored_filename"],
             object_key=submission.get("object_key"),
