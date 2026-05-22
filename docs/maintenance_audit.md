@@ -132,3 +132,84 @@
 4. 将 `talkdata/import_ready/` 的提交策略写清楚，避免误提交大 CSV。
 5. 为重建 `dialogue_turns`、`dialogue_pairs`、FTS5 索引写标准操作文档。
 
+
+## 转写服务整理记录
+
+### 第 1 刀：抽出转写辅助函数
+
+已新增 `services/transcription_service.py`，用于承接原本混在 `app.py` 中的音视频转写辅助逻辑。第 1 刀搬出的函数包括：
+
+- `get_file_extension`
+- `is_transcribable_submission`
+- `is_video_submission_file`
+- `safe_upload_file_path`
+- `local_submission_file_path`
+- `copy_submission_file_to_temp`
+- `extract_audio_from_video`
+- `transcribe_media_file`
+- `cleanup_transcription_temp_files`
+
+这一刀的目标是降低 `app.py` 体积，同时保持现有调用方式、错误文案、异常类型和业务流程不变。`TRANSCRIPTION_TEMP_DIR` 仍保留在 `app.py`，由路由传入 service，避免 service 反向依赖 Flask app。
+
+### 第 2 刀：新增服务级编排函数
+
+已在 `services/transcription_service.py` 中新增：
+
+```python
+transcribe_submission_media(submission, temp_dir, model_name) -> str
+```
+
+该函数封装了单次转写所需的文件处理流程：
+
+1. 调用 `copy_submission_file_to_temp(submission, temp_dir)`，将本地或 S3/R2 投稿文件复制/下载到临时目录。
+2. 调用 `is_video_submission_file(media_path, submission)` 判断是否为视频文件。
+3. 如为视频，调用 `extract_audio_from_video(media_path, temp_dir)` 使用 `ffmpeg` 抽取音频。
+4. 调用 `transcribe_media_file(target_media_path, model_name)` 执行 OpenAI 音频转写。
+5. 使用 `finally` 调用 `cleanup_transcription_temp_files(temp_paths)`，确保成功或失败都清理本次产生的临时文件。
+
+### app.py 当前仍保留的职责
+
+`app.py` 中 `/admin/submissions/<id>/transcribe` 路由目前仍保留以下职责：
+
+- 查询投稿：`corpus_repository.get_submission_by_id(submission_id)`
+- 判断投稿是否存在。
+- 调用 `is_transcribable_submission(submission)` 判断是否可转写。
+- 读取 `TRANSCRIBE_MODEL`。
+- 预检查 `OPENAI_API_KEY`。
+- 创建 `TRANSCRIPTION_TEMP_DIR`。
+- 调用 `transcribe_submission_media(submission, TRANSCRIPTION_TEMP_DIR, model_name)`。
+- 判断转写结果是否为空，并保留原有 `RuntimeError` 文案。
+- 调用 `corpus_repository.update_submission_text_content(submission_id, transcript)` 写回数据库。
+- 保留所有 `render_template(...)` 成功、失败返回结构。
+
+也就是说，数据库写入逻辑和 Flask 响应逻辑仍在 `app.py`，service 只负责文件准备、视频抽音频、调用转写和临时文件清理。
+
+### 未改动范围
+
+本次两刀整理没有修改：
+
+- 数据库结构或数据内容。
+- 路由 URL。
+- 模板文件。
+- `static/` 前端资源。
+- `corpus_repository.py`。
+- S3/R2 或本地文件复制逻辑。
+- `ffmpeg` 抽音频参数。
+- `OPENAI_API_KEY` / `TRANSCRIBE_MODEL` 检查行为。
+- 错误文案、异常类型和返回结构。
+
+### 验证记录
+
+已使用以下方式验证：
+
+- `compile(app.py)` 通过。
+- `compile(services/transcription_service.py)` 通过。
+- `python -B -c "import services.transcription_service"` 通过。
+
+标准 `python -m py_compile app.py` / `python -m py_compile services/transcription_service.py` 在当前 Windows 环境中曾因 `__pycache__` 写入或 `.pyc` rename 权限问题失败，错误为 `[WinError 5] 拒绝访问`。这属于缓存文件写入权限问题，不是代码语法问题。
+
+### 后续建议
+
+1. 先手动测试管理员后台投稿转写功能，至少覆盖音频、视频、缺少 `OPENAI_API_KEY`、不可转写文件四类情况。
+2. 确认转写成功后，再继续做音频路由的只读分析。
+3. 暂时不要继续移动数据库写入逻辑，避免 service 层过早承担 repository 职责。
