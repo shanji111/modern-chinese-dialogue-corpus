@@ -145,3 +145,17 @@ def cleanup_transcription_temp_files(paths):
             Path(path).unlink(missing_ok=True)
         except OSError:
             pass
+
+
+def transcribe_submission_media(submission, temp_dir, model_name):
+    temp_paths = []
+    try:
+        media_path = copy_submission_file_to_temp(submission, temp_dir)
+        temp_paths.append(media_path)
+        transcription_path = media_path
+        if is_video_submission_file(media_path, submission):
+            transcription_path = extract_audio_from_video(media_path, temp_dir)
+            temp_paths.append(transcription_path)
+        return transcribe_media_file(transcription_path, model_name)
+    finally:
+        cleanup_transcription_temp_files(temp_paths)

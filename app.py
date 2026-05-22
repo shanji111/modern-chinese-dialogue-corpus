@@ -26,12 +26,8 @@ from storage_utils import (
     STORAGE_BACKEND,
 )
 from services.transcription_service import (
-    cleanup_transcription_temp_files,
-    copy_submission_file_to_temp,
-    extract_audio_from_video,
     is_transcribable_submission,
-    is_video_submission_file,
-    transcribe_media_file,
+    transcribe_submission_media,
 )
 
 app = Flask(__name__)
@@ -1902,16 +1898,9 @@ def transcribe_submission(submission_id):
             transcription_error="未配置转写 API Key，请先设置 OPENAI_API_KEY。",
         ), 400
 
-    temp_paths = []
     try:
         TRANSCRIPTION_TEMP_DIR.mkdir(parents=True, exist_ok=True)
-        media_path = copy_submission_file_to_temp(submission, TRANSCRIPTION_TEMP_DIR)
-        temp_paths.append(media_path)
-        transcription_path = media_path
-        if is_video_submission_file(media_path, submission):
-            transcription_path = extract_audio_from_video(media_path, TRANSCRIPTION_TEMP_DIR)
-            temp_paths.append(transcription_path)
-        transcript = transcribe_media_file(transcription_path, model_name)
+        transcript = transcribe_submission_media(submission, TRANSCRIPTION_TEMP_DIR, model_name)
         if not transcript:
             raise RuntimeError("转写结果为空，请检查媒体文件是否包含可识别语音。")
         corpus_repository.update_submission_text_content(submission_id, transcript)
@@ -1929,9 +1918,6 @@ def transcribe_submission(submission_id):
             can_transcribe=True,
             transcription_error="转写失败，请稍后重试，或检查媒体文件和转写配置。",
         ), 500
-    finally:
-        cleanup_transcription_temp_files(temp_paths)
-
     updated_submission = corpus_repository.get_submission_by_id(submission_id)
     return render_template(
         "admin_submission_detail.html",
