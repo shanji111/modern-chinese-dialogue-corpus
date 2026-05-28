@@ -634,7 +634,7 @@ def rebuild_dialogue_turns(batch_size=1000, progress_callback=None, resume=False
             state = get_dialogue_turns_rebuild_state(conn)
             total_rows = state["total_entries"]
         batch = []
-        entry_page_size = max(1, batch_size)
+        entry_page_size = min(max(1, batch_size), 25) if is_postgres() else max(1, batch_size)
         if progress_callback:
             progress_callback({
                 "phase": "start",
@@ -643,22 +643,85 @@ def rebuild_dialogue_turns(batch_size=1000, progress_callback=None, resume=False
                 "entries_with_turns": entries,
                 "inserted_turns": inserted,
             })
+
+        def reconnect_postgres():
+            nonlocal conn
+            safe_rollback(conn)
+            try:
+                close_connection(conn)
+            except Exception:
+                pass
+            time.sleep(1)
+            conn = get_db_connection()
+            create_dialogue_turns_schema(conn, include_indexes=False)
+
+        def fetch_entry_page(after_entry_id, page_size):
+            nonlocal entry_page_size
+            attempts = 0
+            current_page_size = page_size
+            while True:
+                try:
+                    return conn.execute(f"""
+                        SELECT id, title, source, category, dataset_name,
+                               current_segment, segment_text, speaker, conversation_id, segment_index
+                        FROM corpus_entries
+                        WHERE id > {marker}
+                        ORDER BY id
+                        LIMIT {marker}
+                    """, (after_entry_id, current_page_size)).fetchall()
+                except Exception:
+                    attempts += 1
+                    if not is_postgres() or attempts >= 5:
+                        raise
+                    entry_page_size = max(1, min(entry_page_size, current_page_size) // 2)
+                    current_page_size = entry_page_size
+                    reconnect_postgres()
+
+        def fetch_entry_content(entry_id):
+            attempts = 0
+            while True:
+                try:
+                    row = conn.execute(
+                        f"SELECT content FROM corpus_entries WHERE id = {marker}",
+                        (entry_id,),
+                    ).fetchone()
+                    return (row_to_dict(row) if row else {}).get("content") or ""
+                except Exception:
+                    attempts += 1
+                    if not is_postgres() or attempts >= 5:
+                        raise
+                    reconnect_postgres()
+
+        def flush_turn_batch():
+            nonlocal inserted
+            attempts = 0
+            while batch:
+                try:
+                    execute_many(conn, insert_sql, batch)
+                    inserted += len(batch)
+                    batch.clear()
+                    if is_postgres():
+                        conn.commit()
+                    return
+                except Exception:
+                    attempts += 1
+                    if not is_postgres() or attempts >= 5:
+                        raise
+                    reconnect_postgres()
+
         processed = 0
         last_entry_id = start_after_entry_id
         while True:
-            rows = conn.execute(f"""
-                SELECT id, title, content, source, category, dataset_name,
-                       current_segment, segment_text, speaker, conversation_id, segment_index
-                FROM corpus_entries
-                WHERE id > {marker}
-                ORDER BY id
-                LIMIT {marker}
-            """, (last_entry_id, entry_page_size)).fetchall()
+            rows = fetch_entry_page(last_entry_id, entry_page_size)
             if not rows:
                 break
             for row in rows:
                 entry = row_to_dict(row)
                 last_entry_id = int(entry["id"])
+                if not (entry.get("current_segment") or entry.get("segment_text")):
+                    entry["content"] = fetch_entry_content(entry["id"])
+                else:
+                    entry["content"] = ""
                 turns = split_entry_turns(entry)
                 if turns:
                     entries += 1
@@ -675,11 +738,7 @@ def rebuild_dialogue_turns(batch_size=1000, progress_callback=None, resume=False
                     ))
                 processed += 1
                 if len(batch) >= batch_size:
-                    execute_many(conn, insert_sql, batch)
-                    inserted += len(batch)
-                    batch.clear()
-                    if is_postgres():
-                        conn.commit()
+                    flush_turn_batch()
                 if progress_callback and ((processed % entry_page_size == 0) or processed_offset + processed == total_rows):
                     progress_callback({
                         "phase": "processing",
@@ -689,10 +748,7 @@ def rebuild_dialogue_turns(batch_size=1000, progress_callback=None, resume=False
                         "inserted_turns": inserted + len(batch),
                     })
         if batch:
-            execute_many(conn, insert_sql, batch)
-            inserted += len(batch)
-            if is_postgres():
-                conn.commit()
+            flush_turn_batch()
         set_corpus_stat(conn, "dialogue_turn_count", inserted)
         conn.commit()
         if progress_callback:
@@ -2309,7 +2365,7 @@ def rebuild_dialogue_pairs(batch_size=5000, progress_callback=None, allow_incomp
         batch = []
         total_rows = stats["turns"]
         processed = 0
-        page_size = max(1, batch_size)
+        page_size = min(max(1, batch_size), 100) if is_postgres() else max(1, batch_size)
         if progress_callback:
             progress_callback({
                 "phase": "start",
@@ -2317,17 +2373,59 @@ def rebuild_dialogue_pairs(batch_size=5000, progress_callback=None, allow_incomp
                 "total": total_rows,
                 "pairs": stats["pairs"],
             })
+
+        def reconnect_postgres():
+            nonlocal conn
+            safe_rollback(conn)
+            try:
+                close_connection(conn)
+            except Exception:
+                pass
+            time.sleep(1)
+            conn = get_db_connection()
+            create_dialogue_pairs_schema(conn, include_indexes=False)
+
+        def fetch_turn_page(offset, limit):
+            nonlocal page_size
+            attempts = 0
+            current_page_size = limit
+            while True:
+                try:
+                    return conn.execute(
+                        f"""
+                        SELECT id, entry_id, turn_index, speaker_label, turn_text,
+                               source, category, dataset_name, conversation_key
+                        FROM {TURN_TABLE}
+                        ORDER BY conversation_key, turn_index, id
+                        LIMIT {marker} OFFSET {marker}
+                        """,
+                        (current_page_size, offset),
+                    ).fetchall()
+                except Exception:
+                    attempts += 1
+                    if not is_postgres() or attempts >= 5:
+                        raise
+                    page_size = max(1, min(page_size, current_page_size) // 2)
+                    current_page_size = page_size
+                    reconnect_postgres()
+
+        def flush_pair_batch():
+            attempts = 0
+            while batch:
+                try:
+                    execute_many(conn, insert_sql, batch)
+                    batch.clear()
+                    if is_postgres():
+                        conn.commit()
+                    return
+                except Exception:
+                    attempts += 1
+                    if not is_postgres() or attempts >= 5:
+                        raise
+                    reconnect_postgres()
+
         while processed < total_rows:
-            rows = conn.execute(
-                f"""
-                SELECT id, entry_id, turn_index, speaker_label, turn_text,
-                       source, category, dataset_name, conversation_key
-                FROM {TURN_TABLE}
-                ORDER BY conversation_key, turn_index, id
-                LIMIT {marker} OFFSET {marker}
-                """,
-                (page_size, processed),
-            ).fetchall()
+            rows = fetch_turn_page(processed, page_size)
             if not rows:
                 break
             for row in rows:
@@ -2347,10 +2445,7 @@ def rebuild_dialogue_pairs(batch_size=5000, progress_callback=None, allow_incomp
                     stats["negation_turn"] += pair_row[18]
                     stats["repair_repetition"] += pair_row[19]
                     if len(batch) >= batch_size:
-                        execute_many(conn, insert_sql, batch)
-                        batch.clear()
-                        if is_postgres():
-                            conn.commit()
+                        flush_pair_batch()
                 previous = current
                 if progress_callback and (processed % page_size == 0 or processed == total_rows):
                     progress_callback({
@@ -2360,9 +2455,7 @@ def rebuild_dialogue_pairs(batch_size=5000, progress_callback=None, allow_incomp
                         "pairs": stats["pairs"],
                     })
         if batch:
-            execute_many(conn, insert_sql, batch)
-            if is_postgres():
-                conn.commit()
+            flush_pair_batch()
         set_corpus_stat(conn, "dialogue_pairs_count", stats["pairs"])
         for key in ("lexical_echo", "pattern_reuse", "question_response", "negation_turn", "repair_repetition"):
             set_corpus_stat(conn, f"dialogue_pairs_{key}_count", stats[key])
