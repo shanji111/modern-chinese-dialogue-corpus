@@ -630,16 +630,11 @@ def rebuild_dialogue_turns(batch_size=1000, progress_callback=None, resume=False
             entries = 0
             processed_offset = 0
 
-        where_sql = f"WHERE id > {marker}" if resume else ""
-        rows = conn.execute(f"""
-            SELECT id, title, content, source, category, dataset_name,
-                   current_segment, segment_text, speaker, conversation_id, segment_index
-            FROM corpus_entries
-            {where_sql}
-            ORDER BY id
-        """, (start_after_entry_id,) if resume else ()).fetchall()
+        if not resume:
+            state = get_dialogue_turns_rebuild_state(conn)
+            total_rows = state["total_entries"]
         batch = []
-        total_rows = total_rows if resume else len(rows)
+        entry_page_size = max(1, batch_size)
         if progress_callback:
             progress_callback({
                 "phase": "start",
@@ -648,36 +643,51 @@ def rebuild_dialogue_turns(batch_size=1000, progress_callback=None, resume=False
                 "entries_with_turns": entries,
                 "inserted_turns": inserted,
             })
-        for index, row in enumerate(rows, start=1):
-            entry = row_to_dict(row)
-            turns = split_entry_turns(entry)
-            if turns:
-                entries += 1
-            for turn in turns:
-                batch.append((
-                    entry["id"],
-                    turn["turn_index"],
-                    turn["speaker_label"],
-                    turn["turn_text"],
-                    entry.get("source") or "",
-                    entry.get("category") or "",
-                    entry.get("dataset_name") or "",
-                    turn["conversation_key"],
-                ))
+        processed = 0
+        last_entry_id = start_after_entry_id
+        while True:
+            rows = conn.execute(f"""
+                SELECT id, title, content, source, category, dataset_name,
+                       current_segment, segment_text, speaker, conversation_id, segment_index
+                FROM corpus_entries
+                WHERE id > {marker}
+                ORDER BY id
+                LIMIT {marker}
+            """, (last_entry_id, entry_page_size)).fetchall()
+            if not rows:
+                break
+            for row in rows:
+                entry = row_to_dict(row)
+                last_entry_id = int(entry["id"])
+                turns = split_entry_turns(entry)
+                if turns:
+                    entries += 1
+                for turn in turns:
+                    batch.append((
+                        entry["id"],
+                        turn["turn_index"],
+                        turn["speaker_label"],
+                        turn["turn_text"],
+                        entry.get("source") or "",
+                        entry.get("category") or "",
+                        entry.get("dataset_name") or "",
+                        turn["conversation_key"],
+                    ))
+                processed += 1
                 if len(batch) >= batch_size:
                     execute_many(conn, insert_sql, batch)
                     inserted += len(batch)
                     batch.clear()
                     if is_postgres():
                         conn.commit()
-            if progress_callback and (index % batch_size == 0 or index == total_rows):
-                progress_callback({
-                    "phase": "processing",
-                    "processed": processed_offset + index,
-                    "total": total_rows,
-                    "entries_with_turns": entries,
-                    "inserted_turns": inserted + len(batch),
-                })
+                if progress_callback and ((processed % entry_page_size == 0) or processed_offset + processed == total_rows):
+                    progress_callback({
+                        "phase": "processing",
+                        "processed": processed_offset + processed,
+                        "total": total_rows,
+                        "entries_with_turns": entries,
+                        "inserted_turns": inserted + len(batch),
+                    })
         if batch:
             execute_many(conn, insert_sql, batch)
             inserted += len(batch)
@@ -2293,18 +2303,13 @@ def rebuild_dialogue_pairs(batch_size=5000, progress_callback=None, allow_incomp
             conn.commit()
         else:
             conn.execute(f"DELETE FROM {PAIR_TABLE}")
-        rows = conn.execute(
-            f"""
-            SELECT id, entry_id, turn_index, speaker_label, turn_text,
-                   source, category, dataset_name, conversation_key
-            FROM {TURN_TABLE}
-            ORDER BY conversation_key, turn_index, id
-            """
-        ).fetchall()
-        stats["turns"] = len(rows)
+        total_row = fetch_one_dict(conn.execute(f"SELECT COUNT(*) AS total FROM {TURN_TABLE}"))
+        stats["turns"] = int((total_row or {}).get("total") or 0)
         previous = None
         batch = []
-        total_rows = len(rows)
+        total_rows = stats["turns"]
+        processed = 0
+        page_size = max(1, batch_size)
         if progress_callback:
             progress_callback({
                 "phase": "start",
@@ -2312,34 +2317,48 @@ def rebuild_dialogue_pairs(batch_size=5000, progress_callback=None, allow_incomp
                 "total": total_rows,
                 "pairs": stats["pairs"],
             })
-        for index, row in enumerate(rows, start=1):
-            current = row_to_dict(row)
-            if (
-                previous
-                and previous["conversation_key"] == current["conversation_key"]
-                and int(current["turn_index"]) == int(previous["turn_index"]) + 1
-            ):
-                pair_row = build_dialogue_pair_row(previous, current)
-                batch.append(pair_row)
-                stats["pairs"] += 1
-                stats["lexical_echo"] += pair_row[15]
-                stats["pattern_reuse"] += pair_row[16]
-                stats["question_response"] += pair_row[17]
-                stats["negation_turn"] += pair_row[18]
-                stats["repair_repetition"] += pair_row[19]
-                if len(batch) >= batch_size:
-                    execute_many(conn, insert_sql, batch)
-                    batch.clear()
-                    if is_postgres():
-                        conn.commit()
-            previous = current
-            if progress_callback and (index % batch_size == 0 or index == total_rows):
-                progress_callback({
-                    "phase": "processing",
-                    "processed": index,
-                    "total": total_rows,
-                    "pairs": stats["pairs"],
-                })
+        while processed < total_rows:
+            rows = conn.execute(
+                f"""
+                SELECT id, entry_id, turn_index, speaker_label, turn_text,
+                       source, category, dataset_name, conversation_key
+                FROM {TURN_TABLE}
+                ORDER BY conversation_key, turn_index, id
+                LIMIT {marker} OFFSET {marker}
+                """,
+                (page_size, processed),
+            ).fetchall()
+            if not rows:
+                break
+            for row in rows:
+                processed += 1
+                current = row_to_dict(row)
+                if (
+                    previous
+                    and previous["conversation_key"] == current["conversation_key"]
+                    and int(current["turn_index"]) == int(previous["turn_index"]) + 1
+                ):
+                    pair_row = build_dialogue_pair_row(previous, current)
+                    batch.append(pair_row)
+                    stats["pairs"] += 1
+                    stats["lexical_echo"] += pair_row[15]
+                    stats["pattern_reuse"] += pair_row[16]
+                    stats["question_response"] += pair_row[17]
+                    stats["negation_turn"] += pair_row[18]
+                    stats["repair_repetition"] += pair_row[19]
+                    if len(batch) >= batch_size:
+                        execute_many(conn, insert_sql, batch)
+                        batch.clear()
+                        if is_postgres():
+                            conn.commit()
+                previous = current
+                if progress_callback and (processed % page_size == 0 or processed == total_rows):
+                    progress_callback({
+                        "phase": "processing",
+                        "processed": processed,
+                        "total": total_rows,
+                        "pairs": stats["pairs"],
+                    })
         if batch:
             execute_many(conn, insert_sql, batch)
             if is_postgres():
