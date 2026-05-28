@@ -35,6 +35,7 @@ def main() -> None:
     parser.add_argument("--indexes-only", action="store_true", help="Only create/confirm dialogue_turns indexes.")
     parser.add_argument("--resume", action="store_true", help="Continue a failed Postgres rebuild from the highest completed entry_id.")
     parser.add_argument("--status", action="store_true", help="Print current dialogue_turns rebuild status and exit.")
+    parser.add_argument("--skip-indexes", action="store_true", help="Skip optional Postgres trigram index creation after rebuild.")
     args = parser.parse_args()
 
     if args.status:
@@ -85,7 +86,8 @@ def main() -> None:
         progress_callback=lambda payload: render_progress(payload, started_at),
         resume=args.resume,
     )
-    corpus_repository.ensure_postgres_dialogue_turn_text_trigram_index()
+    if not args.skip_indexes:
+        corpus_repository.ensure_postgres_dialogue_turn_text_trigram_index()
     print(f"dialogue_turns rebuilt: entries={stats['entries']} turns={stats['turns']}")
 
 

@@ -32,6 +32,7 @@ def main() -> None:
     parser.add_argument("--batch-size", type=int, default=5000, help="Rows to insert per batch.")
     parser.add_argument("--indexes-only", action="store_true", help="Only create/confirm dialogue_pairs indexes.")
     parser.add_argument("--allow-incomplete-turns", action="store_true", help="Skip the safety check that dialogue_turns covers all corpus entries.")
+    parser.add_argument("--skip-indexes", action="store_true", help="Skip optional Postgres trigram index creation after rebuild.")
     args = parser.parse_args()
 
     if args.indexes_only:
@@ -67,7 +68,8 @@ def main() -> None:
         progress_callback=lambda payload: render_progress(payload, started_at),
         allow_incomplete_turns=args.allow_incomplete_turns,
     )
-    corpus_repository.ensure_postgres_dialogue_pairs_trigram_indexes()
+    if not args.skip_indexes:
+        corpus_repository.ensure_postgres_dialogue_pairs_trigram_indexes()
     print(f"dialogue_turns: {stats['turns']}")
     print(f"dialogue_pairs: {stats['pairs']}")
     print(f"lexical_echo: {stats['lexical_echo']}")

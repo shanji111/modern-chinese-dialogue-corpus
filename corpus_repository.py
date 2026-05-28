@@ -320,7 +320,7 @@ def split_entry_turns(entry):
     return turns
 
 
-def create_dialogue_turns_schema(conn):
+def create_dialogue_turns_schema(conn, include_indexes=True):
     global _DIALOGUE_TURNS_TABLE_EXISTS_CACHE
     if is_postgres():
         conn.execute(f"""
@@ -351,6 +351,10 @@ def create_dialogue_turns_schema(conn):
             )
         """)
 
+    if not include_indexes:
+        _DIALOGUE_TURNS_TABLE_EXISTS_CACHE = True
+        return
+
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_dialogue_turns_entry ON {TURN_TABLE} (entry_id)")
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_dialogue_turns_entry_id ON {TURN_TABLE} (entry_id)")
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_dialogue_turns_conversation ON {TURN_TABLE} (conversation_key, turn_index)")
@@ -363,7 +367,7 @@ def create_dialogue_turns_schema(conn):
     _DIALOGUE_TURNS_TABLE_EXISTS_CACHE = True
 
 
-def create_dialogue_pairs_schema(conn):
+def create_dialogue_pairs_schema(conn, include_indexes=True):
     global _DIALOGUE_PAIRS_TABLE_EXISTS_CACHE
     if is_postgres():
         conn.execute(f"""
@@ -419,6 +423,10 @@ def create_dialogue_pairs_schema(conn):
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP
             )
         """)
+
+    if not include_indexes:
+        _DIALOGUE_PAIRS_TABLE_EXISTS_CACHE = True
+        return
 
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_dialogue_pairs_a ON {PAIR_TABLE}(turn_a_id)")
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_dialogue_pairs_b ON {PAIR_TABLE}(turn_b_id)")
@@ -553,7 +561,7 @@ def get_dialogue_turns_rebuild_state(conn=None):
     owns_connection = conn is None
     conn = conn or get_db_connection()
     try:
-        create_dialogue_turns_schema(conn)
+        create_dialogue_turns_schema(conn, include_indexes=False)
         marker = placeholder()
         source_row = fetch_one_dict(conn.execute("""
             SELECT COUNT(*) AS total_entries, COALESCE(MAX(id), 0) AS max_entry_id
@@ -600,7 +608,7 @@ def rebuild_dialogue_turns(batch_size=1000, progress_callback=None, resume=False
         f"VALUES ({', '.join(marker for _ in insert_columns)})"
     )
     try:
-        create_dialogue_turns_schema(conn)
+        create_dialogue_turns_schema(conn, include_indexes=False)
         if resume:
             state = get_dialogue_turns_rebuild_state(conn)
             start_after_entry_id = state["max_turn_entry_id"]
@@ -2271,7 +2279,7 @@ def rebuild_dialogue_pairs(batch_size=5000, progress_callback=None, allow_incomp
         "repair_repetition": 0,
     }
     try:
-        create_dialogue_pairs_schema(conn)
+        create_dialogue_pairs_schema(conn, include_indexes=False)
         if not allow_incomplete_turns and not dialogue_turns_look_complete(conn):
             state = get_dialogue_turns_rebuild_state(conn)
             raise RuntimeError(
