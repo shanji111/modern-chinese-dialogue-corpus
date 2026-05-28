@@ -105,9 +105,35 @@ COMMON_PHRASE_MIN_CHARS = 2
 SPEAKER_LABEL_PATTERN = re.compile(
     r"^\s*(?P<label>[^:：\s][^:：]{0,31})\s*[：:]\s*(?P<text>.+?)\s*$"
 )
+BRACKET_SPEAKER_LABEL_PATTERN = re.compile(
+    r"^\s*[【\[](?P<label>[^】\]\s][^】\]]{0,31})[】\]]\s*[：:]\s*(?P<text>.+?)\s*$"
+)
+BRACKET_SPEAKER_LINE_PATTERN = re.compile(
+    r"^\s*[【\[][^】\]\s][^】\]]{0,31}[】\]]\s*[：:]"
+)
 INLINE_SPEAKER_BOUNDARY_PATTERN = re.compile(
     r"(?:^|(?<=[。！？!?；;]))\s*(?=[^:：\s][^:：]{0,31}\s*[：:])"
 )
+INLINE_SPEAKER_CANDIDATE_PATTERN = re.compile(
+    r"(?:^|(?<=[。！？!?；;]))\s*(?P<label>[^:：\s][^:：]{0,31})\s*[：:]"
+)
+SPEAKER_ROLE_TERMS = (
+    "记者", "主持人", "发言人", "嘉宾", "网友", "提问", "问", "答",
+    "老师", "学生", "旁白", "解说", "主持", "部长", "副部长",
+    "司长", "局长", "主任", "院士", "教授", "专家", "负责人",
+    "代表", "委员", "先生", "女士",
+)
+SPEAKER_EXACT_LABELS = {
+    "甲", "乙", "丙", "丁", "A", "B", "Q", "男", "女", "问", "答",
+    "用户", "助手", "系统", "中国网",
+}
+NON_SPEAKER_LABEL_TERMS = (
+    "一是", "二是", "三是", "四是", "五是", "首先", "其次", "另外",
+    "同时", "其中", "针对", "关于", "从", "据", "据了解", "值得一提",
+    "总体来看", "具体来看", "主要集中", "积极支持", "热切期盼",
+    "相关链接", "相关附件", "责任编辑", "版权所有", "来源",
+)
+NON_SPEAKER_LABEL_PUNCTUATION = set("，,。；;！？!?、")
 FUNCTION_PATTERNS = (
     ("我觉得...", re.compile(r"我觉得|我认为|我想|我感觉")),
     ("不是...而是...", re.compile(r"不是|而是|并非")),
@@ -120,6 +146,7 @@ QUESTION_MARKERS = ("?", "？", "吗", "呢", "么", "为什么", "为何", "怎
 RESPONSE_MARKERS = ("是", "不是", "对", "没有", "因为", "所以", "其实", "我觉得", "我认为", "可以", "不能", "应该", "需要", "这个", "那")
 CONTRAST_MARKERS = ("不是", "不能", "没有", "没法", "不一定", "不属于", "并不", "不对", "但是", "不过", "然而", "可是", "而是", "并非", "相反", "却")
 REVISION_MARKERS = ("不是", "不对", "应该说", "也就是说", "换句话说", "准确地说", "其实", "我是说", "或者说", "更准确", "补充", "另外", "而且")
+_DIALOGUE_TURNS_TABLE_EXISTS_CACHE = None
 _DIALOGUE_PAIRS_TABLE_EXISTS_CACHE = None
 STORAGE_METADATA_COLUMNS = {
     "storage_backend": "TEXT DEFAULT 'local'",
@@ -193,11 +220,37 @@ def normalize_turn_text(value):
     return re.sub(r"\s+", " ", (value or "").strip())
 
 
+def is_valid_speaker_label(label):
+    label = normalize_turn_text(label)
+    if not label:
+        return False
+    compact = re.sub(r"\s+", "", label)
+    if not compact or len(compact) > 34:
+        return False
+    if any(char in label for char in NON_SPEAKER_LABEL_PUNCTUATION):
+        return False
+    if compact in SPEAKER_EXACT_LABELS:
+        return True
+    if any(term in compact for term in SPEAKER_ROLE_TERMS):
+        return True
+    if any(term in compact for term in NON_SPEAKER_LABEL_TERMS):
+        return False
+    if re.fullmatch(r"[\u4e00-\u9fff·]{2,8}", compact):
+        return True
+    if re.fullmatch(r"[A-Za-z][A-Za-z0-9_ -]{0,15}", label):
+        return True
+    return False
+
+
 def split_inline_speaker_turns(line):
     line = (line or "").strip()
     if not line:
         return []
-    boundaries = [match.start() for match in INLINE_SPEAKER_BOUNDARY_PATTERN.finditer(line)]
+    boundaries = [
+        match.start()
+        for match in INLINE_SPEAKER_CANDIDATE_PATTERN.finditer(line)
+        if is_valid_speaker_label(match.group("label"))
+    ]
     if not boundaries or boundaries[0] != 0:
         boundaries.insert(0, 0)
     if len(boundaries) == 1:
@@ -214,12 +267,18 @@ def split_inline_speaker_turns(line):
 
 def parse_speaker_turn(line):
     line = normalize_turn_text(line)
+    bracket_match = BRACKET_SPEAKER_LABEL_PATTERN.match(line)
+    if bracket_match:
+        label = bracket_match.group("label").strip()
+        text = bracket_match.group("text").strip()
+        if is_valid_speaker_label(label) and text:
+            return label, text
     match = SPEAKER_LABEL_PATTERN.match(line)
     if not match:
         return "", line
     label = match.group("label").strip()
     text = match.group("text").strip()
-    if len(label) > 32 or not text:
+    if len(label) > 32 or not text or not is_valid_speaker_label(label):
         return "", line
     return label, text
 
@@ -241,11 +300,13 @@ def split_entry_turns(entry):
         return []
 
     turns = []
+    bracket_line_mode = any(BRACKET_SPEAKER_LINE_PATTERN.match(line.strip()) for line in text.split("\n"))
     for raw_line in text.split("\n"):
         raw_line = raw_line.strip()
         if not raw_line:
             continue
-        for piece in split_inline_speaker_turns(raw_line):
+        pieces = [raw_line] if bracket_line_mode else split_inline_speaker_turns(raw_line)
+        for piece in pieces:
             speaker, turn_text = parse_speaker_turn(piece)
             turn_text = normalize_turn_text(turn_text)
             if len(turn_text) < MIN_TURN_TEXT_CHARS:
@@ -260,6 +321,7 @@ def split_entry_turns(entry):
 
 
 def create_dialogue_turns_schema(conn):
+    global _DIALOGUE_TURNS_TABLE_EXISTS_CACHE
     if is_postgres():
         conn.execute(f"""
             CREATE TABLE IF NOT EXISTS {TURN_TABLE} (
@@ -298,6 +360,7 @@ def create_dialogue_turns_schema(conn):
     conn.execute(f"CREATE INDEX IF NOT EXISTS idx_dialogue_turns_source_category_id ON {TURN_TABLE} (source, category, id)")
     if not is_postgres():
         conn.execute(f"CREATE INDEX IF NOT EXISTS idx_dialogue_turns_turn_text ON {TURN_TABLE} (turn_text)")
+    _DIALOGUE_TURNS_TABLE_EXISTS_CACHE = True
 
 
 def create_dialogue_pairs_schema(conn):
@@ -461,6 +524,9 @@ def prepare_sqlite_for_safe_indexing(conn):
 
 
 def has_dialogue_turns_table():
+    global _DIALOGUE_TURNS_TABLE_EXISTS_CACHE
+    if _DIALOGUE_TURNS_TABLE_EXISTS_CACHE is not None:
+        return _DIALOGUE_TURNS_TABLE_EXISTS_CACHE
     conn = get_db_connection()
     try:
         if is_postgres():
@@ -477,12 +543,52 @@ def has_dialogue_turns_table():
                 "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
                 (TURN_TABLE,),
             ).fetchone()
-        return row is not None
+        _DIALOGUE_TURNS_TABLE_EXISTS_CACHE = row is not None
+        return _DIALOGUE_TURNS_TABLE_EXISTS_CACHE
     finally:
         close_connection(conn)
 
 
-def rebuild_dialogue_turns(batch_size=1000, progress_callback=None):
+def get_dialogue_turns_rebuild_state(conn=None):
+    owns_connection = conn is None
+    conn = conn or get_db_connection()
+    try:
+        create_dialogue_turns_schema(conn)
+        marker = placeholder()
+        source_row = fetch_one_dict(conn.execute("""
+            SELECT COUNT(*) AS total_entries, COALESCE(MAX(id), 0) AS max_entry_id
+            FROM corpus_entries
+        """))
+        turn_row = fetch_one_dict(conn.execute(f"""
+            SELECT COUNT(*) AS total_turns,
+                   COUNT(DISTINCT entry_id) AS entries_with_turns,
+                   COALESCE(MAX(entry_id), 0) AS max_turn_entry_id
+            FROM {TURN_TABLE}
+        """))
+        max_turn_entry_id = int((turn_row or {}).get("max_turn_entry_id") or 0)
+        processed_row = fetch_one_dict(conn.execute(
+            f"SELECT COUNT(*) AS processed_entries FROM corpus_entries WHERE id <= {marker}",
+            (max_turn_entry_id,),
+        ))
+        return {
+            "total_entries": int((source_row or {}).get("total_entries") or 0),
+            "max_entry_id": int((source_row or {}).get("max_entry_id") or 0),
+            "total_turns": int((turn_row or {}).get("total_turns") or 0),
+            "entries_with_turns": int((turn_row or {}).get("entries_with_turns") or 0),
+            "max_turn_entry_id": max_turn_entry_id,
+            "processed_entries": int((processed_row or {}).get("processed_entries") or 0),
+        }
+    finally:
+        if owns_connection:
+            close_connection(conn)
+
+
+def dialogue_turns_look_complete(conn=None):
+    state = get_dialogue_turns_rebuild_state(conn)
+    return state["max_entry_id"] == 0 or state["max_turn_entry_id"] >= state["max_entry_id"]
+
+
+def rebuild_dialogue_turns(batch_size=1000, progress_callback=None, resume=False):
     conn = get_db_connection()
     marker = placeholder()
     insert_columns = (
@@ -493,27 +599,43 @@ def rebuild_dialogue_turns(batch_size=1000, progress_callback=None):
         f"INSERT INTO {TURN_TABLE} ({', '.join(insert_columns)}) "
         f"VALUES ({', '.join(marker for _ in insert_columns)})"
     )
-    inserted = 0
-    entries = 0
     try:
         create_dialogue_turns_schema(conn)
-        if is_postgres():
+        if resume:
+            state = get_dialogue_turns_rebuild_state(conn)
+            start_after_entry_id = state["max_turn_entry_id"]
+            inserted = state["total_turns"]
+            entries = state["entries_with_turns"]
+            processed_offset = state["processed_entries"]
+            total_rows = state["total_entries"]
+        elif is_postgres():
             conn.execute(f"TRUNCATE TABLE {TURN_TABLE} RESTART IDENTITY")
             conn.commit()
+            start_after_entry_id = 0
+            inserted = 0
+            entries = 0
+            processed_offset = 0
         else:
             conn.execute(f"DELETE FROM {TURN_TABLE}")
-        rows = conn.execute("""
+            start_after_entry_id = 0
+            inserted = 0
+            entries = 0
+            processed_offset = 0
+
+        where_sql = f"WHERE id > {marker}" if resume else ""
+        rows = conn.execute(f"""
             SELECT id, title, content, source, category, dataset_name,
                    current_segment, segment_text, speaker, conversation_id, segment_index
             FROM corpus_entries
+            {where_sql}
             ORDER BY id
-        """).fetchall()
+        """, (start_after_entry_id,) if resume else ()).fetchall()
         batch = []
-        total_rows = len(rows)
+        total_rows = total_rows if resume else len(rows)
         if progress_callback:
             progress_callback({
                 "phase": "start",
-                "processed": 0,
+                "processed": processed_offset,
                 "total": total_rows,
                 "entries_with_turns": entries,
                 "inserted_turns": inserted,
@@ -543,7 +665,7 @@ def rebuild_dialogue_turns(batch_size=1000, progress_callback=None):
             if progress_callback and (index % batch_size == 0 or index == total_rows):
                 progress_callback({
                     "phase": "processing",
-                    "processed": index,
+                    "processed": processed_offset + index,
                     "total": total_rows,
                     "entries_with_turns": entries,
                     "inserted_turns": inserted + len(batch),
@@ -907,6 +1029,462 @@ def get_advanced_filter_options():
             """).fetchall()
         ]
         return categories, datasets
+    finally:
+        close_connection(conn)
+
+
+def entry_conversation_key_sql(table_name=""):
+    prefix = f"{table_name}." if table_name else ""
+    if is_postgres():
+        return f"COALESCE(NULLIF({prefix}conversation_id, ''), CONCAT('entry:', {prefix}id::text))"
+    return f"COALESCE(NULLIF({prefix}conversation_id, ''), 'entry:' || {prefix}id)"
+
+
+def get_source_statistics(source_order=None):
+    stats = {
+        source: {
+            "source": source,
+            "entry_count": 0,
+            "dialogue_count": 0,
+            "turn_count": 0,
+        }
+        for source in (source_order or [])
+    }
+    conn = timed_connection("get_source_statistics")
+    try:
+        entry_rows = fetch_all_dicts(conn.execute("""
+            SELECT source, COUNT(*) AS entry_count
+            FROM corpus_entries
+            WHERE source IS NOT NULL AND TRIM(source) != ''
+            GROUP BY source
+        """))
+        for row in entry_rows:
+            source = row.get("source") or ""
+            stats.setdefault(source, {
+                "source": source,
+                "entry_count": 0,
+                "dialogue_count": 0,
+                "turn_count": 0,
+            })
+            stats[source]["entry_count"] = int(row.get("entry_count") or 0)
+
+        conversation_key_expr = entry_conversation_key_sql()
+        dialogue_rows = fetch_all_dicts(conn.execute(f"""
+            SELECT source, COUNT(DISTINCT {conversation_key_expr}) AS dialogue_count
+            FROM corpus_entries
+            WHERE source IS NOT NULL AND TRIM(source) != ''
+            GROUP BY source
+        """))
+        for row in dialogue_rows:
+            source = row.get("source") or ""
+            stats.setdefault(source, {
+                "source": source,
+                "entry_count": 0,
+                "dialogue_count": 0,
+                "turn_count": 0,
+            })
+            stats[source]["dialogue_count"] = int(row.get("dialogue_count") or 0)
+
+        if has_dialogue_turns_table():
+            turn_rows = fetch_all_dicts(conn.execute(f"""
+                SELECT source, COUNT(*) AS turn_count
+                FROM {TURN_TABLE}
+                WHERE source IS NOT NULL AND TRIM(source) != ''
+                GROUP BY source
+            """))
+            for row in turn_rows:
+                source = row.get("source") or ""
+                stats.setdefault(source, {
+                    "source": source,
+                    "entry_count": 0,
+                    "dialogue_count": 0,
+                    "turn_count": 0,
+                })
+                stats[source]["turn_count"] = int(row.get("turn_count") or 0)
+
+        for item in stats.values():
+            if not item["dialogue_count"]:
+                item["dialogue_count"] = item["entry_count"]
+        return stats
+    finally:
+        close_connection(conn)
+
+
+def get_browse_category_statistics(source=""):
+    stats = {}
+    marker = placeholder()
+    conversation_key_expr = entry_conversation_key_sql("ce")
+    source_where = f"WHERE ce.source = {marker}" if source else ""
+    source_params = [source] if source else []
+    conn = timed_connection("get_browse_category_statistics")
+    try:
+        entry_rows = fetch_all_dicts(conn.execute(
+            f"""
+            SELECT ce.category, COUNT(*) AS entry_count
+            FROM corpus_entries ce
+            {source_where}
+            GROUP BY ce.category
+            """,
+            source_params,
+        ))
+        for row in entry_rows:
+            category = row.get("category") or ""
+            if not category:
+                continue
+            stats[category] = {
+                "category": category,
+                "entry_count": int(row.get("entry_count") or 0),
+                "dialogue_count": 0,
+                "turn_count": 0,
+            }
+
+        dialogue_rows = fetch_all_dicts(conn.execute(
+            f"""
+            SELECT ce.category, COUNT(DISTINCT {conversation_key_expr}) AS dialogue_count
+            FROM corpus_entries ce
+            {source_where}
+            GROUP BY ce.category
+            """,
+            source_params,
+        ))
+        for row in dialogue_rows:
+            category = row.get("category") or ""
+            if not category:
+                continue
+            stats.setdefault(category, {
+                "category": category,
+                "entry_count": 0,
+                "dialogue_count": 0,
+                "turn_count": 0,
+            })
+            stats[category]["dialogue_count"] = int(row.get("dialogue_count") or 0)
+
+        if has_dialogue_turns_table():
+            turn_where = f"WHERE source = {marker}" if source else ""
+            turn_rows = fetch_all_dicts(conn.execute(
+                f"""
+                SELECT category, COUNT(*) AS turn_count
+                FROM {TURN_TABLE}
+                {turn_where}
+                GROUP BY category
+                """,
+                source_params,
+            ))
+            for row in turn_rows:
+                category = row.get("category") or ""
+                if not category:
+                    continue
+                stats.setdefault(category, {
+                    "category": category,
+                    "entry_count": 0,
+                    "dialogue_count": 0,
+                    "turn_count": 0,
+                })
+                stats[category]["turn_count"] = int(row.get("turn_count") or 0)
+
+        for item in stats.values():
+            if not item["dialogue_count"]:
+                item["dialogue_count"] = item["entry_count"]
+        return sorted(stats.values(), key=lambda item: item["category"])
+    finally:
+        close_connection(conn)
+
+
+def get_browse_dataset_statistics(source="", category=""):
+    stats = {}
+    marker = placeholder()
+    conversation_key_expr = entry_conversation_key_sql("ce")
+    where_clauses = []
+    params = []
+    if source:
+        where_clauses.append(f"ce.source = {marker}")
+        params.append(source)
+    if category:
+        where_clauses.append(f"ce.category = {marker}")
+        params.append(category)
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+
+    conn = timed_connection("get_browse_dataset_statistics")
+    try:
+        entry_rows = fetch_all_dicts(conn.execute(
+            f"""
+            SELECT ce.dataset_name, ce.category, COUNT(*) AS entry_count
+            FROM corpus_entries ce
+            {where_sql}
+            GROUP BY ce.dataset_name, ce.category
+            """,
+            params,
+        ))
+        for row in entry_rows:
+            dataset_name = row.get("dataset_name") or ""
+            if not dataset_name:
+                continue
+            stats[dataset_name] = {
+                "dataset_name": dataset_name,
+                "category": row.get("category") or "",
+                "entry_count": int(row.get("entry_count") or 0),
+                "dialogue_count": 0,
+                "turn_count": 0,
+            }
+
+        dialogue_rows = fetch_all_dicts(conn.execute(
+            f"""
+            SELECT ce.dataset_name, ce.category, COUNT(DISTINCT {conversation_key_expr}) AS dialogue_count
+            FROM corpus_entries ce
+            {where_sql}
+            GROUP BY ce.dataset_name, ce.category
+            """,
+            params,
+        ))
+        for row in dialogue_rows:
+            dataset_name = row.get("dataset_name") or ""
+            if not dataset_name:
+                continue
+            stats.setdefault(dataset_name, {
+                "dataset_name": dataset_name,
+                "category": row.get("category") or "",
+                "entry_count": 0,
+                "dialogue_count": 0,
+                "turn_count": 0,
+            })
+            stats[dataset_name]["dialogue_count"] = int(row.get("dialogue_count") or 0)
+
+        if has_dialogue_turns_table():
+            turn_where_clauses = []
+            turn_params = []
+            if source:
+                turn_where_clauses.append(f"source = {marker}")
+                turn_params.append(source)
+            if category:
+                turn_where_clauses.append(f"category = {marker}")
+                turn_params.append(category)
+            turn_where_sql = f"WHERE {' AND '.join(turn_where_clauses)}" if turn_where_clauses else ""
+            turn_rows = fetch_all_dicts(conn.execute(
+                f"""
+                SELECT dataset_name, category, COUNT(*) AS turn_count
+                FROM {TURN_TABLE}
+                {turn_where_sql}
+                GROUP BY dataset_name, category
+                """,
+                turn_params,
+            ))
+            for row in turn_rows:
+                dataset_name = row.get("dataset_name") or ""
+                if not dataset_name:
+                    continue
+                stats.setdefault(dataset_name, {
+                    "dataset_name": dataset_name,
+                    "category": row.get("category") or "",
+                    "entry_count": 0,
+                    "dialogue_count": 0,
+                    "turn_count": 0,
+                })
+                stats[dataset_name]["turn_count"] = int(row.get("turn_count") or 0)
+
+        for item in stats.values():
+            if not item["dialogue_count"]:
+                item["dialogue_count"] = item["entry_count"]
+        return sorted(stats.values(), key=lambda item: (-item["dialogue_count"], item["dataset_name"]))
+    finally:
+        close_connection(conn)
+
+
+def build_dialogue_browse_filters(source="", category="", dataset_name="", table_name=""):
+    marker = placeholder()
+    prefix = f"{table_name}." if table_name else ""
+    where_clauses = []
+    params = []
+    if source:
+        where_clauses.append(f"{prefix}source = {marker}")
+        params.append(source)
+    if category:
+        where_clauses.append(f"{prefix}category = {marker}")
+        params.append(category)
+    if dataset_name:
+        where_clauses.append(f"{prefix}dataset_name = {marker}")
+        params.append(dataset_name)
+    return where_clauses, params
+
+
+def count_browse_dialogues(source="", category="", dataset_name=""):
+    conversation_key_expr = entry_conversation_key_sql("ce")
+    where_clauses, params = build_dialogue_browse_filters(source, category, dataset_name, "ce")
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+    conn = timed_connection("count_browse_dialogues")
+    try:
+        row = fetch_one_dict(conn.execute(
+            f"""
+            SELECT COUNT(DISTINCT {conversation_key_expr}) AS total
+            FROM corpus_entries ce
+            {where_sql}
+            """,
+            params,
+        ))
+        return int((row or {}).get("total") or 0)
+    finally:
+        close_connection(conn)
+
+
+def build_entry_dialogue(entry):
+    turns = split_entry_turns(entry)
+    if not turns:
+        text = normalize_turn_text(entry.get("content") or "")
+        turns = [{
+            "turn_index": 1,
+            "speaker_label": entry.get("speaker") or "",
+            "turn_text": text,
+            "entry_id": entry.get("id"),
+        }] if text else []
+    return {
+        "conversation_key": entry.get("conversation_id") or f"entry:{entry.get('id')}",
+        "entry_id": entry.get("id"),
+        "title": entry.get("title") or "未命名对话",
+        "source": entry.get("source") or "",
+        "category": entry.get("category") or "",
+        "dataset_name": entry.get("dataset_name") or "",
+        "year": entry.get("year"),
+        "turn_count": len(turns),
+        "turns": turns,
+        "source_url": entry.get("source_url") or "",
+        "crawl_source": entry.get("crawl_source") or "",
+        "crawl_date": entry.get("crawl_date") or "",
+        "license_note": entry.get("license_note") or "",
+    }
+
+
+def query_browse_conversation_entries(conn, source="", category="", dataset_name="", limit=10, offset=0):
+    marker = placeholder()
+    conversation_key_expr = entry_conversation_key_sql("ce")
+    where_clauses, params = build_dialogue_browse_filters(source, category, dataset_name, "ce")
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+    target_count = max(0, offset) + max(1, limit)
+    chunk_size = max(100, min(1000, target_count * 2))
+    entry_offset = 0
+    seen_keys = set()
+    conversations = []
+
+    while len(conversations) < target_count:
+        rows = fetch_all_dicts(conn.execute(
+            f"""
+            SELECT {conversation_key_expr} AS conversation_key,
+                   ce.id AS entry_id,
+                   ce.title,
+                   ce.source,
+                   ce.category,
+                   ce.dataset_name,
+                   ce.year,
+                   ce.source_url,
+                   ce.crawl_source,
+                   ce.crawl_date,
+                   ce.license_note
+            FROM corpus_entries ce
+            {where_sql}
+            ORDER BY ce.id DESC
+            LIMIT {marker} OFFSET {marker}
+            """,
+            [*params, chunk_size, entry_offset],
+        ))
+        if not rows:
+            break
+
+        for row in rows:
+            key = row["conversation_key"]
+            if key in seen_keys:
+                continue
+            seen_keys.add(key)
+            conversations.append(row)
+            if len(conversations) >= target_count:
+                break
+
+        if len(rows) < chunk_size:
+            break
+        entry_offset += chunk_size
+
+    return conversations[offset:offset + limit]
+
+
+def query_browse_dialogues(source="", category="", dataset_name="", limit=10, offset=0):
+    marker = placeholder()
+    conn = timed_connection("query_browse_dialogues")
+    try:
+        conversations = query_browse_conversation_entries(conn, source, category, dataset_name, limit, offset)
+        if not conversations:
+            return []
+
+        if not has_dialogue_turns_table():
+            entry_ids = [row["entry_id"] for row in conversations]
+            entry_markers = ", ".join([marker] * len(entry_ids))
+            rows = fetch_all_dicts(conn.execute(
+                f"SELECT * FROM corpus_entries WHERE id IN ({entry_markers})",
+                entry_ids,
+            ))
+            rows_by_id = {row["id"]: row for row in rows}
+            return [
+                build_entry_dialogue(rows_by_id[conversation["entry_id"]])
+                for conversation in conversations
+                if conversation["entry_id"] in rows_by_id
+            ]
+
+        keys = [row["conversation_key"] for row in conversations]
+        key_markers = ", ".join([marker] * len(keys))
+        turn_where_clauses = [f"dt.conversation_key IN ({key_markers})"]
+        turn_params = list(keys)
+        turn_where_sql = f"WHERE {' AND '.join(turn_where_clauses)}"
+        turn_rows = fetch_all_dicts(conn.execute(
+            f"""
+            SELECT dt.conversation_key,
+                   dt.entry_id,
+                   dt.turn_index,
+                   dt.speaker_label,
+                   dt.turn_text,
+                   dt.source,
+                   dt.category,
+                   dt.dataset_name,
+                   e.title,
+                   e.year,
+                   e.source_url,
+                   e.crawl_source,
+                   e.crawl_date,
+                   e.license_note,
+                   e.audio_file,
+                   e.start_time,
+                   e.end_time
+            FROM {TURN_TABLE} dt
+            LEFT JOIN corpus_entries e ON e.id = dt.entry_id
+            {turn_where_sql}
+            ORDER BY dt.conversation_key, dt.turn_index, dt.id
+            """,
+            turn_params,
+        ))
+
+        turns_by_key = {key: [] for key in keys}
+        first_turn_by_key = {}
+        for row in turn_rows:
+            key = row["conversation_key"]
+            turns_by_key.setdefault(key, []).append(row)
+            first_turn_by_key.setdefault(key, row)
+
+        dialogues = []
+        for conversation in conversations:
+            key = conversation["conversation_key"]
+            first_turn = first_turn_by_key.get(key) or {}
+            turns = turns_by_key.get(key) or []
+            dialogues.append({
+                "conversation_key": key,
+                "entry_id": conversation.get("entry_id"),
+                "title": conversation.get("title") or first_turn.get("title") or key or "未命名对话",
+                "source": conversation.get("source") or first_turn.get("source") or "",
+                "category": conversation.get("category") or first_turn.get("category") or "",
+                "dataset_name": conversation.get("dataset_name") or first_turn.get("dataset_name") or "",
+                "year": conversation.get("year") or first_turn.get("year"),
+                "turn_count": len(turns),
+                "turns": turns,
+                "source_url": conversation.get("source_url") or first_turn.get("source_url") or "",
+                "crawl_source": conversation.get("crawl_source") or first_turn.get("crawl_source") or "",
+                "crawl_date": conversation.get("crawl_date") or first_turn.get("crawl_date") or "",
+                "license_note": conversation.get("license_note") or first_turn.get("license_note") or "",
+            })
+        return dialogues
     finally:
         close_connection(conn)
 
@@ -1669,7 +2247,7 @@ def build_dialogue_pair_row(turn_a, turn_b):
     )
 
 
-def rebuild_dialogue_pairs(batch_size=5000, progress_callback=None):
+def rebuild_dialogue_pairs(batch_size=5000, progress_callback=None, allow_incomplete_turns=False):
     conn = get_db_connection()
     marker = placeholder()
     columns = (
@@ -1694,6 +2272,14 @@ def rebuild_dialogue_pairs(batch_size=5000, progress_callback=None):
     }
     try:
         create_dialogue_pairs_schema(conn)
+        if not allow_incomplete_turns and not dialogue_turns_look_complete(conn):
+            state = get_dialogue_turns_rebuild_state(conn)
+            raise RuntimeError(
+                "dialogue_turns looks incomplete: "
+                f"processed_entries={state['processed_entries']}/{state['total_entries']}, "
+                f"max_turn_entry_id={state['max_turn_entry_id']}, max_entry_id={state['max_entry_id']}. "
+                "Run migrate_dialogue_turns.py --resume before rebuilding dialogue_pairs."
+            )
         if is_postgres():
             conn.execute(f"TRUNCATE TABLE {PAIR_TABLE} RESTART IDENTITY")
             conn.commit()

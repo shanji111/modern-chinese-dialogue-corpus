@@ -33,7 +33,24 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Build the derived dialogue_turns table for resonance search.")
     parser.add_argument("--batch-size", type=int, default=1000, help="Rows to insert per batch.")
     parser.add_argument("--indexes-only", action="store_true", help="Only create/confirm dialogue_turns indexes.")
+    parser.add_argument("--resume", action="store_true", help="Continue a failed Postgres rebuild from the highest completed entry_id.")
+    parser.add_argument("--status", action="store_true", help="Print current dialogue_turns rebuild status and exit.")
     args = parser.parse_args()
+
+    if args.status:
+        conn = corpus_repository.get_db_connection()
+        try:
+            state = corpus_repository.get_dialogue_turns_rebuild_state(conn)
+        finally:
+            conn.close()
+        print(f"corpus_entries: {state['total_entries']}")
+        print(f"dialogue_turns: {state['total_turns']}")
+        print(f"entries_with_turns: {state['entries_with_turns']}")
+        print(f"processed_entries: {state['processed_entries']}/{state['total_entries']}")
+        print(f"max_turn_entry_id: {state['max_turn_entry_id']}")
+        print(f"max_entry_id: {state['max_entry_id']}")
+        print(f"complete: {state['max_entry_id'] == 0 or state['max_turn_entry_id'] >= state['max_entry_id']}")
+        return
 
     if args.indexes_only:
         conn = corpus_repository.get_db_connection()
@@ -66,6 +83,7 @@ def main() -> None:
     stats = corpus_repository.rebuild_dialogue_turns(
         batch_size=max(1, args.batch_size),
         progress_callback=lambda payload: render_progress(payload, started_at),
+        resume=args.resume,
     )
     corpus_repository.ensure_postgres_dialogue_turn_text_trigram_index()
     print(f"dialogue_turns rebuilt: entries={stats['entries']} turns={stats['turns']}")
