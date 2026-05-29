@@ -15,6 +15,7 @@ import corpus_repository
 from database import DATABASE_BACKEND, DATABASE_PATH, DATABASE_URL, get_db_connection, print_database_identity
 from db_utils import compute_content_hash, utc_timestamp
 from services.audio_service import build_corpus_audio_url, get_corpus_audio_response
+from services.browse_service import build_browse_context, build_home_context
 from services.submission_storage_service import (
     build_submission_download_response,
     delete_submission_upload,
@@ -144,6 +145,14 @@ def print_startup_database_diagnostics():
 print_database_identity("[startup-db]")
 if os.getenv("ENABLE_STARTUP_DB_DIAGNOSTICS", "").strip().lower() in {"1", "true", "yes", "on"}:
     print_startup_database_diagnostics()
+
+
+@app.template_filter("format_count")
+def format_count(value):
+    try:
+        return f"{int(value or 0):,}"
+    except (TypeError, ValueError):
+        return "0"
 
 
 @app.errorhandler(RequestEntityTooLarge)
@@ -1303,13 +1312,17 @@ insert_approved_multimodal_submission = corpus_repository.insert_approved_multim
 
 @app.route("/")
 def home():
-    sources, years = get_filter_options()
-    return render_template("home.html", sources=sources, years=years)
+    return render_template("home.html", **build_home_context())
 
 
 @app.route("/data-sources")
 def data_sources():
     return render_template("data_sources.html")
+
+
+@app.route("/browse")
+def browse_dialogues():
+    return render_template("browse.html", **build_browse_context(request.args))
 
 
 @app.route("/submit", methods=["GET", "POST"])

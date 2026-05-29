@@ -557,26 +557,67 @@ def has_dialogue_turns_table():
         close_connection(conn)
 
 
-def get_dialogue_turns_rebuild_state(conn=None):
+def build_rebuild_entry_filters(source="", category="", dataset_name="", table_alias=""):
+    marker = placeholder()
+    prefix = f"{table_alias}." if table_alias else ""
+    clauses = []
+    params = []
+    if source:
+        clauses.append(f"{prefix}source = {marker}")
+        params.append(source)
+    if category:
+        clauses.append(f"{prefix}category = {marker}")
+        params.append(category)
+    if dataset_name:
+        clauses.append(f"{prefix}dataset_name = {marker}")
+        params.append(dataset_name)
+    return clauses, params
+
+
+def has_rebuild_filters(source="", category="", dataset_name=""):
+    return bool(source or category or dataset_name)
+
+
+def get_dialogue_turns_rebuild_state(conn=None, source="", category="", dataset_name=""):
     owns_connection = conn is None
     conn = conn or get_db_connection()
     try:
         create_dialogue_turns_schema(conn, include_indexes=False)
         marker = placeholder()
-        source_row = fetch_one_dict(conn.execute("""
+        entry_clauses, entry_params = build_rebuild_entry_filters(source, category, dataset_name)
+        entry_where = f"WHERE {' AND '.join(entry_clauses)}" if entry_clauses else ""
+        source_row = fetch_one_dict(conn.execute(f"""
             SELECT COUNT(*) AS total_entries, COALESCE(MAX(id), 0) AS max_entry_id
             FROM corpus_entries
-        """))
-        turn_row = fetch_one_dict(conn.execute(f"""
-            SELECT COUNT(*) AS total_turns,
-                   COUNT(DISTINCT entry_id) AS entries_with_turns,
-                   COALESCE(MAX(entry_id), 0) AS max_turn_entry_id
-            FROM {TURN_TABLE}
-        """))
+            {entry_where}
+        """, entry_params))
+        if entry_clauses:
+            turn_clauses, turn_params = build_rebuild_entry_filters(source, category, dataset_name, "ce")
+            turn_where = f"WHERE {' AND '.join(turn_clauses)}"
+            turn_row = fetch_one_dict(conn.execute(
+                f"""
+                SELECT COUNT(*) AS total_turns,
+                       COUNT(DISTINCT dt.entry_id) AS entries_with_turns,
+                       COALESCE(MAX(dt.entry_id), 0) AS max_turn_entry_id
+                FROM {TURN_TABLE} dt
+                JOIN corpus_entries ce ON ce.id = dt.entry_id
+                {turn_where}
+                """,
+                turn_params,
+            ))
+        else:
+            turn_row = fetch_one_dict(conn.execute(f"""
+                SELECT COUNT(*) AS total_turns,
+                       COUNT(DISTINCT entry_id) AS entries_with_turns,
+                       COALESCE(MAX(entry_id), 0) AS max_turn_entry_id
+                FROM {TURN_TABLE}
+            """))
         max_turn_entry_id = int((turn_row or {}).get("max_turn_entry_id") or 0)
+        processed_clauses = [f"id <= {marker}", *entry_clauses]
+        processed_params = [max_turn_entry_id, *entry_params]
         processed_row = fetch_one_dict(conn.execute(
-            f"SELECT COUNT(*) AS processed_entries FROM corpus_entries WHERE id <= {marker}",
-            (max_turn_entry_id,),
+            f"SELECT COUNT(*) AS processed_entries FROM corpus_entries WHERE {' AND '.join(processed_clauses)}",
+            processed_params,
         ))
         return {
             "total_entries": int((source_row or {}).get("total_entries") or 0),
@@ -591,12 +632,12 @@ def get_dialogue_turns_rebuild_state(conn=None):
             close_connection(conn)
 
 
-def dialogue_turns_look_complete(conn=None):
-    state = get_dialogue_turns_rebuild_state(conn)
+def dialogue_turns_look_complete(conn=None, source="", category="", dataset_name=""):
+    state = get_dialogue_turns_rebuild_state(conn, source=source, category=category, dataset_name=dataset_name)
     return state["max_entry_id"] == 0 or state["max_turn_entry_id"] >= state["max_entry_id"]
 
 
-def rebuild_dialogue_turns(batch_size=1000, progress_callback=None, resume=False):
+def rebuild_dialogue_turns(batch_size=1000, progress_callback=None, resume=False, source="", category="", dataset_name=""):
     conn = get_db_connection()
     marker = placeholder()
     insert_columns = (

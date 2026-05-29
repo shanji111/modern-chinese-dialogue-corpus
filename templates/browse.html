@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ source or "全部板块" }} - 完整对话浏览</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="result-page browse-page">
+
+    <div class="top-search-bar browse-top-bar">
+        <div class="browse-page-header">
+            <div>
+                <a href="{{ url_for('home') }}" class="back-home-link">返回首页</a>
+                <h1>{{ source or "全部板块" }}</h1>
+            </div>
+        </div>
+
+        <div class="browse-stat-grid">
+            <div>
+                <b>{{ active_stats.entry_count|format_count }}</b>
+                <span>条数据</span>
+            </div>
+            <div>
+                <b>{{ active_stats.dialogue_count|format_count }}</b>
+                <span>完整对话</span>
+            </div>
+            <div>
+                <b>{{ active_stats.turn_count|format_count }}</b>
+                <span>话轮</span>
+            </div>
+        </div>
+
+        <div class="category-tabs browse-source-tabs">
+            {% for section in sections %}
+                {% set stats = source_stats.get(section.name, {}) %}
+                <a href="{{ url_for('browse_dialogues', source=section.name) }}"
+                   class="tab-item {% if section.name == source %}active{% endif %}">
+                    {{ section.name }}
+                    <small>{{ stats.dialogue_count|format_count }}</small>
+                </a>
+            {% endfor %}
+        </div>
+
+        {% if category_stats %}
+        <section class="browse-hierarchy-panel">
+            <div class="browse-hierarchy-head">
+                <h2>二级分类</h2>
+                <a href="{{ url_for('browse_dialogues', source=source, page_size=page_size) }}"
+                   class="{% if not category %}active{% endif %}">全部</a>
+            </div>
+            <div class="browse-facet-grid">
+                {% for item in category_stats %}
+                    <a class="browse-facet-card {% if item.category == category %}active{% endif %}"
+                       href="{{ url_for('browse_dialogues', source=source, category=item.category, page_size=page_size) }}">
+                        <span>{{ item.category }}</span>
+                        <b>{{ item.dialogue_count|format_count }}</b>
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        {% if category and dataset_stats %}
+        <section class="browse-hierarchy-panel browse-dataset-panel">
+            <div class="browse-hierarchy-head">
+                <h2>具体语料</h2>
+                <a href="{{ url_for('browse_dialogues', source=source, category=category, page_size=page_size) }}"
+                   class="{% if not dataset_name %}active{% endif %}">全部</a>
+            </div>
+            <div class="browse-facet-grid browse-dataset-grid">
+                {% for item in dataset_stats %}
+                    <a class="browse-facet-card {% if item.dataset_name == dataset_name %}active{% endif %}"
+                       href="{{ url_for('browse_dialogues', source=source, category=category, dataset_name=item.dataset_name, page_size=page_size) }}">
+                        <span>{{ item.dataset_name }}</span>
+                        <b>{{ item.dialogue_count|format_count }}</b>
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <form action="{{ url_for('browse_dialogues') }}" method="get" class="browse-filter-row">
+            <select name="source">
+                {% for s in sources %}
+                    <option value="{{ s }}" {% if s == source %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+            <select name="category">
+                <option value="">全部类别</option>
+                {% for c in categories %}
+                    <option value="{{ c }}" {% if c == category %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+            <select name="dataset_name">
+                <option value="">全部语料</option>
+                {% for d in datasets %}
+                    <option value="{{ d }}" {% if d == dataset_name %}selected{% endif %}>{{ d }}</option>
+                {% endfor %}
+            </select>
+            <select name="page_size">
+                {% for size in [5, 10, 20] %}
+                    <option value="{{ size }}" {% if size == page_size %}selected{% endif %}>每页 {{ size }} 个</option>
+                {% endfor %}
+            </select>
+            <button type="submit">查看</button>
+            <a href="{{ url_for('search', source=source, category=category, dataset_name=dataset_name) }}"
+               class="browse-search-link">去检索</a>
+        </form>
+    </div>
+
+    <div class="result-summary browse-summary">
+        <div class="summary-left">
+            {{ source or "全部板块" }}{% if category %} / {{ category }}{% endif %}{% if dataset_name %} / {{ dataset_name }}{% endif %}
+        </div>
+        <div class="summary-right">
+            共 <b>{{ total|format_count }}</b> 个完整对话，当前第 <b>{{ start_no }} - {{ end_no }}</b> 个
+        </div>
+    </div>
+
+    <main class="dialogue-strip-list">
+        {% for dialogue in dialogues %}
+            <article class="dialogue-strip">
+                <header class="dialogue-strip-head">
+                    <div class="dialogue-list-no">{{ start_no + loop.index0 }}</div>
+                    <div class="dialogue-title-block">
+                        <h2>{{ dialogue.title }}</h2>
+                        <div class="dialogue-meta-line">
+                            <span>{{ dialogue.source or "未知来源" }}</span>
+                            {% if dialogue.category %}<span>{{ dialogue.category }}</span>{% endif %}
+                            {% if dialogue.dataset_name %}<span>{{ dialogue.dataset_name }}</span>{% endif %}
+                            {% if dialogue.year %}<span>{{ dialogue.year }}</span>{% endif %}
+                            <span>ID: {{ dialogue.conversation_key }}</span>
+                            {% if dialogue.turn_count > 20 %}<span>长对话，可在话轮区内滚动查看</span>{% endif %}
+                            {% if dialogue.source_url %}
+                                <a href="{{ dialogue.source_url }}" target="_blank" rel="noopener noreferrer">原文</a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="dialogue-turn-count">
+                        <b>{{ dialogue.turn_count|format_count }}</b>
+                        <span>话轮</span>
+                    </div>
+                </header>
+
+                <div class="dialogue-turn-list">
+                    {% for turn in dialogue.turns %}
+                        <div class="dialogue-turn-row">
+                            <div class="dialogue-turn-index">{{ turn.turn_index }}</div>
+                            <div class="dialogue-turn-speaker">{{ turn.speaker_label or "—" }}</div>
+                            <div class="dialogue-turn-text">{{ turn.turn_text }}</div>
+                        </div>
+                    {% else %}
+                        <div class="dialogue-turn-empty">暂无可展示话轮。</div>
+                    {% endfor %}
+                </div>
+            </article>
+        {% else %}
+            <div class="no-result">暂无可浏览的完整对话。</div>
+        {% endfor %}
+    </main>
+
+    {% if total_pages > 1 %}
+    <div class="pagination">
+        {% if page > 1 %}
+            <a href="{{ url_for('browse_dialogues', **dict(query_args, page=page-1)) }}">上一页</a>
+        {% endif %}
+
+        {% set page_start = [1, page - 4]|max %}
+        {% set page_end = [total_pages, page + 5]|min %}
+        {% for p in range(page_start, page_end + 1) %}
+            {% if p == page %}
+                <span class="current-page">{{ p }}</span>
+            {% else %}
+                <a href="{{ url_for('browse_dialogues', **dict(query_args, page=p)) }}">{{ p }}</a>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+            <a href="{{ url_for('browse_dialogues', **dict(query_args, page=page+1)) }}">下一页</a>
+        {% endif %}
+    </div>
+    {% endif %}
+
+</body>
+</html>
