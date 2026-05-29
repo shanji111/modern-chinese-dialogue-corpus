@@ -2,8 +2,17 @@ import math
 import time
 
 import corpus_repository
-from talkdata.text_dialogue_taxonomy import TEXT_DIALOGUE_CATEGORIES, TEXT_DIALOGUE_SOURCE
 
+
+TEXT_DIALOGUE_SOURCE = "文本对话"
+TEXT_DIALOGUE_CATEGORIES = (
+    "论辩语录",
+    "短篇叙事对白",
+    "历史汉语会话教材",
+    "古典章回小说对白",
+    "戏剧对白",
+    "现当代小说对白",
+)
 
 HOME_CORPUS_SECTIONS = [
     {
