@@ -1,5 +1,4 @@
 import math
-import time
 
 import corpus_repository
 
@@ -45,10 +44,49 @@ HOME_CORPUS_SECTIONS = [
     },
 ]
 
-SOURCE_STATS_CACHE_TTL_SECONDS = 60
-_SOURCE_STATS_CACHE = {
-    "expires_at": 0,
-    "stats": None,
+STATIC_SOURCE_STATS = {
+    "日常对话": {
+        "source": "日常对话",
+        "entry_count": 90075,
+        "dialogue_count": 90075,
+        "turn_count": 437704,
+    },
+    "影视对白": {
+        "source": "影视对白",
+        "entry_count": 6501,
+        "dialogue_count": 6501,
+        "turn_count": 43149,
+    },
+    "文本对话": {
+        "source": "文本对话",
+        "entry_count": 11260,
+        "dialogue_count": 11260,
+        "turn_count": 25909,
+    },
+    "网络回帖": {
+        "source": "网络回帖",
+        "entry_count": 9101,
+        "dialogue_count": 9101,
+        "turn_count": 18202,
+    },
+    "访谈语料": {
+        "source": "访谈语料",
+        "entry_count": 3101,
+        "dialogue_count": 3101,
+        "turn_count": 6510,
+    },
+    "课堂互动": {
+        "source": "课堂互动",
+        "entry_count": 1,
+        "dialogue_count": 1,
+        "turn_count": 1,
+    },
+    "多模态语料": {
+        "source": "多模态语料",
+        "entry_count": 129,
+        "dialogue_count": 3,
+        "turn_count": 129,
+    },
 }
 
 
@@ -57,15 +95,15 @@ def get_section_names():
 
 
 def get_home_source_stats():
-    now = time.monotonic()
-    cached_stats = _SOURCE_STATS_CACHE.get("stats")
-    if cached_stats is not None and _SOURCE_STATS_CACHE.get("expires_at", 0) > now:
-        return cached_stats
-
-    stats = corpus_repository.get_source_statistics(get_section_names())
-    _SOURCE_STATS_CACHE["stats"] = stats
-    _SOURCE_STATS_CACHE["expires_at"] = now + SOURCE_STATS_CACHE_TTL_SECONDS
-    return stats
+    return {
+        source: dict(STATIC_SOURCE_STATS.get(source, {
+            "source": source,
+            "entry_count": 0,
+            "dialogue_count": 0,
+            "turn_count": 0,
+        }))
+        for source in get_section_names()
+    }
 
 
 def parse_page_number(value):
@@ -104,10 +142,9 @@ def order_category_stats(source, category_stats):
 
 
 def build_home_context():
-    sources, years = corpus_repository.get_filter_options()
     return {
-        "sources": sources,
-        "years": years,
+        "sources": get_section_names(),
+        "years": [],
         "sections": HOME_CORPUS_SECTIONS,
         "source_stats": get_home_source_stats(),
     }
@@ -125,8 +162,8 @@ def build_browse_context(args):
     page_size = parse_page_size(args.get("page_size", "10"))
     source_stats = get_home_source_stats()
     active_stats = get_source_stat(source_stats, source)
-    category_stats = order_category_stats(source, corpus_repository.get_browse_category_statistics(source))
-    dataset_stats = corpus_repository.get_browse_dataset_statistics(source, category)
+    category_stats = []
+    dataset_stats = []
 
     if not category and not dataset_name and source in source_stats:
         total = active_stats["dialogue_count"]
@@ -148,9 +185,7 @@ def build_browse_context(args):
     start_no = offset + 1 if total > 0 else 0
     end_no = min(offset + len(dialogues), total)
 
-    sources, years = corpus_repository.get_filter_options()
-    global_categories, _datasets = corpus_repository.get_advanced_filter_options()
-    categories = [item["category"] for item in category_stats] or global_categories
+    categories = list(TEXT_DIALOGUE_CATEGORIES) if source == TEXT_DIALOGUE_SOURCE else []
     datasets = [item["dataset_name"] for item in dataset_stats]
 
     return {
@@ -160,7 +195,7 @@ def build_browse_context(args):
         "source": source,
         "category": category,
         "dataset_name": dataset_name,
-        "sources": sources,
+        "sources": section_names,
         "categories": categories,
         "datasets": datasets,
         "category_stats": category_stats,
