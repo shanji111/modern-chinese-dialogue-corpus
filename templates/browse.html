@@ -53,7 +53,9 @@
                     <a class="browse-facet-card {% if item.category == category %}active{% endif %}"
                        href="{{ url_for('browse_dialogues', source=source, category=item.category, page_size=page_size) }}">
                         <span>{{ item.category }}</span>
+                        {% if item.dialogue_count is defined and item.dialogue_count is not none %}
                         <b>{{ item.dialogue_count|format_count }}</b>
+                        {% endif %}
                     </a>
                 {% endfor %}
             </div>
@@ -70,9 +72,11 @@
             <div class="browse-facet-grid browse-dataset-grid">
                 {% for item in dataset_stats %}
                     <a class="browse-facet-card {% if item.dataset_name == dataset_name %}active{% endif %}"
-                       href="{{ url_for('browse_dialogues', source=source, category=category, dataset_name=item.dataset_name, page_size=page_size) }}">
+                        href="{{ url_for('browse_dialogues', source=source, category=category, dataset_name=item.dataset_name, page_size=page_size) }}">
                         <span>{{ item.dataset_name }}</span>
+                        {% if item.dialogue_count is defined and item.dialogue_count is not none %}
                         <b>{{ item.dialogue_count|format_count }}</b>
+                        {% endif %}
                     </a>
                 {% endfor %}
             </div>

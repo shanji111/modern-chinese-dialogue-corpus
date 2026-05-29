@@ -89,6 +89,61 @@ STATIC_SOURCE_STATS = {
     },
 }
 
+STATIC_SOURCE_CATEGORIES = {
+    "日常对话": (
+        "豆瓣多轮对话",
+        "青云语料",
+        "chatterbot",
+        "口语",
+    ),
+    "影视对白": (
+        "subtitle",
+        "对白",
+    ),
+    TEXT_DIALOGUE_SOURCE: TEXT_DIALOGUE_CATEGORIES,
+    "网络回帖": (
+        "贴吧回帖",
+        "网络互动",
+    ),
+    "访谈语料": (
+        "外交部记者会",
+        "中国访谈",
+        "发布会实录",
+        "访谈",
+    ),
+    "课堂互动": (
+        "教学互动",
+    ),
+    "多模态语料": (
+        "音频转写",
+        "音视频互动",
+    ),
+}
+
+STATIC_SOURCE_DATASETS = {
+    ("日常对话", "豆瓣多轮对话"): ("douban-multiturn-100w",),
+    ("日常对话", "青云语料"): ("qingyun-11w", "青云语料"),
+    ("日常对话", "chatterbot"): ("chatterbot-1k", "chatterbot"),
+    ("日常对话", "口语"): ("口语",),
+    ("影视对白", "subtitle"): ("subtitle-useless",),
+    ("影视对白", "对白"): ("对白",),
+    (TEXT_DIALOGUE_SOURCE, "论辩语录"): ("朱子语类", "孟子", "论语"),
+    (TEXT_DIALOGUE_SOURCE, "短篇叙事对白"): ("唐传奇", "世说新语", "清平山堂话本"),
+    (TEXT_DIALOGUE_SOURCE, "历史汉语会话教材"): ("朴通事", "老乞大"),
+    (TEXT_DIALOGUE_SOURCE, "古典章回小说对白"): ("红楼梦", "水浒传", "西游记"),
+    (TEXT_DIALOGUE_SOURCE, "戏剧对白"): ("雷雨",),
+    (TEXT_DIALOGUE_SOURCE, "现当代小说对白"): ("平凡的世界", "骆驼祥子"),
+    ("网络回帖", "贴吧回帖"): ("tieba-305w", "贴吧回帖"),
+    ("网络回帖", "网络互动"): ("网络互动",),
+    ("访谈语料", "外交部记者会"): ("mfa_press",),
+    ("访谈语料", "中国访谈"): ("china_interview",),
+    ("访谈语料", "发布会实录"): ("china_live",),
+    ("访谈语料", "访谈"): ("访谈",),
+    ("课堂互动", "教学互动"): ("教学互动",),
+    ("多模态语料", "音频转写"): ("local-audio-demo",),
+    ("多模态语料", "音视频互动"): ("音视频互动",),
+}
+
 
 def get_section_names():
     return [section["name"] for section in HOME_CORPUS_SECTIONS]
@@ -141,6 +196,26 @@ def order_category_stats(source, category_stats):
     )
 
 
+def get_static_category_stats(source):
+    return [
+        {"category": category}
+        for category in STATIC_SOURCE_CATEGORIES.get(source, ())
+    ]
+
+
+def get_static_dataset_stats(source, category=""):
+    categories = [category] if category else STATIC_SOURCE_CATEGORIES.get(source, ())
+    datasets = []
+    seen = set()
+    for item_category in categories:
+        for dataset_name in STATIC_SOURCE_DATASETS.get((source, item_category), ()):
+            if dataset_name in seen:
+                continue
+            seen.add(dataset_name)
+            datasets.append({"dataset_name": dataset_name})
+    return datasets
+
+
 def build_home_context():
     return {
         "sources": get_section_names(),
@@ -162,8 +237,8 @@ def build_browse_context(args):
     page_size = parse_page_size(args.get("page_size", "10"))
     source_stats = get_home_source_stats()
     active_stats = get_source_stat(source_stats, source)
-    category_stats = []
-    dataset_stats = []
+    category_stats = order_category_stats(source, get_static_category_stats(source))
+    dataset_stats = get_static_dataset_stats(source, category)
 
     if not category and not dataset_name and source in source_stats:
         total = active_stats["dialogue_count"]
@@ -185,7 +260,7 @@ def build_browse_context(args):
     start_no = offset + 1 if total > 0 else 0
     end_no = min(offset + len(dialogues), total)
 
-    categories = list(TEXT_DIALOGUE_CATEGORIES) if source == TEXT_DIALOGUE_SOURCE else []
+    categories = [item["category"] for item in category_stats]
     datasets = [item["dataset_name"] for item in dataset_stats]
 
     return {

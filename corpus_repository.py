@@ -1579,11 +1579,33 @@ def query_browse_dialogues(source="", category="", dataset_name="", limit=10, of
             turns_by_key.setdefault(key, []).append(row)
             first_turn_by_key.setdefault(key, row)
 
+        fallback_entry_ids = [
+            conversation["entry_id"]
+            for conversation in conversations
+            if not turns_by_key.get(conversation["conversation_key"])
+        ]
+        fallback_dialogues_by_id = {}
+        if fallback_entry_ids:
+            entry_markers = ", ".join([marker] * len(fallback_entry_ids))
+            entry_rows = fetch_all_dicts(conn.execute(
+                f"SELECT * FROM corpus_entries WHERE id IN ({entry_markers})",
+                fallback_entry_ids,
+            ))
+            fallback_dialogues_by_id = {
+                row["id"]: build_entry_dialogue(row)
+                for row in entry_rows
+            }
+
         dialogues = []
         for conversation in conversations:
             key = conversation["conversation_key"]
             first_turn = first_turn_by_key.get(key) or {}
             turns = turns_by_key.get(key) or []
+            if not turns:
+                fallback_dialogue = fallback_dialogues_by_id.get(conversation.get("entry_id"))
+                if fallback_dialogue:
+                    dialogues.append(fallback_dialogue)
+                    continue
             dialogues.append({
                 "conversation_key": key,
                 "entry_id": conversation.get("entry_id"),
