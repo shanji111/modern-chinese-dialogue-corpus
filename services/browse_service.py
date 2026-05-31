@@ -150,14 +150,16 @@ def get_section_names():
 
 
 def get_home_source_stats():
+    section_names = get_section_names()
+    dynamic_stats = corpus_repository.get_source_statistics(section_names)
     return {
-        source: dict(STATIC_SOURCE_STATS.get(source, {
+        source: dict(dynamic_stats.get(source) or STATIC_SOURCE_STATS.get(source, {
             "source": source,
             "entry_count": 0,
             "dialogue_count": 0,
             "turn_count": 0,
         }))
-        for source in get_section_names()
+        for source in section_names
     }
 
 
@@ -216,6 +218,46 @@ def get_static_dataset_stats(source, category=""):
     return datasets
 
 
+def merge_stats_by_name(static_items, dynamic_items, key):
+    dynamic_by_name = {
+        item.get(key): item
+        for item in dynamic_items
+        if item.get(key)
+    }
+    merged = []
+    seen = set()
+    for item in static_items:
+        name = item.get(key)
+        if not name:
+            continue
+        combined = dict(item)
+        combined.update(dynamic_by_name.get(name, {}))
+        merged.append(combined)
+        seen.add(name)
+    for item in dynamic_items:
+        name = item.get(key)
+        if name and name not in seen:
+            merged.append(dict(item))
+            seen.add(name)
+    return merged
+
+
+def get_category_stats(source):
+    return merge_stats_by_name(
+        get_static_category_stats(source),
+        corpus_repository.get_browse_category_statistics(source),
+        "category",
+    )
+
+
+def get_dataset_stats(source, category=""):
+    return merge_stats_by_name(
+        get_static_dataset_stats(source, category),
+        corpus_repository.get_browse_dataset_statistics(source, category),
+        "dataset_name",
+    )
+
+
 def build_home_context():
     return {
         "sources": get_section_names(),
@@ -237,13 +279,10 @@ def build_browse_context(args):
     page_size = parse_page_size(args.get("page_size", "10"))
     source_stats = get_home_source_stats()
     active_stats = get_source_stat(source_stats, source)
-    category_stats = order_category_stats(source, get_static_category_stats(source))
-    dataset_stats = get_static_dataset_stats(source, category)
+    category_stats = order_category_stats(source, get_category_stats(source))
+    dataset_stats = get_dataset_stats(source, category)
 
-    if not category and not dataset_name and source in source_stats:
-        total = active_stats["dialogue_count"]
-    else:
-        total = corpus_repository.count_browse_dialogues(source, category, dataset_name)
+    total = corpus_repository.count_browse_dialogues(source, category, dataset_name)
 
     total_pages = max(1, math.ceil(total / page_size))
     if page > total_pages:
