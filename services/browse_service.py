@@ -59,9 +59,9 @@ STATIC_SOURCE_STATS = {
     },
     "文本对话": {
         "source": "文本对话",
-        "entry_count": 11260,
-        "dialogue_count": 11260,
-        "turn_count": 25909,
+        "entry_count": 3202,
+        "dialogue_count": 3202,
+        "turn_count": 9901,
     },
     "网络回帖": {
         "source": "网络回帖",
@@ -144,6 +144,32 @@ STATIC_SOURCE_DATASETS = {
     ("多模态语料", "音视频互动"): ("音视频互动",),
 }
 
+STATIC_TEXT_CATEGORY_COUNTS = {
+    TEXT_DIALOGUE_CATEGORIES[0]: 0,
+    TEXT_DIALOGUE_CATEGORIES[1]: 668,
+    TEXT_DIALOGUE_CATEGORIES[2]: 157,
+    TEXT_DIALOGUE_CATEGORIES[3]: 2000,
+    TEXT_DIALOGUE_CATEGORIES[4]: 377,
+    TEXT_DIALOGUE_CATEGORIES[5]: 0,
+}
+
+STATIC_TEXT_DATASET_COUNTS = {
+    "朱子语类": 0,
+    "孟子": 0,
+    "论语": 0,
+    "唐传奇": 0,
+    "世说新语": 668,
+    "清平山堂话本": 0,
+    "朴通事": 110,
+    "老乞大": 47,
+    "红楼梦": 0,
+    "水浒传": 2000,
+    "西游记": 0,
+    "雷雨": 377,
+    "平凡的世界": 0,
+    "骆驼祥子": 0,
+}
+
 
 def get_section_names():
     return [section["name"] for section in HOME_CORPUS_SECTIONS]
@@ -159,13 +185,6 @@ def get_home_source_stats():
         }))
         for source in get_section_names()
     }
-
-
-def get_dynamic_source_stat(source, fallback):
-    try:
-        return dict(corpus_repository.get_source_statistics([source]).get(source) or fallback)
-    except Exception:
-        return dict(fallback)
 
 
 def parse_page_number(value):
@@ -204,10 +223,14 @@ def order_category_stats(source, category_stats):
 
 
 def get_static_category_stats(source):
-    return [
+    stats = [
         {"category": category}
         for category in STATIC_SOURCE_CATEGORIES.get(source, ())
     ]
+    if source == TEXT_DIALOGUE_SOURCE:
+        for item in stats:
+            item["dialogue_count"] = STATIC_TEXT_CATEGORY_COUNTS.get(item["category"], 0)
+    return stats
 
 
 def get_static_dataset_stats(source, category=""):
@@ -219,48 +242,30 @@ def get_static_dataset_stats(source, category=""):
             if dataset_name in seen:
                 continue
             seen.add(dataset_name)
-            datasets.append({"dataset_name": dataset_name})
+            item = {"dataset_name": dataset_name}
+            if source == TEXT_DIALOGUE_SOURCE:
+                item["dialogue_count"] = STATIC_TEXT_DATASET_COUNTS.get(dataset_name, 0)
+            datasets.append(item)
     return datasets
 
 
-def merge_stats_by_name(static_items, dynamic_items, key):
-    dynamic_by_name = {
-        item.get(key): item
-        for item in dynamic_items
-        if item.get(key)
-    }
-    merged = []
-    seen = set()
-    for item in static_items:
-        name = item.get(key)
-        if not name:
-            continue
-        combined = dict(item)
-        combined.update(dynamic_by_name.get(name, {}))
-        merged.append(combined)
-        seen.add(name)
-    for item in dynamic_items:
-        name = item.get(key)
-        if name and name not in seen:
-            merged.append(dict(item))
-            seen.add(name)
-    return merged
-
-
 def get_category_stats(source):
-    return merge_stats_by_name(
-        get_static_category_stats(source),
-        corpus_repository.get_browse_category_statistics(source),
-        "category",
-    )
+    return get_static_category_stats(source)
 
 
 def get_dataset_stats(source, category=""):
-    return merge_stats_by_name(
-        get_static_dataset_stats(source, category),
-        corpus_repository.get_browse_dataset_statistics(source, category),
-        "dataset_name",
-    )
+    return get_static_dataset_stats(source, category)
+
+
+def get_static_filter_total(source, category="", dataset_name="", active_stats=None):
+    if source == TEXT_DIALOGUE_SOURCE:
+        if dataset_name:
+            return STATIC_TEXT_DATASET_COUNTS.get(dataset_name)
+        if category:
+            return STATIC_TEXT_CATEGORY_COUNTS.get(category)
+    if not category and not dataset_name and active_stats:
+        return active_stats.get("dialogue_count")
+    return None
 
 
 def build_home_context():
@@ -283,24 +288,27 @@ def build_browse_context(args):
     page = parse_page_number(args.get("page", "1"))
     page_size = parse_page_size(args.get("page_size", "10"))
     source_stats = get_home_source_stats()
-    active_stats = get_dynamic_source_stat(source, get_source_stat(source_stats, source))
+    active_stats = get_source_stat(source_stats, source)
     category_stats = order_category_stats(source, get_category_stats(source))
     dataset_stats = get_dataset_stats(source, category)
 
-    total = corpus_repository.count_browse_dialogues(source, category, dataset_name)
+    static_total = get_static_filter_total(source, category, dataset_name, active_stats)
+    total = static_total if static_total is not None else corpus_repository.count_browse_dialogues(source, category, dataset_name)
 
     total_pages = max(1, math.ceil(total / page_size))
     if page > total_pages:
         page = total_pages
 
     offset = (page - 1) * page_size
-    dialogues = corpus_repository.query_browse_dialogues(
-        source,
-        category,
-        dataset_name,
-        limit=page_size,
-        offset=offset,
-    )
+    dialogues = []
+    if total > 0:
+        dialogues = corpus_repository.query_browse_dialogues(
+            source,
+            category,
+            dataset_name,
+            limit=page_size,
+            offset=offset,
+        )
     start_no = offset + 1 if total > 0 else 0
     end_no = min(offset + len(dialogues), total)
 
