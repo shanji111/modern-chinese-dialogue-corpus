@@ -150,17 +150,22 @@ def get_section_names():
 
 
 def get_home_source_stats():
-    section_names = get_section_names()
-    dynamic_stats = corpus_repository.get_source_statistics(section_names)
     return {
-        source: dict(dynamic_stats.get(source) or STATIC_SOURCE_STATS.get(source, {
+        source: dict(STATIC_SOURCE_STATS.get(source, {
             "source": source,
             "entry_count": 0,
             "dialogue_count": 0,
             "turn_count": 0,
         }))
-        for source in section_names
+        for source in get_section_names()
     }
+
+
+def get_dynamic_source_stat(source, fallback):
+    try:
+        return dict(corpus_repository.get_source_statistics([source]).get(source) or fallback)
+    except Exception:
+        return dict(fallback)
 
 
 def parse_page_number(value):
@@ -278,7 +283,7 @@ def build_browse_context(args):
     page = parse_page_number(args.get("page", "1"))
     page_size = parse_page_size(args.get("page_size", "10"))
     source_stats = get_home_source_stats()
-    active_stats = get_source_stat(source_stats, source)
+    active_stats = get_dynamic_source_stat(source, get_source_stat(source_stats, source))
     category_stats = order_category_stats(source, get_category_stats(source))
     dataset_stats = get_dataset_stats(source, category)
 
