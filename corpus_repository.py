@@ -134,6 +134,7 @@ NON_SPEAKER_LABEL_TERMS = (
     "相关链接", "相关附件", "责任编辑", "版权所有", "来源",
 )
 NON_SPEAKER_LABEL_PUNCTUATION = set("，,。；;！？!?、")
+PLACEHOLDER_SPEAKER_LABELS = {"", "—", "-", "－", "未知", "无", "none", "None", "NULL", "null"}
 FUNCTION_PATTERNS = (
     ("我觉得...", re.compile(r"我觉得|我认为|我想|我感觉")),
     ("不是...而是...", re.compile(r"不是|而是|并非")),
@@ -242,6 +243,26 @@ def is_valid_speaker_label(label):
     return False
 
 
+def is_placeholder_speaker_label(label):
+    return normalize_turn_text(label) in PLACEHOLDER_SPEAKER_LABELS
+
+
+def is_valid_bracket_speaker_label(label):
+    label = normalize_turn_text(label)
+    if not label:
+        return False
+    compact = re.sub(r"\s+", "", label)
+    if not compact or len(compact) > 16:
+        return False
+    if any(char in label for char in NON_SPEAKER_LABEL_PUNCTUATION):
+        return False
+    if any(term in compact for term in NON_SPEAKER_LABEL_TERMS):
+        return False
+    if is_valid_speaker_label(label):
+        return True
+    return bool(re.fullmatch(r"[\u4e00-\u9fff·]{1,8}", compact))
+
+
 def split_inline_speaker_turns(line):
     line = (line or "").strip()
     if not line:
@@ -271,7 +292,7 @@ def parse_speaker_turn(line):
     if bracket_match:
         label = bracket_match.group("label").strip()
         text = bracket_match.group("text").strip()
-        if is_valid_speaker_label(label) and text:
+        if is_valid_bracket_speaker_label(label) and text:
             return label, text
     match = SPEAKER_LABEL_PATTERN.match(line)
     if not match:
@@ -283,10 +304,24 @@ def parse_speaker_turn(line):
     return label, text
 
 
+def normalize_speaker_turn(speaker, turn_text):
+    speaker = normalize_turn_text(speaker)
+    turn_text = normalize_turn_text(turn_text)
+    parsed_speaker, parsed_text = parse_speaker_turn(turn_text)
+    if parsed_speaker and parsed_text and (
+        is_placeholder_speaker_label(speaker)
+        or not is_valid_speaker_label(speaker)
+        or speaker == parsed_speaker
+    ):
+        return parsed_speaker, parsed_text
+    return speaker, turn_text
+
+
 def split_entry_turns(entry):
     current_segment = normalize_turn_text(entry.get("current_segment") or entry.get("segment_text") or "")
     if current_segment:
         speaker = normalize_turn_text(entry.get("speaker") or "")
+        speaker, current_segment = normalize_speaker_turn(speaker, current_segment)
         turn_index = entry.get("segment_index") or 1
         return [{
             "turn_index": int(turn_index) if str(turn_index).isdigit() else 1,
@@ -308,6 +343,7 @@ def split_entry_turns(entry):
         pieces = [raw_line] if bracket_line_mode else split_inline_speaker_turns(raw_line)
         for piece in pieces:
             speaker, turn_text = parse_speaker_turn(piece)
+            speaker, turn_text = normalize_speaker_turn(speaker, turn_text)
             turn_text = normalize_turn_text(turn_text)
             if len(turn_text) < MIN_TURN_TEXT_CHARS:
                 continue
@@ -675,7 +711,7 @@ def rebuild_dialogue_turns(batch_size=1000, progress_callback=None, resume=False
             state = get_dialogue_turns_rebuild_state(conn)
             total_rows = state["total_entries"]
         batch = []
-        entry_page_size = min(max(1, batch_size), 25) if is_postgres() else max(1, batch_size)
+        entry_page_size = min(max(1, batch_size), 100) if is_postgres() else max(1, batch_size)
         if progress_callback:
             progress_callback({
                 "phase": "start",
@@ -703,7 +739,7 @@ def rebuild_dialogue_turns(batch_size=1000, progress_callback=None, resume=False
             while True:
                 try:
                     return conn.execute(f"""
-                        SELECT id, title, source, category, dataset_name,
+                        SELECT id, title, content, source, category, dataset_name,
                                current_segment, segment_text, speaker, conversation_id, segment_index
                         FROM corpus_entries
                         WHERE id > {marker}
@@ -760,7 +796,7 @@ def rebuild_dialogue_turns(batch_size=1000, progress_callback=None, resume=False
                 entry = row_to_dict(row)
                 last_entry_id = int(entry["id"])
                 if not (entry.get("current_segment") or entry.get("segment_text")):
-                    entry["content"] = fetch_entry_content(entry["id"])
+                    entry["content"] = entry.get("content") or ""
                 else:
                     entry["content"] = ""
                 turns = split_entry_turns(entry)
@@ -1575,6 +1611,10 @@ def query_browse_dialogues(source="", category="", dataset_name="", limit=10, of
         turns_by_key = {key: [] for key in keys}
         first_turn_by_key = {}
         for row in turn_rows:
+            row["speaker_label"], row["turn_text"] = normalize_speaker_turn(
+                row.get("speaker_label") or "",
+                row.get("turn_text") or "",
+            )
             key = row["conversation_key"]
             turns_by_key.setdefault(key, []).append(row)
             first_turn_by_key.setdefault(key, row)
