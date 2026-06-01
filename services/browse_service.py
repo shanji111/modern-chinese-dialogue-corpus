@@ -59,21 +59,21 @@ STATIC_SOURCE_STATS = {
     },
     "文本对话": {
         "source": "文本对话",
-        "entry_count": 3202,
-        "dialogue_count": 3202,
-        "turn_count": 9901,
+        "entry_count": 22910,
+        "dialogue_count": 22910,
+        "turn_count": 53382,
     },
     "网络回帖": {
         "source": "网络回帖",
         "entry_count": 9101,
         "dialogue_count": 9101,
-        "turn_count": 18202,
+        "turn_count": 18210,
     },
     "访谈语料": {
         "source": "访谈语料",
         "entry_count": 3101,
         "dialogue_count": 3101,
-        "turn_count": 6510,
+        "turn_count": 6473,
     },
     "课堂互动": {
         "source": "课堂互动",
@@ -130,7 +130,7 @@ STATIC_SOURCE_DATASETS = {
     (TEXT_DIALOGUE_SOURCE, "论辩语录"): ("朱子语类", "孟子", "论语"),
     (TEXT_DIALOGUE_SOURCE, "短篇叙事对白"): ("唐传奇", "世说新语", "清平山堂话本"),
     (TEXT_DIALOGUE_SOURCE, "历史汉语会话教材"): ("朴通事", "老乞大"),
-    (TEXT_DIALOGUE_SOURCE, "古典章回小说对白"): ("红楼梦", "水浒传", "西游记"),
+    (TEXT_DIALOGUE_SOURCE, "古典章回小说对白"): ("水浒传", "西游记"),
     (TEXT_DIALOGUE_SOURCE, "戏剧对白"): ("雷雨",),
     (TEXT_DIALOGUE_SOURCE, "现当代小说对白"): ("平凡的世界", "骆驼祥子"),
     ("网络回帖", "贴吧回帖"): ("tieba-305w", "贴吧回帖"),
@@ -145,29 +145,28 @@ STATIC_SOURCE_DATASETS = {
 }
 
 STATIC_TEXT_CATEGORY_COUNTS = {
-    TEXT_DIALOGUE_CATEGORIES[0]: 0,
-    TEXT_DIALOGUE_CATEGORIES[1]: 668,
+    TEXT_DIALOGUE_CATEGORIES[0]: 8943,
+    TEXT_DIALOGUE_CATEGORIES[1]: 1738,
     TEXT_DIALOGUE_CATEGORIES[2]: 157,
-    TEXT_DIALOGUE_CATEGORIES[3]: 2000,
+    TEXT_DIALOGUE_CATEGORIES[3]: 8098,
     TEXT_DIALOGUE_CATEGORIES[4]: 377,
-    TEXT_DIALOGUE_CATEGORIES[5]: 0,
+    TEXT_DIALOGUE_CATEGORIES[5]: 3597,
 }
 
 STATIC_TEXT_DATASET_COUNTS = {
-    "朱子语类": 0,
-    "孟子": 0,
-    "论语": 0,
-    "唐传奇": 0,
+    "朱子语类": 8336,
+    "孟子": 410,
+    "论语": 197,
+    "唐传奇": 718,
     "世说新语": 668,
-    "清平山堂话本": 0,
+    "清平山堂话本": 352,
     "朴通事": 110,
     "老乞大": 47,
-    "红楼梦": 0,
     "水浒传": 2000,
-    "西游记": 0,
+    "西游记": 6098,
     "雷雨": 377,
-    "平凡的世界": 0,
-    "骆驼祥子": 0,
+    "平凡的世界": 3256,
+    "骆驼祥子": 341,
 }
 
 
