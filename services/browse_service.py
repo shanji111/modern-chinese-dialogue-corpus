@@ -59,9 +59,9 @@ STATIC_SOURCE_STATS = {
     },
     "文本对话": {
         "source": "文本对话",
-        "entry_count": 22910,
-        "dialogue_count": 22910,
-        "turn_count": 53382,
+        "entry_count": 20069,
+        "dialogue_count": 20069,
+        "turn_count": 47693,
     },
     "网络回帖": {
         "source": "网络回帖",
@@ -150,7 +150,7 @@ STATIC_TEXT_CATEGORY_COUNTS = {
     TEXT_DIALOGUE_CATEGORIES[2]: 157,
     TEXT_DIALOGUE_CATEGORIES[3]: 8098,
     TEXT_DIALOGUE_CATEGORIES[4]: 377,
-    TEXT_DIALOGUE_CATEGORIES[5]: 3597,
+    TEXT_DIALOGUE_CATEGORIES[5]: 756,
 }
 
 STATIC_TEXT_DATASET_COUNTS = {
@@ -165,8 +165,8 @@ STATIC_TEXT_DATASET_COUNTS = {
     "水浒传": 2000,
     "西游记": 6098,
     "雷雨": 377,
-    "平凡的世界": 3256,
-    "骆驼祥子": 341,
+    "平凡的世界": 683,
+    "骆驼祥子": 73,
 }
 
 
