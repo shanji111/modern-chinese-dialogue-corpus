@@ -201,6 +201,9 @@ a:hover {
     font-size: 17px;
     color: #555;
     height: 38px;
+    line-height: 38px;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 .bcc-search-input::placeholder {
@@ -536,8 +539,11 @@ a:hover {
 
 .query-input {
     width: 320px;
+    height: 32px;
+    box-sizing: border-box;
     font-size: 18px;
-    padding: 4px 6px;
+    line-height: 30px;
+    padding: 0 6px;
 }
 
 .top-search-bar select,
