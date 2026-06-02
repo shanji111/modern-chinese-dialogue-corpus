@@ -19,6 +19,7 @@ SEARCH_FIELD_COLUMNS = {
     "segment": ("current_segment", "segment_text"),
 }
 SEARCH_MODES = {"contains", "exact", "starts_with", "ends_with"}
+MERGED_DIALOGUE_TITLE_PATTERN = re.compile(r"\s*合并大对话\s*")
 SORT_OPTIONS = {
     "id_desc": "id DESC",
     "id_asc": "id ASC",
@@ -220,6 +221,23 @@ def build_search_text(*values):
 
 def normalize_turn_text(value):
     return re.sub(r"\s+", " ", (value or "").strip())
+
+
+def normalize_display_title(value):
+    title = (value or "").strip()
+    if not title:
+        return ""
+    title = MERGED_DIALOGUE_TITLE_PATTERN.sub(" ", title)
+    return re.sub(r"\s{2,}", " ", title).strip()
+
+
+def normalize_display_record(row):
+    if not row:
+        return row
+    normalized = dict(row)
+    if "title" in normalized:
+        normalized["title"] = normalize_display_title(normalized.get("title"))
+    return normalized
 
 
 def is_valid_speaker_label(label):
@@ -1526,7 +1544,7 @@ def build_entry_dialogue(entry):
     return {
         "conversation_key": entry.get("conversation_id") or f"entry:{entry.get('id')}",
         "entry_id": entry.get("id"),
-        "title": entry.get("title") or "未命名对话",
+        "title": normalize_display_title(entry.get("title")) or "未命名对话",
         "source": entry.get("source") or "",
         "category": entry.get("category") or "",
         "dataset_name": entry.get("dataset_name") or "",
@@ -1682,7 +1700,7 @@ def build_dialogues_from_conversations(conn, conversations):
         dialogues.append({
             "conversation_key": key,
             "entry_id": conversation.get("entry_id"),
-            "title": conversation.get("title") or first_turn.get("title") or key or "未命名对话",
+            "title": normalize_display_title(conversation.get("title") or first_turn.get("title")) or key or "未命名对话",
             "source": conversation.get("source") or first_turn.get("source") or "",
             "category": conversation.get("category") or first_turn.get("category") or "",
             "dataset_name": conversation.get("dataset_name") or first_turn.get("dataset_name") or "",
@@ -2092,7 +2110,7 @@ def query_search_page(keyword="", source="", year="", category="", limit=50, off
                 """,
                 [*legacy_params, limit, offset],
             ).fetchall()
-        return [row_to_dict(row) for row in rows]
+        return [normalize_display_record(row_to_dict(row)) for row in rows]
     finally:
         close_connection(conn)
         if is_postgres():
@@ -2124,7 +2142,7 @@ def query_search_page_fts(keyword="", source="", year="", category="", limit=50,
             """,
             params,
         ).fetchall()
-        return [row_to_dict(row) for row in rows]
+        return [normalize_display_record(row_to_dict(row)) for row in rows]
     finally:
         close_connection(conn)
 
@@ -2238,7 +2256,7 @@ def query_turn_search_page(keyword="", source="", year="", category="", dataset_
             turn_index = int(row.get("turn_index") or 0)
             results.append({
                 "id": row.get("entry_id"),
-                "title": entry.get("title") or "",
+                "title": normalize_display_title(entry.get("title")),
                 "source": entry.get("source") or row.get("source") or "",
                 "year": entry.get("year"),
                 "category": entry.get("category") or row.get("category") or "",
@@ -3105,7 +3123,7 @@ def get_resonance_entry_context(entry_id, max_chars=RESONANCE_CONTEXT_CHARS):
         content = content[:max_chars] + "..."
     return {
         "id": row.get("id"),
-        "title": row.get("title") or "",
+        "title": normalize_display_title(row.get("title")),
         "content": content,
         "source_url": row.get("source_url") or "",
         "truncated": truncated,
