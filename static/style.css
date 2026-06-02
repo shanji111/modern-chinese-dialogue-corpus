@@ -740,9 +740,9 @@ a:hover {
 
 .segment-hit-word {
     color: #c40000;
-    font-weight: bold;
+    font-weight: 700;
     background: transparent;
-    font-size: 1.08em;
+    font-size: inherit;
 }
 
 .resonance-marker {
@@ -1165,10 +1165,9 @@ a:hover {
 }
 
 .dialogue-turn-text-inner {
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    display: block;
     width: 100%;
+    text-align: center;
     white-space: pre-wrap;
     overflow-wrap: break-word;
     max-height: 4.35em;
