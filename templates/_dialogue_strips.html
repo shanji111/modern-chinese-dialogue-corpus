@@ -35,6 +35,7 @@
                         <div class="dialogue-turn-index">{{ turn.turn_index }}</div>
                         <div class="dialogue-turn-speaker">{{ turn.speaker_label or "—" }}</div>
                         <div class="dialogue-turn-text">
+                            <span class="dialogue-turn-text-inner">
                             {% if turn.turn_text_html is defined %}
                                 {{ turn.turn_text_html|safe }}
                             {% elif keyword %}
@@ -42,6 +43,7 @@
                             {% else %}
                                 {{ turn.turn_text }}
                             {% endif %}
+                            </span>
                         </div>
                     </div>
                 {% else %}

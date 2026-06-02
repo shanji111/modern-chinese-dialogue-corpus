@@ -1133,6 +1133,11 @@ a:hover {
 }
 
 .dialogue-turn-text {
+    align-self: stretch;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 0;
     padding: 6px 10px;
     box-sizing: border-box;
 }
@@ -1156,6 +1161,11 @@ a:hover {
     color: #222;
     text-align: center;
     line-height: 1.55;
+}
+
+.dialogue-turn-text-inner {
+    display: block;
+    width: 100%;
     white-space: pre-wrap;
     overflow-wrap: break-word;
     max-height: 4.8em;
@@ -2178,6 +2188,7 @@ a:hover {
     .dialogue-turn-text {
         grid-column: 2;
         padding-top: 7px;
+        padding-bottom: 7px;
     }
 
     .resonance-hero,
