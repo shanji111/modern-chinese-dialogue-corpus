@@ -1107,11 +1107,11 @@ a:hover {
 }
 
 .dialogue-turn-row.hit-turn {
-    background: #fff7d8;
+    background: inherit;
 }
 
 .dialogue-turn-row.hit-turn .dialogue-turn-text {
-    font-weight: 600;
+    font-weight: 400;
 }
 
 .dialogue-turn-row:last-child {
@@ -1119,10 +1119,14 @@ a:hover {
 }
 
 .dialogue-turn-index,
-.dialogue-turn-speaker,
-.dialogue-turn-text {
+.dialogue-turn-speaker {
     display: flex;
     align-items: center;
+    padding: 6px 10px;
+    box-sizing: border-box;
+}
+
+.dialogue-turn-text {
     padding: 6px 10px;
     box-sizing: border-box;
 }
@@ -1143,7 +1147,6 @@ a:hover {
 }
 
 .dialogue-turn-text {
-    justify-content: center;
     color: #222;
     text-align: center;
     line-height: 1.55;
