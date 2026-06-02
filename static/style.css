@@ -1105,7 +1105,7 @@ a:hover {
     grid-template-columns: 54px 120px minmax(0, 1fr);
     align-items: center;
     border-bottom: 1px solid #edf0f5;
-    min-height: 34px;
+    min-height: 38px;
 }
 
 .dialogue-turn-row:nth-child(even) {
@@ -1128,17 +1128,18 @@ a:hover {
 .dialogue-turn-speaker {
     display: flex;
     align-items: center;
-    padding: 6px 10px;
+    min-height: 38px;
+    padding: 4px 10px;
     box-sizing: border-box;
 }
 
 .dialogue-turn-text {
-    align-self: stretch;
     display: flex;
     align-items: center;
     justify-content: center;
+    min-height: 38px;
     min-width: 0;
-    padding: 6px 10px;
+    padding: 4px 10px;
     box-sizing: border-box;
 }
 
@@ -1160,15 +1161,17 @@ a:hover {
 .dialogue-turn-text {
     color: #222;
     text-align: center;
-    line-height: 1.55;
+    line-height: 1.45;
 }
 
 .dialogue-turn-text-inner {
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100%;
     white-space: pre-wrap;
     overflow-wrap: break-word;
-    max-height: 4.8em;
+    max-height: 4.35em;
     overflow: hidden;
 }
 
