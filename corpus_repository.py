@@ -1157,17 +1157,23 @@ def get_filter_options():
             timing_log("get_filter_options.total", start)
 
 
-def get_advanced_filter_options():
+def get_advanced_filter_options(source=""):
     conn = timed_connection("get_advanced_filter_options")
+    marker = "%s" if is_postgres() else "?"
     try:
+        category_clauses = ["category IS NOT NULL AND TRIM(category) != ''"]
+        category_params = []
+        if source:
+            category_clauses.append(f"source = {marker}")
+            category_params.append(source)
         categories = [
             row["category"]
-            for row in conn.execute("""
+            for row in conn.execute(f"""
                 SELECT DISTINCT category
                 FROM corpus_entries
-                WHERE category IS NOT NULL AND TRIM(category) != ''
+                WHERE {' AND '.join(category_clauses)}
                 ORDER BY category
-            """).fetchall()
+            """, category_params).fetchall()
         ]
         datasets = [
             row["dataset_name"]
@@ -1180,6 +1186,29 @@ def get_advanced_filter_options():
             """).fetchall()
         ]
         return categories, datasets
+    finally:
+        close_connection(conn)
+
+
+def get_source_category_options():
+    conn = timed_connection("get_source_category_options")
+    try:
+        rows = conn.execute("""
+            SELECT DISTINCT source, category
+            FROM corpus_entries
+            WHERE source IS NOT NULL AND TRIM(source) != ''
+              AND category IS NOT NULL AND TRIM(category) != ''
+            ORDER BY source, category
+        """).fetchall()
+        source_categories = {}
+        all_categories = set()
+        for row in rows:
+            source = row["source"]
+            category = row["category"]
+            source_categories.setdefault(source, []).append(category)
+            all_categories.add(category)
+        source_categories["__all__"] = sorted(all_categories)
+        return source_categories
     finally:
         close_connection(conn)
 

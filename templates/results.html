@@ -16,7 +16,7 @@
             <div class="quick-search-row">
                 <input type="text" name="q" value="{{ keyword }}" class="query-input" placeholder="输入检索词">
 
-                <select name="source">
+                <select name="source" data-source-filter>
                     <option value="">全部来源</option>
                     {% for s in sources %}
                         <option value="{{ s }}" {% if s == source %}selected{% endif %}>{{ s }}</option>
@@ -30,7 +30,10 @@
                     {% endfor %}
                 </select>
 
-                <select name="category">
+                <select name="category"
+                        data-category-filter
+                        data-source-categories="{{ source_category_options|tojson|forceescape }}"
+                        data-all-label="全部类别">
                     <option value="">全部类别</option>
                     {% for c in categories %}
                         <option value="{{ c }}" {% if c == category %}selected{% endif %}>{{ c }}</option>

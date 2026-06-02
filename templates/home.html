@@ -10,9 +10,14 @@
         <div class="site-title">现代汉语对话语料库</div>
 
         <div class="category-tabs" id="category-tabs">
+            <button type="button"
+                    class="tab-item active"
+                    data-source="">
+                全领域
+            </button>
             {% for section in sections %}
                 <button type="button"
-                        class="tab-item {% if loop.first %}active{% endif %}"
+                        class="tab-item"
                         data-source="{{ section.name }}">
                     {{ section.name }}
                 </button>
@@ -20,7 +25,7 @@
         </div>
 
         <form action="{{ url_for('search') }}" method="get" class="bcc-search-form">
-            <input type="hidden" name="source" id="selected-source" value="{{ sections[0].name if sections else '' }}">
+            <input type="hidden" name="source" id="selected-source" value="">
 
             <div class="bcc-search-box">
                 <input type="text" name="q" class="bcc-search-input" placeholder="输入检索词，如：你好 / 没关系 / 我觉得">

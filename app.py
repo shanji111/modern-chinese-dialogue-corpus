@@ -1296,6 +1296,7 @@ count_admin_entries = corpus_repository.count_admin_entries
 list_admin_entries_page = corpus_repository.list_admin_entries_page
 get_filter_options = corpus_repository.get_filter_options
 get_advanced_filter_options = corpus_repository.get_advanced_filter_options
+get_source_category_options = corpus_repository.get_source_category_options
 has_fts_table = corpus_repository.has_fts_table
 get_active_search_backend = lambda: corpus_repository.get_active_search_backend(get_search_backend())
 count_search_results = corpus_repository.count_search_results
@@ -1532,7 +1533,8 @@ def search():
     end_no = min(end_idx, total)
 
     sources, years = get_filter_options()
-    categories, datasets = get_advanced_filter_options()
+    categories, datasets = get_advanced_filter_options(source)
+    source_category_options = get_source_category_options()
     query_args = {
         "q": keyword,
         "source": source,
@@ -1557,6 +1559,7 @@ def search():
         sources=sources,
         years=years,
         categories=categories,
+        source_category_options=source_category_options,
         datasets=datasets,
         advanced_filters=advanced_filters,
         is_advanced_search=is_advanced_search,

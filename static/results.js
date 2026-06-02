@@ -32,6 +32,47 @@ function initSearchModeTabs() {
     applySearchMode(tabs.dataset.defaultMode);
 }
 
+function initSourceCategoryFilter() {
+    const sourceSelect = document.querySelector("[data-source-filter]");
+    const categorySelect = document.querySelector("[data-category-filter]");
+    if (!sourceSelect || !categorySelect) {
+        return;
+    }
+
+    let sourceCategories = {};
+    try {
+        sourceCategories = JSON.parse(categorySelect.dataset.sourceCategories || "{}");
+    } catch (error) {
+        sourceCategories = {};
+    }
+
+    const fallbackCategories = Array.from(categorySelect.options)
+        .map((option) => option.value)
+        .filter(Boolean);
+    const allCategories = Array.isArray(sourceCategories.__all__)
+        ? sourceCategories.__all__
+        : fallbackCategories;
+    const allLabel = categorySelect.dataset.allLabel || "全部类别";
+
+    function rebuildCategoryOptions() {
+        const currentCategory = categorySelect.value;
+        const selectedSource = sourceSelect.value;
+        const categories = selectedSource && Array.isArray(sourceCategories[selectedSource])
+            ? sourceCategories[selectedSource]
+            : allCategories;
+
+        categorySelect.innerHTML = "";
+        categorySelect.appendChild(new Option(allLabel, ""));
+        categories.forEach((category) => {
+            categorySelect.appendChild(new Option(category, category));
+        });
+        categorySelect.value = categories.includes(currentCategory) ? currentCategory : "";
+    }
+
+    sourceSelect.addEventListener("change", rebuildCategoryOptions);
+    rebuildCategoryOptions();
+}
+
 function escapeHtml(text) {
     return String(text || "—")
         .replace(/&/g, "&amp;")
@@ -178,3 +219,4 @@ function closeModalDirect() {
 }
 
 initSearchModeTabs();
+initSourceCategoryFilter();
