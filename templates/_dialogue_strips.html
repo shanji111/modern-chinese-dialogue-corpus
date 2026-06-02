@@ -1,0 +1,55 @@
+<main class="dialogue-strip-list">
+    {% for dialogue in dialogues %}
+        <article class="dialogue-strip">
+            <header class="dialogue-strip-head">
+                <div class="dialogue-list-no">{{ start_no + loop.index0 }}</div>
+                <div class="dialogue-title-block">
+                    <h2>{{ dialogue.title }}</h2>
+                    <div class="dialogue-meta-line">
+                        <span>{{ dialogue.source or "未知来源" }}</span>
+                        {% if dialogue.category %}<span>{{ dialogue.category }}</span>{% endif %}
+                        {% if dialogue.dataset_name %}<span>{{ dialogue.dataset_name }}</span>{% endif %}
+                        {% if dialogue.year %}<span>{{ dialogue.year }}</span>{% endif %}
+                        <span>ID: {{ dialogue.conversation_key }}</span>
+                        {% if dialogue.match_count %}
+                            <span class="dialogue-hit-count">{{ dialogue.match_count }} 个命中话轮</span>
+                        {% elif keyword %}
+                            <span class="dialogue-hit-count">命中记录所在对话</span>
+                        {% endif %}
+                        {% if dialogue.turn_count > 20 %}<span>长对话，可在话轮区内滚动查看</span>{% endif %}
+                        {% if dialogue.source_url %}
+                            <a href="{{ dialogue.source_url }}" target="_blank" rel="noopener noreferrer">原文</a>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="dialogue-turn-count">
+                    <b>{{ dialogue.turn_count|format_count }}</b>
+                    <span>话轮</span>
+                </div>
+            </header>
+
+            <div class="dialogue-turn-list">
+                {% for turn in dialogue.turns %}
+                    {% set turn_hit = turn.is_hit or (keyword and keyword in turn.turn_text) %}
+                    <div class="dialogue-turn-row {% if turn_hit %}hit-turn{% endif %}">
+                        <div class="dialogue-turn-index">{{ turn.turn_index }}</div>
+                        <div class="dialogue-turn-speaker">{{ turn.speaker_label or "—" }}</div>
+                        <div class="dialogue-turn-text">
+                            {% if turn.turn_text_html is defined %}
+                                {{ turn.turn_text_html|safe }}
+                            {% elif keyword %}
+                                {{ turn.turn_text|highlight_keyword(keyword)|safe }}
+                            {% else %}
+                                {{ turn.turn_text }}
+                            {% endif %}
+                        </div>
+                    </div>
+                {% else %}
+                    <div class="dialogue-turn-empty">暂无可展示话轮。</div>
+                {% endfor %}
+            </div>
+        </article>
+    {% else %}
+        <div class="no-result">{{ empty_message or "暂无可浏览的完整对话。" }}</div>
+    {% endfor %}
+</main>

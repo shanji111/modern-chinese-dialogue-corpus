@@ -1,0 +1,81 @@
+<div id="contextModal" class="modal-overlay" onclick="closeModal(event)">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div>
+                <div class="modal-kicker">语料上下文查看</div>
+                <div id="modalTitle" class="modal-title">上下文详情</div>
+            </div>
+            <button class="modal-close" onclick="closeModalDirect()">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-meta-grid">
+                <div>
+                    <span class="modal-meta-label">文件名</span>
+                    <span id="modalFileName"></span>
+                </div>
+                <div>
+                    <span class="modal-meta-label">来源</span>
+                    <span id="modalSource"></span>
+                </div>
+                <div>
+                    <span class="modal-meta-label">类型</span>
+                    <span id="modalCategory"></span>
+                </div>
+                <div>
+                    <span class="modal-meta-label">年份</span>
+                    <span id="modalYear"></span>
+                </div>
+                <div>
+                    <span class="modal-meta-label">数据集</span>
+                    <span id="modalDatasetName"></span>
+                </div>
+                <div class="interview-meta">
+                    <span class="modal-meta-label">原文来源</span>
+                    <span id="modalCrawlSource"></span>
+                </div>
+                <div class="interview-meta">
+                    <span class="modal-meta-label">抓取日期</span>
+                    <span id="modalCrawlDate"></span>
+                </div>
+                <div class="interview-meta">
+                    <span class="modal-meta-label">原文链接</span>
+                    <a id="modalSourceUrl" target="_blank" rel="noopener noreferrer">查看原文</a>
+                    <span id="modalSourceUrlMissing">暂无原文链接</span>
+                </div>
+                <div>
+                    <span class="modal-meta-label">对话 ID</span>
+                    <span id="modalDialogueId"></span>
+                </div>
+                <div>
+                    <span class="modal-meta-label">时间</span>
+                    <span id="modalTimeRange"></span>
+                </div>
+                <div>
+                    <span class="modal-meta-label">说话人</span>
+                    <span id="modalSpeaker"></span>
+                </div>
+            </div>
+            <div class="modal-audio" id="modalAudioBox">
+                <div class="modal-audio-label">音频话轮</div>
+                <audio id="modalAudio" controls preload="none"></audio>
+                <div class="modal-audio-unavailable" id="modalAudioUnavailable">该音频暂不可播放。</div>
+            </div>
+            <div class="modal-segments">
+                <div class="modal-segment-block">
+                    <div class="modal-segment-label" id="modalPrevLabel">前序话轮</div>
+                    <div class="modal-segment-text" id="modalPrevSegment"></div>
+                </div>
+                <div class="modal-segment-block hit">
+                    <div class="modal-segment-label" id="modalHitLabel">命中话轮</div>
+                    <div class="modal-segment-text" id="modalHitSegment"></div>
+                </div>
+                <div class="modal-segment-block">
+                    <div class="modal-segment-label" id="modalNextLabel">后续话轮</div>
+                    <div class="modal-segment-text" id="modalNextSegment"></div>
+                </div>
+            </div>
+            <div class="interview-license-note" id="modalLicenseNote"></div>
+        </div>
+    </div>
+</div>
+<script src="{{ url_for('static', filename='results.js') }}"></script>

@@ -1,0 +1,47 @@
+<div class="result-list">
+    <div class="result-head">
+        <div>序号</div>
+        <div>前序话轮</div>
+        <div>命中话轮</div>
+        <div>后续话轮</div>
+        <div>来源</div>
+        <div>上下文</div>
+    </div>
+    {% for item in results %}
+    <div class="result-row">
+        <div class="result-no">{{ start_no + loop.index0 }}.1</div>
+        <div class="prev-segment">{{ item.prev_segment or "—" }}</div>
+        <div class="hit-segment">{{ item.hit_segment_html|safe }}</div>
+        <div class="next-segment">{{ item.next_segment or "—" }}</div>
+        <div class="source-label">{{ item.source }}</div>
+        <div class="context-link">
+            <a href="#"
+               onclick='openModal({
+                   title: {{ item.file_name|tojson }},
+                   source: {{ item.source|tojson }},
+                   year: {{ item.year|tojson }},
+                   category: {{ item.category|tojson }},
+                   datasetName: {{ item.dataset_name|tojson }},
+                   dialogueId: {{ item.dialogue_id|tojson }},
+                   audioFile: {{ item.audio_file|tojson }},
+                   audioUrl: {{ item.audio_url|tojson }},
+                   startTime: {{ item.start_time|tojson }},
+                   endTime: {{ item.end_time|tojson }},
+                   speaker: {{ item.speaker|tojson }},
+                   isInterview: {{ item.is_interview|tojson }},
+                   sourceUrl: {{ item.source_url|tojson }},
+                   crawlSource: {{ item.crawl_source|tojson }},
+                   crawlDate: {{ item.crawl_date|tojson }},
+                   licenseNote: {{ item.license_note|tojson }},
+                   labels: {{ item.labels|tojson }},
+                   keyword: {{ keyword|tojson }},
+                   prevSegment: {{ item.modal_prev_segment|tojson }},
+                   hitSegment: {{ item.modal_hit_segment|tojson }},
+                   nextSegment: {{ item.modal_next_segment|tojson }}
+               }); return false;'>上下文</a>
+        </div>
+    </div>
+    {% else %}
+    <div class="no-result">{{ ccl_empty_message|default("暂无结果。") }}</div>
+    {% endfor %}
+</div>

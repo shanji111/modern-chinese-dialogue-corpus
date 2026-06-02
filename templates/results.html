@@ -10,6 +10,7 @@
     <div class="top-search-bar">
         <form action="{{ url_for('search') }}" method="get" class="search-panel" data-search-form>
             <input type="hidden" name="advanced" value="{{ '1' if is_advanced_search else '' }}" data-advanced-flag>
+            <input type="hidden" name="view" value="{{ view_mode }}">
 
             <div class="tip-line">提示：输入更多关键词可以获得更精确的结果</div>
 
@@ -130,59 +131,37 @@
     </div>
 
     <div class="result-summary">
-        <div class="summary-left">查询：<b>“{{ keyword }}”</b></div>
+        <div class="summary-left">
+            {% if source or category or advanced_filters.dataset_name %}
+                {{ source or "全部板块" }}{% if category %} / {{ category }}{% endif %}{% if advanced_filters.dataset_name %} / {{ advanced_filters.dataset_name }}{% endif %} 中查询：
+            {% else %}
+                查询：
+            {% endif %}
+            <b>“{{ keyword }}”</b>
+        </div>
         <div class="summary-right">
-            共在 <b>{{ total }}</b> 条记录中出现，这是第 <b>{{ start_no }} - {{ end_no }}</b> 条
+            共在 {% if total_is_estimated %}至少 {% endif %}<b>{{ total }}</b> 条记录中出现，这是第 <b>{{ start_no }} - {{ end_no }}</b> 条
         </div>
     </div>
 
-    <div class="result-list">
-        <div class="result-head">
-            <div>序号</div>
-            <div>前序话轮</div>
-            <div>命中话轮</div>
-            <div>后续话轮</div>
-            <div>来源</div>
-            <div>上下文</div>
-        </div>
-        {% for item in results %}
-        <div class="result-row">
-            <div class="result-no">{{ start_no + loop.index0 }}.1</div>
-            <div class="prev-segment">{{ item.prev_segment or "—" }}</div>
-            <div class="hit-segment">{{ item.hit_segment_html|safe }}</div>
-            <div class="next-segment">{{ item.next_segment or "—" }}</div>
-            <div class="source-label">{{ item.source }}</div>
-            <div class="context-link">
-                <a href="#"
-                   onclick='openModal({
-                       title: {{ item.file_name|tojson }},
-                       source: {{ item.source|tojson }},
-                       year: {{ item.year|tojson }},
-                       category: {{ item.category|tojson }},
-                       datasetName: {{ item.dataset_name|tojson }},
-                       dialogueId: {{ item.dialogue_id|tojson }},
-                       audioFile: {{ item.audio_file|tojson }},
-                       audioUrl: {{ item.audio_url|tojson }},
-                       startTime: {{ item.start_time|tojson }},
-                       endTime: {{ item.end_time|tojson }},
-                       speaker: {{ item.speaker|tojson }},
-                       isInterview: {{ item.is_interview|tojson }},
-                       sourceUrl: {{ item.source_url|tojson }},
-                       crawlSource: {{ item.crawl_source|tojson }},
-                       crawlDate: {{ item.crawl_date|tojson }},
-                       licenseNote: {{ item.license_note|tojson }},
-                       labels: {{ item.labels|tojson }},
-                       keyword: {{ keyword|tojson }},
-                       prevSegment: {{ item.modal_prev_segment|tojson }},
-                       hitSegment: {{ item.modal_hit_segment|tojson }},
-                       nextSegment: {{ item.modal_next_segment|tojson }}
-                   }); return false;'>上下文</a>
-            </div>
-        </div>
-        {% else %}
-        <div class="no-result">暂无结果。</div>
-        {% endfor %}
+    <div class="result-view-tabs">
+        <a href="{{ url_for('search', **dict(query_args, view='ccl', page=1)) }}"
+           class="tab-item {% if view_mode == 'ccl' %}active{% endif %}">居中检索视图</a>
+        <a href="{{ url_for('search', **dict(query_args, view='dialogue', page=1)) }}"
+           class="tab-item {% if view_mode == 'dialogue' %}active{% endif %}">完整对话视图</a>
+        {% if source %}
+            <a href="{{ url_for('browse_dialogues', source=source, category=category, dataset_name=advanced_filters.dataset_name) }}"
+               class="browse-search-link">浏览当前范围</a>
+        {% endif %}
     </div>
+
+    {% if view_mode == "dialogue" %}
+        {% set dialogues = dialogue_results %}
+        {% set empty_message = "暂无可展示的完整对话。" %}
+        {% include "_dialogue_strips.html" %}
+    {% else %}
+        {% include "_ccl_results.html" %}
+    {% endif %}
 
     {% if total_pages > 1 %}
     <div class="pagination">
@@ -204,87 +183,7 @@
     </div>
     {% endif %}
 
-    <div id="contextModal" class="modal-overlay" onclick="closeModal(event)">
-        <div class="modal-box">
-            <div class="modal-header">
-                <div>
-                    <div class="modal-kicker">语料上下文查看</div>
-                    <div id="modalTitle" class="modal-title">上下文详情</div>
-                </div>
-                <button class="modal-close" onclick="closeModalDirect()">×</button>
-            </div>
-            <div class="modal-body">
-                <div class="modal-meta-grid">
-                    <div>
-                        <span class="modal-meta-label">文件名</span>
-                        <span id="modalFileName"></span>
-                    </div>
-                    <div>
-                        <span class="modal-meta-label">来源</span>
-                        <span id="modalSource"></span>
-                    </div>
-                    <div>
-                        <span class="modal-meta-label">类型</span>
-                        <span id="modalCategory"></span>
-                    </div>
-                    <div>
-                        <span class="modal-meta-label">年份</span>
-                        <span id="modalYear"></span>
-                    </div>
-                    <div>
-                        <span class="modal-meta-label">数据集</span>
-                        <span id="modalDatasetName"></span>
-                    </div>
-                    <div class="interview-meta">
-                        <span class="modal-meta-label">原文来源</span>
-                        <span id="modalCrawlSource"></span>
-                    </div>
-                    <div class="interview-meta">
-                        <span class="modal-meta-label">抓取日期</span>
-                        <span id="modalCrawlDate"></span>
-                    </div>
-                    <div class="interview-meta">
-                        <span class="modal-meta-label">原文链接</span>
-                        <a id="modalSourceUrl" target="_blank" rel="noopener noreferrer">查看原文</a>
-                        <span id="modalSourceUrlMissing">暂无原文链接</span>
-                    </div>
-                    <div>
-                        <span class="modal-meta-label">对话 ID</span>
-                        <span id="modalDialogueId"></span>
-                    </div>
-                    <div>
-                        <span class="modal-meta-label">时间</span>
-                        <span id="modalTimeRange"></span>
-                    </div>
-                    <div>
-                        <span class="modal-meta-label">说话人</span>
-                        <span id="modalSpeaker"></span>
-                    </div>
-                </div>
-                <div class="modal-audio" id="modalAudioBox">
-                    <div class="modal-audio-label">音频话轮</div>
-                    <audio id="modalAudio" controls preload="none"></audio>
-                    <div class="modal-audio-unavailable" id="modalAudioUnavailable">该音频暂不可播放。</div>
-                </div>
-                <div class="modal-segments">
-                    <div class="modal-segment-block">
-                        <div class="modal-segment-label" id="modalPrevLabel">前序话轮</div>
-                        <div class="modal-segment-text" id="modalPrevSegment"></div>
-                    </div>
-                    <div class="modal-segment-block hit">
-                        <div class="modal-segment-label" id="modalHitLabel">命中话轮</div>
-                        <div class="modal-segment-text" id="modalHitSegment"></div>
-                    </div>
-                    <div class="modal-segment-block">
-                        <div class="modal-segment-label" id="modalNextLabel">后续话轮</div>
-                        <div class="modal-segment-text" id="modalNextSegment"></div>
-                    </div>
-                </div>
-                <div class="interview-license-note" id="modalLicenseNote"></div>
-            </div>
-        </div>
-    </div>
-    <script src="{{ url_for('static', filename='results.js') }}"></script>
+    {% include "_context_modal.html" %}
 
 </body>
 </html>

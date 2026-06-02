@@ -1469,7 +1469,7 @@ def get_browse_dataset_statistics(source="", category=""):
         close_connection(conn)
 
 
-def build_dialogue_browse_filters(source="", category="", dataset_name="", table_name=""):
+def build_dialogue_browse_filters(source="", category="", dataset_name="", keyword="", table_name=""):
     marker = placeholder()
     prefix = f"{table_name}." if table_name else ""
     where_clauses = []
@@ -1483,12 +1483,19 @@ def build_dialogue_browse_filters(source="", category="", dataset_name="", table
     if dataset_name:
         where_clauses.append(f"{prefix}dataset_name = {marker}")
         params.append(dataset_name)
+    if keyword:
+        like_operator = "ILIKE" if is_postgres() else "LIKE"
+        where_clauses.append(
+            f"(COALESCE({prefix}title, '') {like_operator} {marker} ESCAPE '\\' "
+            f"OR COALESCE({prefix}content, '') {like_operator} {marker} ESCAPE '\\')"
+        )
+        params.extend([build_like_pattern(keyword), build_like_pattern(keyword)])
     return where_clauses, params
 
 
-def count_browse_dialogues(source="", category="", dataset_name=""):
+def count_browse_dialogues(source="", category="", dataset_name="", keyword=""):
     conversation_key_expr = entry_conversation_key_sql("ce")
-    where_clauses, params = build_dialogue_browse_filters(source, category, dataset_name, "ce")
+    where_clauses, params = build_dialogue_browse_filters(source, category, dataset_name, keyword, "ce")
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
     conn = timed_connection("count_browse_dialogues")
     try:
@@ -1532,10 +1539,10 @@ def build_entry_dialogue(entry):
     }
 
 
-def query_browse_conversation_entries(conn, source="", category="", dataset_name="", limit=10, offset=0):
+def query_browse_conversation_entries(conn, source="", category="", dataset_name="", keyword="", limit=10, offset=0):
     marker = placeholder()
     conversation_key_expr = entry_conversation_key_sql("ce")
-    where_clauses, params = build_dialogue_browse_filters(source, category, dataset_name, "ce")
+    where_clauses, params = build_dialogue_browse_filters(source, category, dataset_name, keyword, "ce")
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
     target_count = max(0, offset) + max(1, limit)
     chunk_size = max(100, min(1000, target_count * 2))
@@ -1583,114 +1590,125 @@ def query_browse_conversation_entries(conn, source="", category="", dataset_name
     return conversations[offset:offset + limit]
 
 
-def query_browse_dialogues(source="", category="", dataset_name="", limit=10, offset=0):
+def build_dialogues_from_conversations(conn, conversations):
+    if not conversations:
+        return []
     marker = placeholder()
+    if not has_dialogue_turns_table():
+        entry_ids = [row["entry_id"] for row in conversations]
+        entry_markers = ", ".join([marker] * len(entry_ids))
+        rows = fetch_all_dicts(conn.execute(
+            f"SELECT * FROM corpus_entries WHERE id IN ({entry_markers})",
+            entry_ids,
+        ))
+        rows_by_id = {row["id"]: row for row in rows}
+        return [
+            build_entry_dialogue(rows_by_id[conversation["entry_id"]])
+            for conversation in conversations
+            if conversation["entry_id"] in rows_by_id
+        ]
+
+    keys = [row["conversation_key"] for row in conversations]
+    key_markers = ", ".join([marker] * len(keys))
+    turn_where_clauses = [f"dt.conversation_key IN ({key_markers})"]
+    turn_params = list(keys)
+    turn_where_sql = f"WHERE {' AND '.join(turn_where_clauses)}"
+    turn_rows = fetch_all_dicts(conn.execute(
+        f"""
+        SELECT dt.conversation_key,
+               dt.entry_id,
+               dt.turn_index,
+               dt.speaker_label,
+               dt.turn_text,
+               dt.source,
+               dt.category,
+               dt.dataset_name,
+               e.title,
+               e.year,
+               e.source_url,
+               e.crawl_source,
+               e.crawl_date,
+               e.license_note,
+               e.audio_file,
+               e.start_time,
+               e.end_time
+        FROM {TURN_TABLE} dt
+        LEFT JOIN corpus_entries e ON e.id = dt.entry_id
+        {turn_where_sql}
+        ORDER BY dt.conversation_key, dt.turn_index, dt.id
+        """,
+        turn_params,
+    ))
+
+    turns_by_key = {key: [] for key in keys}
+    first_turn_by_key = {}
+    for row in turn_rows:
+        row["speaker_label"], row["turn_text"] = normalize_speaker_turn(
+            row.get("speaker_label") or "",
+            row.get("turn_text") or "",
+        )
+        key = row["conversation_key"]
+        turns_by_key.setdefault(key, []).append(row)
+        first_turn_by_key.setdefault(key, row)
+
+    fallback_entry_ids = [
+        conversation["entry_id"]
+        for conversation in conversations
+        if not turns_by_key.get(conversation["conversation_key"])
+    ]
+    fallback_dialogues_by_id = {}
+    if fallback_entry_ids:
+        entry_markers = ", ".join([marker] * len(fallback_entry_ids))
+        entry_rows = fetch_all_dicts(conn.execute(
+            f"SELECT * FROM corpus_entries WHERE id IN ({entry_markers})",
+            fallback_entry_ids,
+        ))
+        fallback_dialogues_by_id = {
+            row["id"]: build_entry_dialogue(row)
+            for row in entry_rows
+        }
+
+    dialogues = []
+    for conversation in conversations:
+        key = conversation["conversation_key"]
+        first_turn = first_turn_by_key.get(key) or {}
+        turns = turns_by_key.get(key) or []
+        if not turns:
+            fallback_dialogue = fallback_dialogues_by_id.get(conversation.get("entry_id"))
+            if fallback_dialogue:
+                dialogues.append(fallback_dialogue)
+                continue
+        dialogues.append({
+            "conversation_key": key,
+            "entry_id": conversation.get("entry_id"),
+            "title": conversation.get("title") or first_turn.get("title") or key or "未命名对话",
+            "source": conversation.get("source") or first_turn.get("source") or "",
+            "category": conversation.get("category") or first_turn.get("category") or "",
+            "dataset_name": conversation.get("dataset_name") or first_turn.get("dataset_name") or "",
+            "year": conversation.get("year") or first_turn.get("year"),
+            "turn_count": len(turns),
+            "turns": turns,
+            "source_url": conversation.get("source_url") or first_turn.get("source_url") or "",
+            "crawl_source": conversation.get("crawl_source") or first_turn.get("crawl_source") or "",
+            "crawl_date": conversation.get("crawl_date") or first_turn.get("crawl_date") or "",
+            "license_note": conversation.get("license_note") or first_turn.get("license_note") or "",
+        })
+    return dialogues
+
+
+def query_dialogues_for_conversations(conversations):
+    conn = timed_connection("query_dialogues_for_conversations")
+    try:
+        return build_dialogues_from_conversations(conn, conversations)
+    finally:
+        close_connection(conn)
+
+
+def query_browse_dialogues(source="", category="", dataset_name="", keyword="", limit=10, offset=0):
     conn = timed_connection("query_browse_dialogues")
     try:
-        conversations = query_browse_conversation_entries(conn, source, category, dataset_name, limit, offset)
-        if not conversations:
-            return []
-
-        if not has_dialogue_turns_table():
-            entry_ids = [row["entry_id"] for row in conversations]
-            entry_markers = ", ".join([marker] * len(entry_ids))
-            rows = fetch_all_dicts(conn.execute(
-                f"SELECT * FROM corpus_entries WHERE id IN ({entry_markers})",
-                entry_ids,
-            ))
-            rows_by_id = {row["id"]: row for row in rows}
-            return [
-                build_entry_dialogue(rows_by_id[conversation["entry_id"]])
-                for conversation in conversations
-                if conversation["entry_id"] in rows_by_id
-            ]
-
-        keys = [row["conversation_key"] for row in conversations]
-        key_markers = ", ".join([marker] * len(keys))
-        turn_where_clauses = [f"dt.conversation_key IN ({key_markers})"]
-        turn_params = list(keys)
-        turn_where_sql = f"WHERE {' AND '.join(turn_where_clauses)}"
-        turn_rows = fetch_all_dicts(conn.execute(
-            f"""
-            SELECT dt.conversation_key,
-                   dt.entry_id,
-                   dt.turn_index,
-                   dt.speaker_label,
-                   dt.turn_text,
-                   dt.source,
-                   dt.category,
-                   dt.dataset_name,
-                   e.title,
-                   e.year,
-                   e.source_url,
-                   e.crawl_source,
-                   e.crawl_date,
-                   e.license_note,
-                   e.audio_file,
-                   e.start_time,
-                   e.end_time
-            FROM {TURN_TABLE} dt
-            LEFT JOIN corpus_entries e ON e.id = dt.entry_id
-            {turn_where_sql}
-            ORDER BY dt.conversation_key, dt.turn_index, dt.id
-            """,
-            turn_params,
-        ))
-
-        turns_by_key = {key: [] for key in keys}
-        first_turn_by_key = {}
-        for row in turn_rows:
-            row["speaker_label"], row["turn_text"] = normalize_speaker_turn(
-                row.get("speaker_label") or "",
-                row.get("turn_text") or "",
-            )
-            key = row["conversation_key"]
-            turns_by_key.setdefault(key, []).append(row)
-            first_turn_by_key.setdefault(key, row)
-
-        fallback_entry_ids = [
-            conversation["entry_id"]
-            for conversation in conversations
-            if not turns_by_key.get(conversation["conversation_key"])
-        ]
-        fallback_dialogues_by_id = {}
-        if fallback_entry_ids:
-            entry_markers = ", ".join([marker] * len(fallback_entry_ids))
-            entry_rows = fetch_all_dicts(conn.execute(
-                f"SELECT * FROM corpus_entries WHERE id IN ({entry_markers})",
-                fallback_entry_ids,
-            ))
-            fallback_dialogues_by_id = {
-                row["id"]: build_entry_dialogue(row)
-                for row in entry_rows
-            }
-
-        dialogues = []
-        for conversation in conversations:
-            key = conversation["conversation_key"]
-            first_turn = first_turn_by_key.get(key) or {}
-            turns = turns_by_key.get(key) or []
-            if not turns:
-                fallback_dialogue = fallback_dialogues_by_id.get(conversation.get("entry_id"))
-                if fallback_dialogue:
-                    dialogues.append(fallback_dialogue)
-                    continue
-            dialogues.append({
-                "conversation_key": key,
-                "entry_id": conversation.get("entry_id"),
-                "title": conversation.get("title") or first_turn.get("title") or key or "未命名对话",
-                "source": conversation.get("source") or first_turn.get("source") or "",
-                "category": conversation.get("category") or first_turn.get("category") or "",
-                "dataset_name": conversation.get("dataset_name") or first_turn.get("dataset_name") or "",
-                "year": conversation.get("year") or first_turn.get("year"),
-                "turn_count": len(turns),
-                "turns": turns,
-                "source_url": conversation.get("source_url") or first_turn.get("source_url") or "",
-                "crawl_source": conversation.get("crawl_source") or first_turn.get("crawl_source") or "",
-                "crawl_date": conversation.get("crawl_date") or first_turn.get("crawl_date") or "",
-                "license_note": conversation.get("license_note") or first_turn.get("license_note") or "",
-            })
-        return dialogues
+        conversations = query_browse_conversation_entries(conn, source, category, dataset_name, keyword, limit, offset)
+        return build_dialogues_from_conversations(conn, conversations)
     finally:
         close_connection(conn)
 

@@ -619,6 +619,9 @@ def highlight_keyword(text, keyword):
     return Markup("".join(highlighted))
 
 
+app.add_template_filter(highlight_keyword, "highlight_keyword")
+
+
 def highlight_terms(text, terms):
     text = text or ""
     terms = [term for term in (terms or []) if term]
@@ -1189,6 +1192,54 @@ def dialogue_label_set():
     }
 
 
+SEARCH_VIEW_MODES = {"ccl", "dialogue"}
+
+
+def normalize_search_view(value):
+    value = (value or "").strip().lower()
+    return value if value in SEARCH_VIEW_MODES else "ccl"
+
+
+def build_conversation_refs_from_search_results(results):
+    conversations = []
+    seen = set()
+    for item in results:
+        entry_id = item.get("id")
+        conversation_key = item.get("conversation_id") or f"entry:{entry_id}"
+        if not conversation_key or conversation_key in seen:
+            continue
+        seen.add(conversation_key)
+        conversations.append({
+            "conversation_key": conversation_key,
+            "entry_id": entry_id,
+            "title": item.get("title") or "",
+            "source": item.get("source") or "",
+            "category": item.get("category") or "",
+            "dataset_name": item.get("dataset_name") or "",
+            "year": item.get("year"),
+            "source_url": item.get("source_url") or "",
+            "crawl_source": item.get("crawl_source") or "",
+            "crawl_date": item.get("crawl_date") or "",
+            "license_note": item.get("license_note") or "",
+        })
+    return conversations
+
+
+def annotate_dialogues_for_keyword(dialogues, keyword):
+    keyword = (keyword or "").strip()
+    for dialogue in dialogues:
+        match_count = 0
+        for turn in dialogue.get("turns") or []:
+            text = turn.get("turn_text") or ""
+            is_hit = bool(keyword and keyword in text)
+            turn["is_hit"] = is_hit
+            turn["turn_text_html"] = highlight_keyword(text, keyword)
+            if is_hit:
+                match_count += 1
+        dialogue["match_count"] = match_count
+    return dialogues
+
+
 def build_segment_context(item, keyword, left_len=80, right_len=80):
     if is_interview_item(item):
         prev_segment, hit_segment, next_segment, modal_prev, modal_next = build_interview_context(
@@ -1290,6 +1341,197 @@ def build_segment_context(item, keyword, left_len=80, right_len=80):
     }
 
 
+def should_defer_ccl_count(keyword, source, category, advanced_filters, search_backend):
+    if search_backend == "postgres":
+        return False
+    if source or category or advanced_filters.get("dataset_name"):
+        return False
+    if not keyword:
+        return False
+    return not corpus_repository.should_use_fts_match(keyword)
+
+
+def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_count=False):
+    keyword = (args.get("q") or "").strip()
+    source = (args.get("source") or "").strip()
+    year = (args.get("year") or "").strip()
+    category = (args.get("category") or "").strip()
+    view_mode = normalize_search_view(args.get("view", default_view))
+    advanced_filters = corpus_repository.normalize_search_filters({
+        "field": (args.get("field") or "content").strip(),
+        "mode": (args.get("mode") or "contains").strip(),
+        "exclude": (args.get("exclude") or "").strip(),
+        "year_from": (args.get("year_from") or "").strip(),
+        "year_to": (args.get("year_to") or "").strip(),
+        "dataset_name": (args.get("dataset_name") or "").strip(),
+        "speaker": (args.get("speaker") or "").strip(),
+        "title": (args.get("title") or "").strip(),
+        "content_min": (args.get("content_min") or "").strip(),
+        "content_max": (args.get("content_max") or "").strip(),
+        "has_audio": (args.get("has_audio") or "").strip(),
+        "sort": (args.get("sort") or "id_desc").strip(),
+    })
+    is_advanced_search = corpus_repository.has_advanced_filters(advanced_filters) or args.get("advanced") == "1"
+    left_len = (args.get("left") or "30").strip()
+    right_len = (args.get("right") or "30").strip()
+    page = (args.get("page") or "1").strip()
+
+    try:
+        left_len = int(left_len)
+    except ValueError:
+        left_len = 30
+
+    try:
+        right_len = int(right_len)
+    except ValueError:
+        right_len = 30
+
+    try:
+        page = int(page)
+        if page < 1:
+            page = 1
+    except ValueError:
+        page = 1
+
+    per_page = 10 if view_mode == "dialogue" else 50
+    search_backend = get_active_search_backend()
+    fast_search = (
+        search_backend == "postgres"
+        and corpus_repository.POSTGRES_FAST_SEARCH
+    )
+    defer_exact_count = view_mode == "dialogue" or (
+        allow_deferred_ccl_count
+        and view_mode == "ccl"
+        and should_defer_ccl_count(keyword, source, category, advanced_filters, search_backend)
+    )
+    if fast_search or defer_exact_count:
+        total = 0
+    elif search_backend == "fts":
+        total = count_search_results_fts(keyword, source, year, category, advanced_filters)
+    else:
+        total = count_search_results(keyword, source, year, category, advanced_filters)
+    total_pages = 1 if (fast_search or defer_exact_count) else max(1, math.ceil(total / per_page))
+
+    if not fast_search and not defer_exact_count and page > total_pages:
+        page = total_pages
+
+    page_window_size = 10
+    half_window = page_window_size // 2
+    page_window_start = max(1, page - half_window)
+    page_window_end = page_window_start + page_window_size - 1
+
+    if page_window_end > total_pages:
+        page_window_end = total_pages
+        page_window_start = max(1, page_window_end - page_window_size + 1)
+
+    start_idx = (page - 1) * per_page
+    end_idx = start_idx + per_page
+
+    query_limit = per_page + 1 if (fast_search or defer_exact_count) else per_page
+    if search_backend == "fts":
+        page_rows = query_search_page_fts(
+            keyword=keyword,
+            source=source,
+            year=year,
+            category=category,
+            limit=query_limit,
+            offset=start_idx,
+            filters=advanced_filters,
+        )
+    else:
+        page_rows = query_search_page(
+            keyword=keyword,
+            source=source,
+            year=year,
+            category=category,
+            limit=query_limit,
+            offset=start_idx,
+            filters=advanced_filters,
+        )
+    has_next_page = (fast_search or defer_exact_count) and len(page_rows) > per_page
+    if fast_search or defer_exact_count:
+        page_rows = page_rows[:per_page]
+        total = start_idx + len(page_rows) + (1 if has_next_page else 0)
+        total_pages = page + 1 if has_next_page else page
+
+    page_results = []
+    for item in page_rows:
+        if keyword:
+            left, hit, right = split_context(item["content"], keyword, left_len, right_len)
+        else:
+            left, hit, right = "", "", item["content"][:right_len]
+
+        result = dict(item)
+        result["left_context"] = left
+        result["hit"] = hit
+        result["right_context"] = right
+        result.update(build_segment_context(item, keyword, left_len, right_len))
+        result["source_url"] = result.get("source_url") or ""
+        result["crawl_source"] = result.get("crawl_source") or result.get("dataset_name") or result.get("category") or ""
+        result["crawl_date"] = result.get("crawl_date") or ""
+        result["license_note"] = result.get("license_note") or ""
+        result["is_interview"] = bool(result.get("is_interview") or is_interview_item(result))
+        audio_file = result.get("audio_file")
+        result["audio_url"] = build_corpus_audio_url(audio_file)
+        page_results.append(result)
+
+    dialogue_results = []
+    if view_mode == "dialogue":
+        conversations = build_conversation_refs_from_search_results(page_results)
+        dialogue_results = annotate_dialogues_for_keyword(
+            query_dialogues_for_conversations(conversations),
+            keyword,
+        )
+
+    start_no = start_idx + 1 if total > 0 else 0
+    end_no = min(end_idx, total)
+
+    sources, years = get_filter_options()
+    categories, datasets = get_advanced_filter_options(source)
+    source_category_options = get_source_category_options()
+    query_args = {
+        "q": keyword,
+        "source": source,
+        "year": year,
+        "category": category,
+        "left": left_len,
+        "right": right_len,
+        "view": view_mode,
+        "page_size": (args.get("page_size") or "").strip(),
+        "advanced": "1" if is_advanced_search else "",
+        **advanced_filters,
+    }
+
+    return {
+        "keyword": keyword,
+        "source": source,
+        "year": year,
+        "category": category,
+        "view_mode": view_mode,
+        "left_len": left_len,
+        "right_len": right_len,
+        "results": page_results,
+        "dialogue_results": dialogue_results,
+        "total": total,
+        "total_is_estimated": defer_exact_count and has_next_page,
+        "sources": sources,
+        "years": years,
+        "categories": categories,
+        "source_category_options": source_category_options,
+        "datasets": datasets,
+        "advanced_filters": advanced_filters,
+        "is_advanced_search": is_advanced_search,
+        "query_args": query_args,
+        "page": page,
+        "total_pages": total_pages,
+        "page_window_start": page_window_start,
+        "page_window_end": page_window_end,
+        "start_no": start_no,
+        "end_no": end_no,
+        "search_backend": search_backend,
+    }
+
+
 init_submission_tables = corpus_repository.init_submission_tables
 load_all_data = corpus_repository.load_all_data
 count_admin_entries = corpus_repository.count_admin_entries
@@ -1297,6 +1539,7 @@ list_admin_entries_page = corpus_repository.list_admin_entries_page
 get_filter_options = corpus_repository.get_filter_options
 get_advanced_filter_options = corpus_repository.get_advanced_filter_options
 get_source_category_options = corpus_repository.get_source_category_options
+query_dialogues_for_conversations = corpus_repository.query_dialogues_for_conversations
 has_fts_table = corpus_repository.has_fts_table
 get_active_search_backend = lambda: corpus_repository.get_active_search_backend(get_search_backend())
 count_search_results = corpus_repository.count_search_results
@@ -1323,7 +1566,55 @@ def data_sources():
 
 @app.route("/browse")
 def browse_dialogues():
-    return render_template("browse.html", **build_browse_context(request.args))
+    requested_view = request.args.get("view")
+    keyword = (request.args.get("q") or "").strip()
+    default_view = "ccl" if keyword else "dialogue"
+    view_mode = normalize_search_view(requested_view or default_view)
+    context = build_browse_context(request.args, load_dialogues=view_mode != "ccl")
+    context["view_mode"] = view_mode
+    context["year"] = (request.args.get("year") or "").strip()
+    context["left_len"] = request.args.get("left", "30").strip() or "30"
+    context["right_len"] = request.args.get("right", "30").strip() or "30"
+    context["source_category_options"] = get_source_category_options()
+    context["years"] = get_filter_options()[1]
+    context["query_args"] = {
+        **context["query_args"],
+        "view": view_mode,
+        "year": context["year"],
+        "left": context["left_len"],
+        "right": context["right_len"],
+    }
+
+    if view_mode == "ccl":
+        search_context = build_search_results_context(
+            request.args,
+            default_view="ccl",
+            allow_deferred_ccl_count=True,
+        )
+        for key in (
+            "results",
+            "total",
+            "total_is_estimated",
+            "page",
+            "total_pages",
+            "page_window_start",
+            "page_window_end",
+            "start_no",
+            "end_no",
+            "query_args",
+            "left_len",
+            "right_len",
+            "year",
+            "search_backend",
+        ):
+            context[key] = search_context[key]
+        context["advanced_filters"] = search_context["advanced_filters"]
+    else:
+        context["total_is_estimated"] = False
+        context["page_window_start"] = max(1, context["page"] - 4)
+        context["page_window_end"] = min(context["total_pages"], context["page"] + 5)
+
+    return render_template("browse.html", **context)
 
 
 @app.route("/submit", methods=["GET", "POST"])
@@ -1413,165 +1704,7 @@ def submit():
 
 @app.route("/search")
 def search():
-    keyword = request.args.get("q", "").strip()
-    source = request.args.get("source", "").strip()
-    year = request.args.get("year", "").strip()
-    category = request.args.get("category", "").strip()
-    advanced_filters = corpus_repository.normalize_search_filters({
-        "field": request.args.get("field", "content").strip(),
-        "mode": request.args.get("mode", "contains").strip(),
-        "exclude": request.args.get("exclude", "").strip(),
-        "year_from": request.args.get("year_from", "").strip(),
-        "year_to": request.args.get("year_to", "").strip(),
-        "dataset_name": request.args.get("dataset_name", "").strip(),
-        "speaker": request.args.get("speaker", "").strip(),
-        "title": request.args.get("title", "").strip(),
-        "content_min": request.args.get("content_min", "").strip(),
-        "content_max": request.args.get("content_max", "").strip(),
-        "has_audio": request.args.get("has_audio", "").strip(),
-        "sort": request.args.get("sort", "id_desc").strip(),
-    })
-    is_advanced_search = corpus_repository.has_advanced_filters(advanced_filters) or request.args.get("advanced") == "1"
-    left_len = request.args.get("left", "30").strip()
-    right_len = request.args.get("right", "30").strip()
-    page = request.args.get("page", "1").strip()
-
-    try:
-        left_len = int(left_len)
-    except ValueError:
-        left_len = 30
-
-    try:
-        right_len = int(right_len)
-    except ValueError:
-        right_len = 30
-
-    try:
-        page = int(page)
-        if page < 1:
-            page = 1
-    except ValueError:
-        page = 1
-
-    per_page = 50
-    search_backend = get_active_search_backend()
-    fast_search = (
-        search_backend == "postgres"
-        and corpus_repository.POSTGRES_FAST_SEARCH
-    )
-    if fast_search:
-        total = 0
-    elif search_backend == "fts":
-        total = count_search_results_fts(keyword, source, year, category, advanced_filters)
-    else:
-        total = count_search_results(keyword, source, year, category, advanced_filters)
-    total_pages = 1 if fast_search else max(1, math.ceil(total / per_page))
-
-    if not fast_search and page > total_pages:
-        page = total_pages
-
-    page_window_size = 10
-    half_window = page_window_size // 2
-    page_window_start = max(1, page - half_window)
-    page_window_end = page_window_start + page_window_size - 1
-
-    if page_window_end > total_pages:
-        page_window_end = total_pages
-        page_window_start = max(1, page_window_end - page_window_size + 1)
-
-    start_idx = (page - 1) * per_page
-    end_idx = start_idx + per_page
-
-    query_limit = per_page + 1 if fast_search else per_page
-    if search_backend == "fts":
-        page_rows = query_search_page_fts(
-            keyword=keyword,
-            source=source,
-            year=year,
-            category=category,
-            limit=query_limit,
-            offset=start_idx,
-            filters=advanced_filters,
-        )
-    else:
-        page_rows = query_search_page(
-            keyword=keyword,
-            source=source,
-            year=year,
-            category=category,
-            limit=query_limit,
-            offset=start_idx,
-            filters=advanced_filters,
-        )
-    has_next_page = fast_search and len(page_rows) > per_page
-    if fast_search:
-        page_rows = page_rows[:per_page]
-        total = start_idx + len(page_rows) + (1 if has_next_page else 0)
-        total_pages = page + 1 if has_next_page else page
-    page_results = []
-    for item in page_rows:
-        if keyword:
-            left, hit, right = split_context(item["content"], keyword, left_len, right_len)
-        else:
-            left, hit, right = "", "", item["content"][:right_len]
-
-        result = dict(item)
-        result["left_context"] = left
-        result["hit"] = hit
-        result["right_context"] = right
-        result.update(build_segment_context(item, keyword, left_len, right_len))
-        result["source_url"] = result.get("source_url") or ""
-        result["crawl_source"] = result.get("crawl_source") or result.get("dataset_name") or result.get("category") or ""
-        result["crawl_date"] = result.get("crawl_date") or ""
-        result["license_note"] = result.get("license_note") or ""
-        result["is_interview"] = bool(result.get("is_interview") or is_interview_item(result))
-        audio_file = result.get("audio_file")
-        result["audio_url"] = build_corpus_audio_url(audio_file)
-        page_results.append(result)
-
-    start_no = start_idx + 1 if total > 0 else 0
-    end_no = min(end_idx, total)
-
-    sources, years = get_filter_options()
-    categories, datasets = get_advanced_filter_options(source)
-    source_category_options = get_source_category_options()
-    query_args = {
-        "q": keyword,
-        "source": source,
-        "year": year,
-        "category": category,
-        "left": left_len,
-        "right": right_len,
-        "advanced": "1" if is_advanced_search else "",
-        **advanced_filters,
-    }
-
-    return render_template(
-        "results.html",
-        keyword=keyword,
-        source=source,
-        year=year,
-        category=category,
-        left_len=left_len,
-        right_len=right_len,
-        results=page_results,
-        total=total,
-        sources=sources,
-        years=years,
-        categories=categories,
-        source_category_options=source_category_options,
-        datasets=datasets,
-        advanced_filters=advanced_filters,
-        is_advanced_search=is_advanced_search,
-        query_args=query_args,
-        page=page,
-        total_pages=total_pages,
-        page_window_start=page_window_start,
-        page_window_end=page_window_end,
-        start_no=start_no,
-        end_no=end_no,
-        search_backend=search_backend,
-    )
+    return render_template("results.html", **build_search_results_context(request.args))
 
 
 @app.route("/resonance")

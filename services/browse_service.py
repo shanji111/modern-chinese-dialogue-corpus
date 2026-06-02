@@ -186,6 +186,15 @@ def get_home_source_stats():
     }
 
 
+def get_all_source_stat(source_stats):
+    return {
+        "source": "",
+        "entry_count": sum(int((stats or {}).get("entry_count") or 0) for stats in source_stats.values()),
+        "dialogue_count": sum(int((stats or {}).get("dialogue_count") or 0) for stats in source_stats.values()),
+        "turn_count": sum(int((stats or {}).get("turn_count") or 0) for stats in source_stats.values()),
+    }
+
+
 def parse_page_number(value):
     try:
         page = int(value)
@@ -203,6 +212,8 @@ def parse_page_size(value):
 
 
 def get_source_stat(source_stats, source):
+    if not source:
+        return get_all_source_stat(source_stats)
     return source_stats.get(source) or {
         "source": source,
         "entry_count": 0,
@@ -248,6 +259,30 @@ def get_static_dataset_stats(source, category=""):
     return datasets
 
 
+def get_all_static_categories():
+    categories = []
+    seen = set()
+    for source in get_section_names():
+        for category in STATIC_SOURCE_CATEGORIES.get(source, ()):
+            if category in seen:
+                continue
+            seen.add(category)
+            categories.append(category)
+    return categories
+
+
+def get_all_static_datasets():
+    datasets = []
+    seen = set()
+    for values in STATIC_SOURCE_DATASETS.values():
+        for dataset_name in values:
+            if dataset_name in seen:
+                continue
+            seen.add(dataset_name)
+            datasets.append(dataset_name)
+    return datasets
+
+
 def get_category_stats(source):
     return get_static_category_stats(source)
 
@@ -268,59 +303,85 @@ def get_static_filter_total(source, category="", dataset_name="", active_stats=N
 
 
 def build_home_context():
+    source_stats = get_home_source_stats()
     return {
         "sources": get_section_names(),
         "years": [],
         "sections": HOME_CORPUS_SECTIONS,
-        "source_stats": get_home_source_stats(),
+        "source_stats": source_stats,
+        "all_source_stats": get_all_source_stat(source_stats),
     }
 
 
-def build_browse_context(args):
+def annotate_dialogues_for_keyword(dialogues, keyword):
+    keyword = (keyword or "").strip()
+    if not keyword:
+        return dialogues
+    for dialogue in dialogues:
+        match_count = 0
+        for turn in dialogue.get("turns") or []:
+            is_hit = keyword in (turn.get("turn_text") or "")
+            turn["is_hit"] = is_hit
+            if is_hit:
+                match_count += 1
+        dialogue["match_count"] = match_count
+    return dialogues
+
+
+def build_browse_context(args, load_dialogues=True):
     section_names = get_section_names()
     source = (args.get("source") or "").strip()
     category = (args.get("category") or "").strip()
     dataset_name = (args.get("dataset_name") or "").strip()
-    if not source and section_names:
-        source = section_names[0]
+    keyword = (args.get("q") or "").strip()
 
     page = parse_page_number(args.get("page", "1"))
     page_size = parse_page_size(args.get("page_size", "10"))
     source_stats = get_home_source_stats()
+    all_source_stats = get_all_source_stat(source_stats)
     active_stats = get_source_stat(source_stats, source)
-    category_stats = order_category_stats(source, get_category_stats(source))
-    dataset_stats = get_dataset_stats(source, category)
+    category_stats = order_category_stats(source, get_category_stats(source)) if source else []
+    dataset_stats = get_dataset_stats(source, category) if source else []
 
-    static_total = get_static_filter_total(source, category, dataset_name, active_stats)
-    total = static_total if static_total is not None else corpus_repository.count_browse_dialogues(source, category, dataset_name)
-
-    total_pages = max(1, math.ceil(total / page_size))
-    if page > total_pages:
-        page = total_pages
-
-    offset = (page - 1) * page_size
     dialogues = []
-    if total > 0:
+    if load_dialogues:
+        static_total = None if keyword else get_static_filter_total(source, category, dataset_name, active_stats)
+        total = static_total if static_total is not None else corpus_repository.count_browse_dialogues(source, category, dataset_name, keyword)
+        total_pages = max(1, math.ceil(total / page_size))
+        if page > total_pages:
+            page = total_pages
+        offset = (page - 1) * page_size
+    else:
+        total = 0
+        total_pages = 1
+        page = 1
+        offset = 0
+
+    if load_dialogues and total > 0:
         dialogues = corpus_repository.query_browse_dialogues(
             source,
             category,
             dataset_name,
+            keyword,
             limit=page_size,
             offset=offset,
         )
+        dialogues = annotate_dialogues_for_keyword(dialogues, keyword)
     start_no = offset + 1 if total > 0 else 0
     end_no = min(offset + len(dialogues), total)
 
-    categories = [item["category"] for item in category_stats]
-    datasets = [item["dataset_name"] for item in dataset_stats]
+    categories = [item["category"] for item in category_stats] if source else get_all_static_categories()
+    datasets = [item["dataset_name"] for item in dataset_stats] if source else get_all_static_datasets()
 
     return {
         "sections": HOME_CORPUS_SECTIONS,
         "source_stats": source_stats,
+        "all_source_stats": all_source_stats,
         "active_stats": active_stats,
         "source": source,
         "category": category,
         "dataset_name": dataset_name,
+        "keyword": keyword,
         "sources": section_names,
         "categories": categories,
         "datasets": datasets,
@@ -337,6 +398,7 @@ def build_browse_context(args):
             "source": source,
             "category": category,
             "dataset_name": dataset_name,
+            "q": keyword,
             "page_size": page_size,
         },
     }

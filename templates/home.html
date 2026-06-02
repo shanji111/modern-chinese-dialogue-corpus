@@ -24,8 +24,9 @@
             {% endfor %}
         </div>
 
-        <form action="{{ url_for('search') }}" method="get" class="bcc-search-form">
+        <form action="{{ url_for('browse_dialogues') }}" method="get" class="bcc-search-form">
             <input type="hidden" name="source" id="selected-source" value="">
+            <input type="hidden" name="view" value="ccl">
 
             <div class="bcc-search-box">
                 <input type="text" name="q" class="bcc-search-input" placeholder="输入检索词，如：你好 / 没关系 / 我觉得">
@@ -34,18 +35,18 @@
 
             <div class="bcc-search-extra legacy-search-examples">
                 <span class="example-label">检索示例：</span>
-                <a href="{{ url_for('search') }}?q=你好">你好</a>
-                <a href="{{ url_for('search') }}?q=谢谢">谢谢</a>
-                <a href="{{ url_for('search') }}?q=我觉得">我觉得</a>
-                <a href="{{ url_for('search') }}?q=没关系">没关系</a>
-                <a href="{{ url_for('search') }}?q=真的吗">真的吗</a>
+                <a href="{{ url_for('browse_dialogues', q='你好', view='ccl') }}">你好</a>
+                <a href="{{ url_for('browse_dialogues', q='谢谢', view='ccl') }}">谢谢</a>
+                <a href="{{ url_for('browse_dialogues', q='我觉得', view='ccl') }}">我觉得</a>
+                <a href="{{ url_for('browse_dialogues', q='没关系', view='ccl') }}">没关系</a>
+                <a href="{{ url_for('browse_dialogues', q='真的吗', view='ccl') }}">真的吗</a>
             </div>
         </form>
 
         <section class="corpus-card-section cards-grid">
             {% for section in sections %}
                 {% set stats = source_stats.get(section.name, {}) %}
-                <a class="corpus-card corpus-card-clickable" href="{{ url_for('browse_dialogues', source=section.name) }}">
+                <a class="corpus-card corpus-card-clickable" href="{{ url_for('browse_dialogues', source=section.name, view='dialogue') }}">
                     <div class="corpus-card-heading">
                         <h3 class="corpus-card-title">{{ section.name }}</h3>
                         <span class="corpus-card-enter">进入板块</span>
