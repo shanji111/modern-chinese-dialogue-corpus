@@ -59,9 +59,9 @@ STATIC_SOURCE_STATS = {
     },
     "文本对话": {
         "source": "文本对话",
-        "entry_count": 20069,
-        "dialogue_count": 20069,
-        "turn_count": 47693,
+        "entry_count": 13378,
+        "dialogue_count": 13378,
+        "turn_count": 36944,
     },
     "网络回帖": {
         "source": "网络回帖",
@@ -145,25 +145,25 @@ STATIC_SOURCE_DATASETS = {
 }
 
 STATIC_TEXT_CATEGORY_COUNTS = {
-    TEXT_DIALOGUE_CATEGORIES[0]: 8943,
-    TEXT_DIALOGUE_CATEGORIES[1]: 1738,
+    TEXT_DIALOGUE_CATEGORIES[0]: 8555,
+    TEXT_DIALOGUE_CATEGORIES[1]: 669,
     TEXT_DIALOGUE_CATEGORIES[2]: 157,
-    TEXT_DIALOGUE_CATEGORIES[3]: 8098,
+    TEXT_DIALOGUE_CATEGORIES[3]: 2864,
     TEXT_DIALOGUE_CATEGORIES[4]: 377,
     TEXT_DIALOGUE_CATEGORIES[5]: 756,
 }
 
 STATIC_TEXT_DATASET_COUNTS = {
     "朱子语类": 8336,
-    "孟子": 410,
-    "论语": 197,
-    "唐传奇": 718,
-    "世说新语": 668,
-    "清平山堂话本": 352,
+    "孟子": 110,
+    "论语": 109,
+    "唐传奇": 251,
+    "世说新语": 326,
+    "清平山堂话本": 92,
     "朴通事": 110,
     "老乞大": 47,
-    "水浒传": 2000,
-    "西游记": 6098,
+    "水浒传": 1651,
+    "西游记": 1213,
     "雷雨": 377,
     "平凡的世界": 683,
     "骆驼祥子": 73,
