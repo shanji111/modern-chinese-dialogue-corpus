@@ -149,6 +149,7 @@ CONTRAST_MARKERS = ("不是", "不能", "没有", "没法", "不一定", "不属
 REVISION_MARKERS = ("不是", "不对", "应该说", "也就是说", "换句话说", "准确地说", "其实", "我是说", "或者说", "更准确", "补充", "另外", "而且")
 _DIALOGUE_TURNS_TABLE_EXISTS_CACHE = None
 _DIALOGUE_PAIRS_TABLE_EXISTS_CACHE = None
+_FTS_TABLE_EXISTS_CACHE = None
 STORAGE_METADATA_COLUMNS = {
     "storage_backend": "TEXT DEFAULT 'local'",
     "object_key": "TEXT",
@@ -178,7 +179,7 @@ def timing_log(label, start_time, **details):
 
 def timed_connection(label):
     start = time.perf_counter()
-    conn = get_db_connection()
+    conn = get_db_connection() if is_postgres() else get_readonly_db_connection()
     if is_postgres():
         timing_log(f"{label}.connect", start)
     return conn
@@ -521,7 +522,7 @@ def set_corpus_stat(conn, key, value):
 
 
 def get_corpus_stat(key):
-    conn = get_db_connection()
+    conn = get_readonly_db_connection()
     marker = placeholder()
     try:
         row = fetch_one_dict(conn.execute(
@@ -1982,15 +1983,19 @@ def build_fts_match_query(keyword):
 
 
 def has_fts_table():
+    global _FTS_TABLE_EXISTS_CACHE
     if is_postgres():
         return False
-    conn = get_db_connection()
+    if _FTS_TABLE_EXISTS_CACHE is not None:
+        return _FTS_TABLE_EXISTS_CACHE
+    conn = get_readonly_db_connection()
     try:
         row = conn.execute(
             "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
             (FTS_TABLE,),
         ).fetchone()
-        return row is not None
+        _FTS_TABLE_EXISTS_CACHE = row is not None
+        return _FTS_TABLE_EXISTS_CACHE
     finally:
         close_connection(conn)
 
@@ -2037,7 +2042,7 @@ def count_search_results_fts(keyword="", source="", year="", category="", filter
     where_clauses.extend(filter_clauses)
     params = [match_query, *filter_params]
     where_sql = f"WHERE {' AND '.join(where_clauses)}"
-    conn = get_db_connection()
+    conn = get_readonly_db_connection()
     try:
         row = fetch_one_dict(conn.execute(
             f"""
@@ -2106,7 +2111,7 @@ def query_search_page_fts(keyword="", source="", year="", category="", limit=50,
     where_clauses.extend(filter_clauses)
     params = [match_query, *filter_params, limit, offset]
     where_sql = f"WHERE {' AND '.join(where_clauses)}"
-    conn = get_db_connection()
+    conn = get_readonly_db_connection()
     try:
         rows = conn.execute(
             f"""
@@ -2120,6 +2125,143 @@ def query_search_page_fts(keyword="", source="", year="", category="", limit=50,
             params,
         ).fetchall()
         return [row_to_dict(row) for row in rows]
+    finally:
+        close_connection(conn)
+
+
+def query_turn_search_page(keyword="", source="", year="", category="", dataset_name="", limit=50, offset=0):
+    if not keyword:
+        return []
+    marker = placeholder()
+    like_operator = "ILIKE" if is_postgres() else "LIKE"
+    where_clauses = [f"COALESCE(dt.turn_text, '') {like_operator} {marker} ESCAPE '\\'"]
+    params = [build_like_pattern(keyword)]
+    if source:
+        where_clauses.append(f"dt.source = {marker}")
+        params.append(source)
+    if category:
+        where_clauses.append(f"dt.category = {marker}")
+        params.append(category)
+    if dataset_name:
+        where_clauses.append(f"dt.dataset_name = {marker}")
+        params.append(dataset_name)
+    entry_join_sql = ""
+    if year:
+        try:
+            entry_join_sql = "JOIN corpus_entries e ON e.id = dt.entry_id"
+            where_clauses.append(f"e.year = {marker}")
+            params.append(int(year))
+        except ValueError:
+            pass
+    where_sql = f"WHERE {' AND '.join(where_clauses)}"
+    conn = timed_connection("query_turn_search_page")
+    try:
+        hit_rows = fetch_all_dicts(conn.execute(
+            f"""
+            SELECT dt.id,
+                   dt.entry_id,
+                   dt.turn_index,
+                   dt.speaker_label,
+                   dt.turn_text,
+                   dt.source,
+                   dt.category,
+                   dt.dataset_name,
+                   dt.conversation_key
+            FROM {TURN_TABLE} dt
+            {entry_join_sql}
+            {where_sql}
+            ORDER BY dt.id DESC
+            LIMIT {marker} OFFSET {marker}
+            """,
+            [*params, limit, offset],
+        ))
+        if not hit_rows:
+            return []
+
+        entry_ids = list(dict.fromkeys(row["entry_id"] for row in hit_rows if row.get("entry_id") is not None))
+        entry_by_id = {}
+        if entry_ids:
+            entry_markers = ", ".join([marker] * len(entry_ids))
+            entry_rows = fetch_all_dicts(conn.execute(
+                f"""
+                SELECT id,
+                       title,
+                       source,
+                       year,
+                       category,
+                       dataset_name,
+                       audio_file,
+                       start_time,
+                       end_time,
+                       source_url,
+                       crawl_source,
+                       crawl_date,
+                       license_note
+                FROM corpus_entries
+                WHERE id IN ({entry_markers})
+                """,
+                entry_ids,
+            ))
+            entry_by_id = {row["id"]: row for row in entry_rows}
+
+        keys = list(dict.fromkeys(row["conversation_key"] for row in hit_rows if row.get("conversation_key")))
+        neighbor_indexes = sorted({
+            index
+            for row in hit_rows
+            for index in (int(row.get("turn_index") or 0) - 1, int(row.get("turn_index") or 0) + 1)
+            if index > 0
+        })
+        neighbors = {}
+        if keys and neighbor_indexes:
+            key_markers = ", ".join([marker] * len(keys))
+            index_markers = ", ".join([marker] * len(neighbor_indexes))
+            neighbor_rows = fetch_all_dicts(conn.execute(
+                f"""
+                SELECT conversation_key,
+                       turn_index,
+                       turn_text
+                FROM {TURN_TABLE}
+                WHERE conversation_key IN ({key_markers})
+                  AND turn_index IN ({index_markers})
+                """,
+                [*keys, *neighbor_indexes],
+            ))
+            neighbors = {
+                (row["conversation_key"], row["turn_index"]): row.get("turn_text") or ""
+                for row in neighbor_rows
+            }
+
+        results = []
+        for row in hit_rows:
+            entry = entry_by_id.get(row.get("entry_id"), {})
+            key = row.get("conversation_key") or ""
+            turn_index = int(row.get("turn_index") or 0)
+            results.append({
+                "id": row.get("entry_id"),
+                "title": entry.get("title") or "",
+                "source": entry.get("source") or row.get("source") or "",
+                "year": entry.get("year"),
+                "category": entry.get("category") or row.get("category") or "",
+                "dataset_name": entry.get("dataset_name") or row.get("dataset_name") or "",
+                "audio_file": entry.get("audio_file") or "",
+                "start_time": entry.get("start_time"),
+                "end_time": entry.get("end_time"),
+                "source_url": entry.get("source_url") or "",
+                "crawl_source": entry.get("crawl_source") or "",
+                "crawl_date": entry.get("crawl_date") or "",
+                "license_note": entry.get("license_note") or "",
+                "conversation_id": key,
+                "speaker": row.get("speaker_label") or "",
+                "content": row.get("turn_text") or "",
+                "prev_segment": neighbors.get((key, turn_index - 1), ""),
+                "current_segment": row.get("turn_text") or "",
+                "next_segment": neighbors.get((key, turn_index + 1), ""),
+            })
+        return results
+    except Exception as exc:
+        if "dialogue_turns" in str(exc).lower():
+            return []
+        raise
     finally:
         close_connection(conn)
 

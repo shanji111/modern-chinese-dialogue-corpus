@@ -146,7 +146,7 @@
             {% if view_mode == "ccl" %}
                 共在 {% if total_is_estimated %}至少 {% endif %}<b>{{ total|format_count }}</b> 条记录中出现，这是第 <b>{{ start_no }} - {{ end_no }}</b> 条
             {% else %}
-                共 <b>{{ total|format_count }}</b> 个{% if keyword %}匹配{% endif %}完整对话，当前第 <b>{{ start_no }} - {{ end_no }}</b> 个
+                共 {% if total_is_estimated %}至少 {% endif %}<b>{{ total|format_count }}</b> 个{% if keyword %}匹配{% endif %}完整对话，当前第 <b>{{ start_no }} - {{ end_no }}</b> 个
             {% endif %}
         </div>
     </div>

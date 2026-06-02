@@ -345,27 +345,47 @@ def build_browse_context(args, load_dialogues=True):
 
     dialogues = []
     if load_dialogues:
-        static_total = None if keyword else get_static_filter_total(source, category, dataset_name, active_stats)
-        total = static_total if static_total is not None else corpus_repository.count_browse_dialogues(source, category, dataset_name, keyword)
-        total_pages = max(1, math.ceil(total / page_size))
-        if page > total_pages:
-            page = total_pages
+        static_total = get_static_filter_total(source, category, dataset_name, active_stats) if not keyword else None
+        if static_total is not None:
+            total = static_total
+            total_pages = max(1, math.ceil(total / page_size))
+            if page > total_pages:
+                page = total_pages
+            total_is_estimated = False
+        elif keyword:
+            total = 0
+            total_pages = page
+            total_is_estimated = True
+        else:
+            total = corpus_repository.count_browse_dialogues(source, category, dataset_name)
+            total_pages = max(1, math.ceil(total / page_size))
+            if page > total_pages:
+                page = total_pages
+            total_is_estimated = False
         offset = (page - 1) * page_size
     else:
         total = 0
         total_pages = 1
         page = 1
         offset = 0
+        total_is_estimated = False
 
-    if load_dialogues and total > 0:
+    if load_dialogues and (total > 0 or keyword):
         dialogues = corpus_repository.query_browse_dialogues(
             source,
             category,
             dataset_name,
             keyword,
-            limit=page_size,
+            limit=page_size + 1 if keyword else page_size,
             offset=offset,
         )
+        has_next_page = bool(keyword and len(dialogues) > page_size)
+        if has_next_page:
+            dialogues = dialogues[:page_size]
+        if keyword:
+            total = offset + len(dialogues) + (1 if has_next_page else 0)
+            total_pages = page + 1 if has_next_page else page
+            total_is_estimated = has_next_page
         dialogues = annotate_dialogues_for_keyword(dialogues, keyword)
     start_no = offset + 1 if total > 0 else 0
     end_no = min(offset + len(dialogues), total)
@@ -389,6 +409,7 @@ def build_browse_context(args, load_dialogues=True):
         "dataset_stats": dataset_stats,
         "dialogues": dialogues,
         "total": total,
+        "total_is_estimated": total_is_estimated,
         "page": page,
         "page_size": page_size,
         "total_pages": total_pages,

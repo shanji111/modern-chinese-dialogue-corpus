@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, render_template, request, redirect, session, url_for
 import csv
+from functools import lru_cache
 from hmac import compare_digest
 import io
 import json
@@ -1342,13 +1343,20 @@ def build_segment_context(item, keyword, left_len=80, right_len=80):
 
 
 def should_defer_ccl_count(keyword, source, category, advanced_filters, search_backend):
-    if search_backend == "postgres":
+    return bool(keyword)
+
+
+def should_use_turn_search(keyword, year, advanced_filters):
+    if not keyword or year:
         return False
-    if source or category or advanced_filters.get("dataset_name"):
-        return False
-    if not keyword:
-        return False
-    return not corpus_repository.should_use_fts_match(keyword)
+    defaults = corpus_repository.normalize_search_filters()
+    allowed_differences = {"dataset_name"}
+    for key, default_value in defaults.items():
+        if key in allowed_differences:
+            continue
+        if advanced_filters.get(key) != default_value:
+            return False
+    return advanced_filters.get("field") in {"content", "segment"}
 
 
 def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_count=False):
@@ -1399,20 +1407,21 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         search_backend == "postgres"
         and corpus_repository.POSTGRES_FAST_SEARCH
     )
+    use_turn_search = should_use_turn_search(keyword, year, advanced_filters)
     defer_exact_count = view_mode == "dialogue" or (
         allow_deferred_ccl_count
         and view_mode == "ccl"
         and should_defer_ccl_count(keyword, source, category, advanced_filters, search_backend)
     )
-    if fast_search or defer_exact_count:
+    if use_turn_search or fast_search or defer_exact_count:
         total = 0
     elif search_backend == "fts":
         total = count_search_results_fts(keyword, source, year, category, advanced_filters)
     else:
         total = count_search_results(keyword, source, year, category, advanced_filters)
-    total_pages = 1 if (fast_search or defer_exact_count) else max(1, math.ceil(total / per_page))
+    total_pages = 1 if (use_turn_search or fast_search or defer_exact_count) else max(1, math.ceil(total / per_page))
 
-    if not fast_search and not defer_exact_count and page > total_pages:
+    if not use_turn_search and not fast_search and not defer_exact_count and page > total_pages:
         page = total_pages
 
     page_window_size = 10
@@ -1427,8 +1436,18 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
     start_idx = (page - 1) * per_page
     end_idx = start_idx + per_page
 
-    query_limit = per_page + 1 if (fast_search or defer_exact_count) else per_page
-    if search_backend == "fts":
+    query_limit = per_page + 1 if (use_turn_search or fast_search or defer_exact_count) else per_page
+    if use_turn_search:
+        page_rows = corpus_repository.query_turn_search_page(
+            keyword=keyword,
+            source=source,
+            year=year,
+            category=category,
+            dataset_name=advanced_filters.get("dataset_name", ""),
+            limit=query_limit,
+            offset=start_idx,
+        )
+    elif search_backend == "fts":
         page_rows = query_search_page_fts(
             keyword=keyword,
             source=source,
@@ -1448,8 +1467,8 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
             offset=start_idx,
             filters=advanced_filters,
         )
-    has_next_page = (fast_search or defer_exact_count) and len(page_rows) > per_page
-    if fast_search or defer_exact_count:
+    has_next_page = (use_turn_search or fast_search or defer_exact_count) and len(page_rows) > per_page
+    if use_turn_search or fast_search or defer_exact_count:
         page_rows = page_rows[:per_page]
         total = start_idx + len(page_rows) + (1 if has_next_page else 0)
         total_pages = page + 1 if has_next_page else page
@@ -1513,7 +1532,7 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         "results": page_results,
         "dialogue_results": dialogue_results,
         "total": total,
-        "total_is_estimated": defer_exact_count and has_next_page,
+        "total_is_estimated": (use_turn_search or defer_exact_count) and has_next_page,
         "sources": sources,
         "years": years,
         "categories": categories,
@@ -1536,10 +1555,29 @@ init_submission_tables = corpus_repository.init_submission_tables
 load_all_data = corpus_repository.load_all_data
 count_admin_entries = corpus_repository.count_admin_entries
 list_admin_entries_page = corpus_repository.list_admin_entries_page
-get_filter_options = corpus_repository.get_filter_options
-get_advanced_filter_options = corpus_repository.get_advanced_filter_options
-get_source_category_options = corpus_repository.get_source_category_options
+@lru_cache(maxsize=1)
+def get_filter_options():
+    return corpus_repository.get_filter_options()
+
+
+@lru_cache(maxsize=32)
+def get_advanced_filter_options(source=""):
+    return corpus_repository.get_advanced_filter_options(source or "")
+
+
+@lru_cache(maxsize=1)
+def get_source_category_options():
+    return corpus_repository.get_source_category_options()
+
+
+def clear_filter_option_cache():
+    get_filter_options.cache_clear()
+    get_advanced_filter_options.cache_clear()
+    get_source_category_options.cache_clear()
+
+
 query_dialogues_for_conversations = corpus_repository.query_dialogues_for_conversations
+query_turn_search_page = corpus_repository.query_turn_search_page
 has_fts_table = corpus_repository.has_fts_table
 get_active_search_backend = lambda: corpus_repository.get_active_search_backend(get_search_backend())
 count_search_results = corpus_repository.count_search_results
@@ -1610,7 +1648,6 @@ def browse_dialogues():
             context[key] = search_context[key]
         context["advanced_filters"] = search_context["advanced_filters"]
     else:
-        context["total_is_estimated"] = False
         context["page_window_start"] = max(1, context["page"] - 4)
         context["page_window_end"] = min(context["total_pages"], context["page"] + 5)
 
@@ -1704,7 +1741,10 @@ def submit():
 
 @app.route("/search")
 def search():
-    return render_template("results.html", **build_search_results_context(request.args))
+    return render_template(
+        "results.html",
+        **build_search_results_context(request.args, allow_deferred_ccl_count=True),
+    )
 
 
 @app.route("/resonance")
@@ -1934,6 +1974,7 @@ def upload_demo():
         year_value = None
 
     insert_entry(title, content, source_type, year_value, category)
+    clear_filter_option_cache()
 
     return render_template(
         "admin.html",
@@ -2006,6 +2047,7 @@ def approve_submission(submission_id):
             error="该投稿暂时无法通过审核，请确认其中包含可用的文本内容或文件信息。",
         ), 400
 
+    clear_filter_option_cache()
     return redirect(url_for("admin_submission_detail", submission_id=submission_id, approved=1))
 
 
