@@ -51,7 +51,9 @@
             <div class="category-tabs search-mode-tabs" data-search-mode-tabs data-default-mode="{{ 'advanced' if is_advanced_search else 'basic' }}">
                 <button type="button" class="tab-item {% if not is_advanced_search %}active{% endif %}" data-search-mode="basic">普通查询</button>
                 <button type="button" class="tab-item {% if is_advanced_search %}active{% endif %}" data-search-mode="advanced">高级检索</button>
-                <a href="{{ url_for('resonance_search') }}" class="tab-item">对话句法检索</a>
+                {% if resonance_search_enabled %}
+                    <a href="{{ url_for('resonance_search') }}" class="tab-item">对话句法检索</a>
+                {% endif %}
             </div>
 
             <div class="advanced-search-pane" data-advanced-panel {% if not is_advanced_search %}hidden{% endif %}>

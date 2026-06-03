@@ -40,6 +40,7 @@ INTERVIEW_RESULT_HIT_CHARS = 96
 INTERVIEW_MODAL_SIDE_CHARS = 90
 TRANSCRIPTION_TEMP_DIR = Path(app.root_path) / ".transcription_tmp"
 TEXT_FILE_EXTENSIONS = {".txt"}
+RESONANCE_SEARCH_ENABLED = os.getenv("ENABLE_RESONANCE_SEARCH", "").strip().lower() in {"1", "true", "yes", "on"}
 DIAGRAPH_NOTICE = "本图谱由程序根据词汇重现、人称映射、否定标记、疑问词和句式框架自动生成，仅供初步分析参考，复杂共指、省略和语义关系建议人工校订。"
 DIAGRAPH_WINDOW_OPTIONS = {
     "pair": "当前 A/B 两轮",
@@ -1540,6 +1541,7 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         "datasets": datasets,
         "advanced_filters": advanced_filters,
         "is_advanced_search": is_advanced_search,
+        "resonance_search_enabled": RESONANCE_SEARCH_ENABLED,
         "query_args": query_args,
         "page": page,
         "total_pages": total_pages,
@@ -1749,6 +1751,8 @@ def search():
 
 @app.route("/resonance")
 def resonance_search():
+    if not RESONANCE_SEARCH_ENABLED:
+        return redirect(url_for("search", advanced="1"))
     preset = corpus_repository.normalize_resonance_preset(request.args.get("preset", "resonance").strip())
     keyword = request.args.get("q", "").strip()
     source = request.args.get("source", "").strip()
@@ -1776,6 +1780,8 @@ def resonance_search():
 @app.route("/resonance/data")
 @app.route("/api/resonance")
 def resonance_data():
+    if not RESONANCE_SEARCH_ENABLED:
+        return jsonify({"error": "该功能暂未开放。"}), 404
     preset = corpus_repository.normalize_resonance_preset(request.args.get("preset", "resonance").strip())
     keyword = request.args.get("q", "").strip()
     source = request.args.get("source", "").strip()
@@ -1859,6 +1865,8 @@ def resonance_data():
 
 @app.route("/api/diagraph/<int:pair_id>")
 def diagraph_data(pair_id):
+    if not RESONANCE_SEARCH_ENABLED:
+        return jsonify({"error": "该功能暂未开放。"}), 404
     window_mode = normalize_diagraph_window(request.args.get("window", "pair"))
     pair, turns = corpus_repository.get_diagraph_turns(pair_id, window_mode=window_mode)
     if not pair:
@@ -1872,6 +1880,8 @@ def diagraph_data(pair_id):
 @app.route("/api/diagraph/export_csv")
 @app.route("/api/diagraph/export_excel")
 def diagraph_export():
+    if not RESONANCE_SEARCH_ENABLED:
+        return jsonify({"error": "该功能暂未开放。"}), 404
     pair_id = request.args.get("pair_id", "").strip()
     try:
         pair_id = int(pair_id)
@@ -1895,6 +1905,8 @@ def diagraph_export():
 
 @app.route("/resonance/context/<int:entry_id>")
 def resonance_context(entry_id):
+    if not RESONANCE_SEARCH_ENABLED:
+        return jsonify({"error": "该功能暂未开放。"}), 404
     try:
         context = corpus_repository.get_resonance_entry_context(entry_id)
     except Exception as exc:
