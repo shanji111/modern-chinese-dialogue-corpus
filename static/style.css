@@ -534,16 +534,24 @@ a:hover {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 8px 10px;
 }
 
 .query-input {
-    width: 320px;
+    flex: 2 1 360px;
+    width: clamp(240px, 32vw, 520px);
+    min-width: 0;
     height: 32px;
     box-sizing: border-box;
     font-size: 18px;
     line-height: 30px;
     padding: 0 6px;
+}
+
+.quick-search-row select {
+    flex: 1 1 138px;
+    min-width: 118px;
+    width: auto;
 }
 
 .top-search-bar select,
@@ -553,14 +561,20 @@ a:hover {
 }
 
 .mini-input {
-    width: 35px;
+    flex: 0 0 48px;
+    width: 48px;
     padding: 2px 4px;
-    margin: 0 4px;
+    margin: 0;
 }
 
 .context-size-label {
     color: #4b5563;
     font-size: 13px;
+    white-space: nowrap;
+}
+
+.quick-search-row button {
+    flex: 0 0 auto;
     white-space: nowrap;
 }
 
@@ -968,9 +982,16 @@ a:hover {
 }
 
 .browse-search-panel .query-input {
-    width: auto;
-    min-width: 280px;
-    flex: 1 1 420px;
+    width: clamp(260px, 40vw, 760px);
+    min-width: 220px;
+    flex: 2 1 420px;
+}
+
+@media (max-width: 1200px) {
+    .quick-search-row .query-input {
+        flex-basis: 100%;
+        width: 100%;
+    }
 }
 
 .browse-filter-row select,
