@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: chinese-dialogue-corpus
+    name: modern-chinese-dialogue-corpus
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn app:app

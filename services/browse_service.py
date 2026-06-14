@@ -6,7 +6,7 @@ import corpus_repository
 TEXT_DIALOGUE_SOURCE = corpus_repository.TEXT_DIALOGUE_SOURCE
 ANCIENT_CHINESE_SOURCE = corpus_repository.ANCIENT_CHINESE_SOURCE
 ANCIENT_CHINESE_CATEGORIES = corpus_repository.ANCIENT_CHINESE_CATEGORIES
-TEXT_DIALOGUE_CATEGORIES = corpus_repository.MODERN_TEXT_DIALOGUE_CATEGORIES
+TEXT_DIALOGUE_CATEGORIES = corpus_repository.TEXT_DIALOGUE_CATEGORIES
 TEXT_SECTION_SOURCES = (ANCIENT_CHINESE_SOURCE, TEXT_DIALOGUE_SOURCE)
 SOURCE_CATEGORY_ORDER = {
     ANCIENT_CHINESE_SOURCE: ANCIENT_CHINESE_CATEGORIES,
@@ -28,7 +28,7 @@ HOME_CORPUS_SECTIONS = [
     },
     {
         "name": TEXT_DIALOGUE_SOURCE,
-        "description": "本板块展示戏剧对白和现当代小说对白，主要选取公开出版文学文本及可公开获取的叙事文本中的人物话轮，可用于比较现代书面叙述环境下的人物言语组织和表达风格。",
+        "description": "本板块展示书面作品中的人物对话，包含古代汉语材料、戏剧对白和现当代小说对白，主要选取公开出版文学文本及可公开获取的叙事文本中的人物话轮，可用于比较书面叙述环境下的人物言语组织和表达风格。",
     },
     {
         "name": "网络回帖",
@@ -69,9 +69,9 @@ STATIC_SOURCE_STATS = {
     },
     "文本对话": {
         "source": "文本对话",
-        "entry_count": 3974,
-        "dialogue_count": 3974,
-        "turn_count": 10889,
+        "entry_count": 38718,
+        "dialogue_count": 38718,
+        "turn_count": 88888,
     },
     "网络回帖": {
         "source": "网络回帖",
@@ -142,6 +142,10 @@ STATIC_SOURCE_DATASETS = {
     (ANCIENT_CHINESE_SOURCE, "短篇叙事对白"): ("唐传奇", "世说新语", "清平山堂话本"),
     (ANCIENT_CHINESE_SOURCE, "历史汉语会话教材"): ("朴通事", "老乞大"),
     (ANCIENT_CHINESE_SOURCE, "古典章回小说对白"): ("水浒传", "红楼梦", "西游记"),
+    (TEXT_DIALOGUE_SOURCE, "论辩语录"): ("朱子语类", "孟子", "论语"),
+    (TEXT_DIALOGUE_SOURCE, "短篇叙事对白"): ("唐传奇", "世说新语", "清平山堂话本"),
+    (TEXT_DIALOGUE_SOURCE, "历史汉语会话教材"): ("朴通事", "老乞大"),
+    (TEXT_DIALOGUE_SOURCE, "古典章回小说对白"): ("水浒传", "红楼梦", "西游记"),
     (TEXT_DIALOGUE_SOURCE, "戏剧对白"): ("雷雨",),
     (TEXT_DIALOGUE_SOURCE, "现当代小说对白"): ("平凡的世界", "骆驼祥子"),
     ("网络回帖", "贴吧回帖"): ("tieba-305w", "贴吧回帖"),
