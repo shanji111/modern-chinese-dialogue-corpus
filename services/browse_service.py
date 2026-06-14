@@ -3,15 +3,15 @@ import math
 import corpus_repository
 
 
-TEXT_DIALOGUE_SOURCE = "文本对话"
-TEXT_DIALOGUE_CATEGORIES = (
-    "论辩语录",
-    "短篇叙事对白",
-    "历史汉语会话教材",
-    "古典章回小说对白",
-    "戏剧对白",
-    "现当代小说对白",
-)
+TEXT_DIALOGUE_SOURCE = corpus_repository.TEXT_DIALOGUE_SOURCE
+ANCIENT_CHINESE_SOURCE = corpus_repository.ANCIENT_CHINESE_SOURCE
+ANCIENT_CHINESE_CATEGORIES = corpus_repository.ANCIENT_CHINESE_CATEGORIES
+TEXT_DIALOGUE_CATEGORIES = corpus_repository.MODERN_TEXT_DIALOGUE_CATEGORIES
+TEXT_SECTION_SOURCES = (ANCIENT_CHINESE_SOURCE, TEXT_DIALOGUE_SOURCE)
+SOURCE_CATEGORY_ORDER = {
+    ANCIENT_CHINESE_SOURCE: ANCIENT_CHINESE_CATEGORIES,
+    TEXT_DIALOGUE_SOURCE: TEXT_DIALOGUE_CATEGORIES,
+}
 
 HOME_CORPUS_SECTIONS = [
     {
@@ -23,8 +23,12 @@ HOME_CORPUS_SECTIONS = [
         "description": "本板块汇集影视作品中的人物对白，主要依据公开字幕整理语料和可公开获取的字幕文本进行筛选与加工，适合考察不同情境中的人物互动、语气变化以及较强场景性的表达方式。",
     },
     {
-        "name": "文本对话",
-        "description": "本板块展示书面作品中的人物对话，主要选取公开出版文学文本、网络文学公开章节及其他可公开获取的叙事文本中的对话话轮，可用于比较书面叙述环境下的人物言语组织和表达风格。",
+        "name": ANCIENT_CHINESE_SOURCE,
+        "description": "本板块收录古代与近古汉语对话材料，包括论辩语录、短篇叙事对白、历史汉语会话教材以及古典章回小说对白，可用于观察古代文本中的问答、应对和话轮组织方式。",
+    },
+    {
+        "name": TEXT_DIALOGUE_SOURCE,
+        "description": "本板块展示戏剧对白和现当代小说对白，主要选取公开出版文学文本及可公开获取的叙事文本中的人物话轮，可用于比较现代书面叙述环境下的人物言语组织和表达风格。",
     },
     {
         "name": "网络回帖",
@@ -57,11 +61,17 @@ STATIC_SOURCE_STATS = {
         "dialogue_count": 6501,
         "turn_count": 43149,
     },
+    ANCIENT_CHINESE_SOURCE: {
+        "source": ANCIENT_CHINESE_SOURCE,
+        "entry_count": 34744,
+        "dialogue_count": 34744,
+        "turn_count": 77999,
+    },
     "文本对话": {
         "source": "文本对话",
-        "entry_count": 13378,
-        "dialogue_count": 13378,
-        "turn_count": 36944,
+        "entry_count": 3974,
+        "dialogue_count": 3974,
+        "turn_count": 10889,
     },
     "网络回帖": {
         "source": "网络回帖",
@@ -100,6 +110,7 @@ STATIC_SOURCE_CATEGORIES = {
         "subtitle",
         "对白",
     ),
+    ANCIENT_CHINESE_SOURCE: ANCIENT_CHINESE_CATEGORIES,
     TEXT_DIALOGUE_SOURCE: TEXT_DIALOGUE_CATEGORIES,
     "网络回帖": (
         "贴吧回帖",
@@ -127,10 +138,10 @@ STATIC_SOURCE_DATASETS = {
     ("日常对话", "口语"): ("口语",),
     ("影视对白", "subtitle"): ("subtitle-useless",),
     ("影视对白", "对白"): ("对白",),
-    (TEXT_DIALOGUE_SOURCE, "论辩语录"): ("朱子语类", "孟子", "论语"),
-    (TEXT_DIALOGUE_SOURCE, "短篇叙事对白"): ("唐传奇", "世说新语", "清平山堂话本"),
-    (TEXT_DIALOGUE_SOURCE, "历史汉语会话教材"): ("朴通事", "老乞大"),
-    (TEXT_DIALOGUE_SOURCE, "古典章回小说对白"): ("水浒传", "西游记"),
+    (ANCIENT_CHINESE_SOURCE, "论辩语录"): ("朱子语类", "孟子", "论语"),
+    (ANCIENT_CHINESE_SOURCE, "短篇叙事对白"): ("唐传奇", "世说新语", "清平山堂话本"),
+    (ANCIENT_CHINESE_SOURCE, "历史汉语会话教材"): ("朴通事", "老乞大"),
+    (ANCIENT_CHINESE_SOURCE, "古典章回小说对白"): ("水浒传", "红楼梦", "西游记"),
     (TEXT_DIALOGUE_SOURCE, "戏剧对白"): ("雷雨",),
     (TEXT_DIALOGUE_SOURCE, "现当代小说对白"): ("平凡的世界", "骆驼祥子"),
     ("网络回帖", "贴吧回帖"): ("tieba-305w", "贴吧回帖"),
@@ -145,28 +156,29 @@ STATIC_SOURCE_DATASETS = {
 }
 
 STATIC_TEXT_CATEGORY_COUNTS = {
-    TEXT_DIALOGUE_CATEGORIES[0]: 8555,
-    TEXT_DIALOGUE_CATEGORIES[1]: 669,
-    TEXT_DIALOGUE_CATEGORIES[2]: 157,
-    TEXT_DIALOGUE_CATEGORIES[3]: 2864,
-    TEXT_DIALOGUE_CATEGORIES[4]: 377,
-    TEXT_DIALOGUE_CATEGORIES[5]: 756,
+    "论辩语录": 8943,
+    "短篇叙事对白": 1738,
+    "历史汉语会话教材": 157,
+    "古典章回小说对白": 23906,
+    "戏剧对白": 377,
+    "现当代小说对白": 3597,
 }
 
 STATIC_TEXT_DATASET_COUNTS = {
     "朱子语类": 8336,
-    "孟子": 110,
-    "论语": 109,
-    "唐传奇": 251,
-    "世说新语": 326,
-    "清平山堂话本": 92,
+    "孟子": 410,
+    "论语": 197,
+    "唐传奇": 718,
+    "世说新语": 668,
+    "清平山堂话本": 352,
     "朴通事": 110,
     "老乞大": 47,
-    "水浒传": 1651,
-    "西游记": 1213,
+    "水浒传": 6925,
+    "红楼梦": 10883,
+    "西游记": 6098,
     "雷雨": 377,
-    "平凡的世界": 683,
-    "骆驼祥子": 73,
+    "平凡的世界": 3256,
+    "骆驼祥子": 341,
 }
 
 
@@ -223,9 +235,12 @@ def get_source_stat(source_stats, source):
 
 
 def order_category_stats(source, category_stats):
-    if source != TEXT_DIALOGUE_SOURCE:
+    if source not in SOURCE_CATEGORY_ORDER:
         return category_stats
-    order = {category: index for index, category in enumerate(TEXT_DIALOGUE_CATEGORIES)}
+    order = {
+        category: index
+        for index, category in enumerate(SOURCE_CATEGORY_ORDER[source])
+    }
     return sorted(
         category_stats,
         key=lambda item: (order.get(item["category"], len(order)), item["category"]),
@@ -237,7 +252,7 @@ def get_static_category_stats(source):
         {"category": category}
         for category in STATIC_SOURCE_CATEGORIES.get(source, ())
     ]
-    if source == TEXT_DIALOGUE_SOURCE:
+    if source in TEXT_SECTION_SOURCES:
         for item in stats:
             item["dialogue_count"] = STATIC_TEXT_CATEGORY_COUNTS.get(item["category"], 0)
     return stats
@@ -253,7 +268,7 @@ def get_static_dataset_stats(source, category=""):
                 continue
             seen.add(dataset_name)
             item = {"dataset_name": dataset_name}
-            if source == TEXT_DIALOGUE_SOURCE:
+            if source in TEXT_SECTION_SOURCES:
                 item["dialogue_count"] = STATIC_TEXT_DATASET_COUNTS.get(dataset_name, 0)
             datasets.append(item)
     return datasets
@@ -292,7 +307,7 @@ def get_dataset_stats(source, category=""):
 
 
 def get_static_filter_total(source, category="", dataset_name="", active_stats=None):
-    if source == TEXT_DIALOGUE_SOURCE:
+    if source in TEXT_SECTION_SOURCES:
         if dataset_name:
             return STATIC_TEXT_DATASET_COUNTS.get(dataset_name)
         if category:

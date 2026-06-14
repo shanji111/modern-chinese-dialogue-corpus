@@ -40,7 +40,8 @@ INTERVIEW_RESULT_HIT_CHARS = 96
 INTERVIEW_MODAL_SIDE_CHARS = 90
 TRANSCRIPTION_TEMP_DIR = Path(app.root_path) / ".transcription_tmp"
 TEXT_FILE_EXTENSIONS = {".txt"}
-RESONANCE_SEARCH_ENABLED = os.getenv("ENABLE_RESONANCE_SEARCH", "").strip().lower() in {"1", "true", "yes", "on"}
+RESONANCE_SEARCH_FLAG = os.getenv("ENABLE_RESONANCE_SEARCH", "1").strip().lower()
+RESONANCE_SEARCH_ENABLED = RESONANCE_SEARCH_FLAG not in {"0", "false", "no", "off"}
 DIAGRAPH_NOTICE = "本图谱由程序根据词汇重现、人称映射、否定标记、疑问词和句式框架自动生成，仅供初步分析参考，复杂共指、省略和语义关系建议人工校订。"
 DIAGRAPH_WINDOW_OPTIONS = {
     "pair": "当前 A/B 两轮",

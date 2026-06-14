@@ -18,6 +18,32 @@ SEARCH_FIELD_COLUMNS = {
     "speaker": ("speaker",),
     "segment": ("current_segment", "segment_text"),
 }
+TEXT_DIALOGUE_SOURCE = "文本对话"
+ANCIENT_CHINESE_SOURCE = "古代汉语"
+ANCIENT_CHINESE_CATEGORIES = (
+    "论辩语录",
+    "短篇叙事对白",
+    "历史汉语会话教材",
+    "古典章回小说对白",
+)
+MODERN_TEXT_DIALOGUE_CATEGORIES = (
+    "戏剧对白",
+    "现当代小说对白",
+)
+DISPLAY_SOURCE_ORDER = (
+    "日常对话",
+    "影视对白",
+    ANCIENT_CHINESE_SOURCE,
+    TEXT_DIALOGUE_SOURCE,
+    "网络回帖",
+    "访谈语料",
+    "课堂互动",
+    "多模态语料",
+)
+DISPLAY_SOURCE_RULES = {
+    ANCIENT_CHINESE_SOURCE: (TEXT_DIALOGUE_SOURCE, ANCIENT_CHINESE_CATEGORIES),
+    TEXT_DIALOGUE_SOURCE: (TEXT_DIALOGUE_SOURCE, MODERN_TEXT_DIALOGUE_CATEGORIES),
+}
 SEARCH_MODES = {"contains", "exact", "starts_with", "ends_with"}
 MERGED_DIALOGUE_TITLE_PATTERN = re.compile(r"\s*合并大对话\s*")
 SORT_OPTIONS = {
@@ -39,7 +65,7 @@ MAX_RESONANCE_CANDIDATE_LIMIT = 1000
 MAX_RESONANCE_PAGE_SIZE = 50
 RESONANCE_CONTEXT_CHARS = 6000
 RESONANCE_SAMPLE_CANDIDATE_LIMIT = 100
-RESONANCE_FILTER_SOURCES = ()
+RESONANCE_FILTER_SOURCES = DISPLAY_SOURCE_ORDER
 RESONANCE_PRESET_ALIASES = {
     "lexical_echo": "reproduction",
     "pattern_reuse": "parallel",
@@ -65,7 +91,17 @@ DIALOGUE_SYNTAX_MODE_FLAGS = {
     "contrast": ("has_negation_turn",),
     "analogy": (),
 }
-RESONANCE_FILTER_CATEGORIES = ("日常对话", "访谈语料", "影视对白", "课堂互动", "多模态语料", "外交部记者会", "其他")
+RESONANCE_FILTER_CATEGORIES = (
+    *ANCIENT_CHINESE_CATEGORIES,
+    *MODERN_TEXT_DIALOGUE_CATEGORIES,
+    "日常对话",
+    "访谈语料",
+    "影视对白",
+    "课堂互动",
+    "多模态语料",
+    "外交部记者会",
+    "其他",
+)
 RESONANCE_PRESETS = {
     "resonance": {
         "label": "共鸣",
@@ -231,12 +267,73 @@ def normalize_display_title(value):
     return re.sub(r"\s{2,}", " ", title).strip()
 
 
+def display_source_for_category(source, category):
+    if source == TEXT_DIALOGUE_SOURCE and category in ANCIENT_CHINESE_CATEGORIES:
+        return ANCIENT_CHINESE_SOURCE
+    return source or ""
+
+
+def sort_display_sources(sources):
+    seen = set()
+    ordered = []
+    for source in DISPLAY_SOURCE_ORDER:
+        if source in sources and source not in seen:
+            ordered.append(source)
+            seen.add(source)
+    for source in sorted(sources):
+        if source not in seen:
+            ordered.append(source)
+            seen.add(source)
+    return ordered
+
+
+def sort_categories_for_source(source, categories):
+    if source not in DISPLAY_SOURCE_RULES:
+        return categories
+    order = {
+        category: index
+        for index, category in enumerate(DISPLAY_SOURCE_RULES[source][1])
+    }
+    return sorted(categories, key=lambda category: (order.get(category, len(order)), category))
+
+
+def add_display_source_filters(where_clauses, params, source="", category="", table_name=""):
+    marker = placeholder()
+    prefix = f"{table_name}." if table_name else ""
+    if source in DISPLAY_SOURCE_RULES:
+        actual_source, allowed_categories = DISPLAY_SOURCE_RULES[source]
+        where_clauses.append(f"{prefix}source = {marker}")
+        params.append(actual_source)
+        if category:
+            if category in allowed_categories:
+                where_clauses.append(f"{prefix}category = {marker}")
+                params.append(category)
+            else:
+                where_clauses.append("1 = 0")
+        elif allowed_categories:
+            category_markers = ", ".join([marker] * len(allowed_categories))
+            where_clauses.append(f"{prefix}category IN ({category_markers})")
+            params.extend(allowed_categories)
+        return
+    if source:
+        where_clauses.append(f"{prefix}source = {marker}")
+        params.append(source)
+    if category:
+        where_clauses.append(f"{prefix}category = {marker}")
+        params.append(category)
+
+
 def normalize_display_record(row):
     if not row:
         return row
     normalized = dict(row)
     if "title" in normalized:
         normalized["title"] = normalize_display_title(normalized.get("title"))
+    if "source" in normalized:
+        normalized["source"] = display_source_for_category(
+            normalized.get("source"),
+            normalized.get("category") or "",
+        )
     return normalized
 
 
@@ -1151,7 +1248,7 @@ def get_filter_options():
     start = time.perf_counter()
     conn = timed_connection("get_filter_options")
     try:
-        sources = [
+        db_sources = [
             row["source"]
             for row in conn.execute("""
                 SELECT DISTINCT source
@@ -1160,6 +1257,10 @@ def get_filter_options():
                 ORDER BY source
             """).fetchall()
         ]
+        sources = set(db_sources)
+        if TEXT_DIALOGUE_SOURCE in sources:
+            sources.add(ANCIENT_CHINESE_SOURCE)
+        sources = sort_display_sources(sources)
         years = [
             row["year"]
             for row in conn.execute("""
@@ -1182,9 +1283,7 @@ def get_advanced_filter_options(source=""):
     try:
         category_clauses = ["category IS NOT NULL AND TRIM(category) != ''"]
         category_params = []
-        if source:
-            category_clauses.append(f"source = {marker}")
-            category_params.append(source)
+        add_display_source_filters(category_clauses, category_params, source)
         categories = [
             row["category"]
             for row in conn.execute(f"""
@@ -1194,6 +1293,7 @@ def get_advanced_filter_options(source=""):
                 ORDER BY category
             """, category_params).fetchall()
         ]
+        categories = sort_categories_for_source(source, categories)
         datasets = [
             row["dataset_name"]
             for row in conn.execute("""
@@ -1222,10 +1322,16 @@ def get_source_category_options():
         source_categories = {}
         all_categories = set()
         for row in rows:
-            source = row["source"]
+            source = display_source_for_category(row["source"], row["category"])
             category = row["category"]
             source_categories.setdefault(source, []).append(category)
             all_categories.add(category)
+        for source in (ANCIENT_CHINESE_SOURCE, TEXT_DIALOGUE_SOURCE):
+            source_categories[source] = [
+                category
+                for category in DISPLAY_SOURCE_RULES[source][1]
+                if category in source_categories.get(source, [])
+            ]
         source_categories["__all__"] = sorted(all_categories)
         return source_categories
     finally:
@@ -1493,12 +1599,7 @@ def build_dialogue_browse_filters(source="", category="", dataset_name="", keywo
     prefix = f"{table_name}." if table_name else ""
     where_clauses = []
     params = []
-    if source:
-        where_clauses.append(f"{prefix}source = {marker}")
-        params.append(source)
-    if category:
-        where_clauses.append(f"{prefix}category = {marker}")
-        params.append(category)
+    add_display_source_filters(where_clauses, params, source, category, table_name)
     if dataset_name:
         where_clauses.append(f"{prefix}dataset_name = {marker}")
         params.append(dataset_name)
@@ -1545,7 +1646,7 @@ def build_entry_dialogue(entry):
         "conversation_key": entry.get("conversation_id") or f"entry:{entry.get('id')}",
         "entry_id": entry.get("id"),
         "title": normalize_display_title(entry.get("title")) or "未命名对话",
-        "source": entry.get("source") or "",
+        "source": display_source_for_category(entry.get("source"), entry.get("category") or ""),
         "category": entry.get("category") or "",
         "dataset_name": entry.get("dataset_name") or "",
         "year": entry.get("year"),
@@ -1701,7 +1802,10 @@ def build_dialogues_from_conversations(conn, conversations):
             "conversation_key": key,
             "entry_id": conversation.get("entry_id"),
             "title": normalize_display_title(conversation.get("title") or first_turn.get("title")) or key or "未命名对话",
-            "source": conversation.get("source") or first_turn.get("source") or "",
+            "source": display_source_for_category(
+                conversation.get("source") or first_turn.get("source"),
+                conversation.get("category") or first_turn.get("category") or "",
+            ),
             "category": conversation.get("category") or first_turn.get("category") or "",
             "dataset_name": conversation.get("dataset_name") or first_turn.get("dataset_name") or "",
             "year": conversation.get("year") or first_turn.get("year"),
@@ -1802,18 +1906,13 @@ def build_sqlite_filter_clauses(source="", year="", category="", table_name="", 
     params = []
     prefix = f"{table_name}." if table_name else ""
     filters = normalize_search_filters(filters)
-    if source:
-        where_clauses.append(f"{prefix}source = {marker}")
-        params.append(source)
+    add_display_source_filters(where_clauses, params, source, category, table_name)
     if year:
         try:
             where_clauses.append(f"{prefix}year = {marker}")
             params.append(int(year))
         except ValueError:
             pass
-    if category:
-        where_clauses.append(f"{prefix}category = {marker}")
-        params.append(category)
     if filters["year_from"]:
         add_int_filter(where_clauses, params, "year", filters["year_from"], ">=", table_name)
     if filters["year_to"]:
@@ -1851,18 +1950,13 @@ def build_postgres_search_where(keyword="", source="", year="", category="", fil
     if keyword:
         columns = (POSTGRES_SEARCH_TEXT_FIELD,) if filters["field"] == "all" else SEARCH_FIELD_COLUMNS[filters["field"]]
         add_text_search_clause(where_clauses, params, keyword, columns, filters["mode"])
-    if source:
-        where_clauses.append("source = %s")
-        params.append(source)
+    add_display_source_filters(where_clauses, params, source, category)
     if year:
         try:
             where_clauses.append("year = %s")
             params.append(int(year))
         except ValueError:
             pass
-    if category:
-        where_clauses.append("category = %s")
-        params.append(category)
     if filters["year_from"]:
         add_int_filter(where_clauses, params, "year", filters["year_from"], ">=")
     if filters["year_to"]:
@@ -1935,18 +2029,13 @@ def build_postgres_legacy_search_where(keyword="", source="", year="", category=
             SEARCH_FIELD_COLUMNS[filters["field"]],
             filters["mode"],
         )
-    if source:
-        where_clauses.append("source = %s")
-        params.append(source)
+    add_display_source_filters(where_clauses, params, source, category)
     if year:
         try:
             where_clauses.append("year = %s")
             params.append(int(year))
         except ValueError:
             pass
-    if category:
-        where_clauses.append("category = %s")
-        params.append(category)
     if filters["year_from"]:
         add_int_filter(where_clauses, params, "year", filters["year_from"], ">=")
     if filters["year_to"]:
@@ -2154,12 +2243,7 @@ def query_turn_search_page(keyword="", source="", year="", category="", dataset_
     like_operator = "ILIKE" if is_postgres() else "LIKE"
     where_clauses = [f"COALESCE(dt.turn_text, '') {like_operator} {marker} ESCAPE '\\'"]
     params = [build_like_pattern(keyword)]
-    if source:
-        where_clauses.append(f"dt.source = {marker}")
-        params.append(source)
-    if category:
-        where_clauses.append(f"dt.category = {marker}")
-        params.append(category)
+    add_display_source_filters(where_clauses, params, source, category, "dt")
     if dataset_name:
         where_clauses.append(f"dt.dataset_name = {marker}")
         params.append(dataset_name)
@@ -2252,14 +2336,15 @@ def query_turn_search_page(keyword="", source="", year="", category="", dataset_
         results = []
         for row in hit_rows:
             entry = entry_by_id.get(row.get("entry_id"), {})
+            category = entry.get("category") or row.get("category") or ""
             key = row.get("conversation_key") or ""
             turn_index = int(row.get("turn_index") or 0)
             results.append({
                 "id": row.get("entry_id"),
                 "title": normalize_display_title(entry.get("title")),
-                "source": entry.get("source") or row.get("source") or "",
+                "source": display_source_for_category(entry.get("source") or row.get("source"), category),
                 "year": entry.get("year"),
-                "category": entry.get("category") or row.get("category") or "",
+                "category": category,
                 "dataset_name": entry.get("dataset_name") or row.get("dataset_name") or "",
                 "audio_file": entry.get("audio_file") or "",
                 "start_time": entry.get("start_time"),
@@ -2807,12 +2892,7 @@ def query_candidate_turns(
         operator = "ILIKE" if is_postgres() else "LIKE"
         where_clauses.append(f"turn_text {operator} {marker} ESCAPE '\\'")
         params.append(build_like_pattern(keyword))
-    if source:
-        where_clauses.append(f"source = {marker}")
-        params.append(source)
-    if category:
-        where_clauses.append(f"category = {marker}")
-        params.append(category)
+    add_display_source_filters(where_clauses, params, source, category)
     where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
     conn = get_db_connection()
     try:
@@ -2937,12 +3017,7 @@ def query_resonance_page(
         where_clauses.append(f"(text_a {operator} {marker} ESCAPE '\\' OR text_b {operator} {marker} ESCAPE '\\')")
         pattern = build_like_pattern(keyword)
         params.extend([pattern, pattern])
-    if source:
-        where_clauses.append(f"source = {marker}")
-        params.append(source)
-    if category:
-        where_clauses.append(f"category = {marker}")
-        params.append(category)
+    add_display_source_filters(where_clauses, params, source, category)
     where_sql = "WHERE " + " AND ".join(where_clauses)
     conn = get_readonly_db_connection()
     try:
@@ -2997,7 +3072,7 @@ def query_resonance_page(
                 "turn_b_index": pair["turn_index_b"],
                 "speaker_b": pair.get("speaker_b") or "",
                 "turn_b_text": pair["text_b"],
-                "source": pair.get("source") or "",
+                "source": display_source_for_category(pair.get("source"), pair.get("category") or ""),
                 "category": pair.get("category") or "",
                 "dataset_name": pair.get("dataset_name") or "",
                 "conversation_key": pair["conversation_key"],
