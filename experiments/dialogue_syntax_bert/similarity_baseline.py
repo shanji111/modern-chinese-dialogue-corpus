@@ -31,6 +31,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--batch-size", type=int, default=16)
     parser.add_argument("--max-length", type=int, default=128)
+    parser.add_argument("--overwrite", action="store_true", help="Allow overwriting existing baseline artifacts.")
+    parser.add_argument(
+        "--force-overwrite-labels",
+        action="store_true",
+        help="Also allow overwriting existing CSV artifacts that contain human annotation values.",
+    )
     return parser.parse_args()
 
 
@@ -168,12 +174,18 @@ def main() -> None:
     for column in [*score_columns, "_has_label", "_positive_any"]:
         if column not in output_columns:
             output_columns.append(column)
-    csv_path = write_csv(args.output_csv, rows, output_columns)
+    csv_path = write_csv(
+        args.output_csv,
+        rows,
+        output_columns,
+        overwrite=args.overwrite,
+        force_overwrite_labels=args.force_overwrite_labels,
+    )
     report = {
         "row_count": len(rows),
         "score_reports": [best_threshold_report(rows, column) for column in score_columns],
     }
-    json_path = write_json(args.output_json, report)
+    json_path = write_json(args.output_json, report, overwrite=args.overwrite)
     print(f"rows={len(rows)}")
     print(f"wrote_csv={csv_path}")
     print(f"wrote_json={json_path}")
@@ -181,4 +193,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

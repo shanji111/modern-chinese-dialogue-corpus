@@ -6,7 +6,7 @@ import argparse
 import json
 from pathlib import Path
 
-from io_utils import artifact_path, write_json
+from io_utils import ARTIFACTS_DIR, artifact_path, write_json
 
 
 def parse_args() -> argparse.Namespace:
@@ -25,6 +25,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-length", type=int, default=160)
     parser.add_argument("--threshold", type=float, default=0.5)
     parser.add_argument("--seed", type=int, default=20260616)
+    parser.add_argument("--overwrite", action="store_true", help="Allow writing into an existing model output directory.")
     return parser.parse_args()
 
 
@@ -36,6 +37,15 @@ def load_jsonl(path: str | Path) -> list[dict[str, object]]:
             if line:
                 records.append(json.loads(line))
     return records
+
+
+def ensure_artifact_output_dir(path: Path) -> Path:
+    artifacts_root = ARTIFACTS_DIR.resolve()
+    try:
+        path.resolve().relative_to(artifacts_root)
+    except ValueError as exc:
+        raise SystemExit(f"Model outputs must be written under {artifacts_root}: {path}") from exc
+    return path
 
 
 def micro_metrics(y_true: list[list[int]], y_pred: list[list[int]]) -> dict[str, float | int]:
@@ -156,7 +166,9 @@ def main() -> None:
         history.append(epoch_summary)
         print(json.dumps(epoch_summary, ensure_ascii=False))
 
-    output_dir = Path(args.output_dir)
+    output_dir = ensure_artifact_output_dir(Path(args.output_dir))
+    if output_dir.exists() and any(output_dir.iterdir()) and not args.overwrite:
+        raise SystemExit(f"Refusing to write into non-empty model directory without --overwrite: {output_dir}")
     output_dir.mkdir(parents=True, exist_ok=True)
     model.save_pretrained(output_dir)
     tokenizer.save_pretrained(output_dir)
@@ -168,11 +180,10 @@ def main() -> None:
         "threshold": args.threshold,
         "history": history,
     }
-    report_path = write_json(output_dir / "training_report.json", report)
+    report_path = write_json(output_dir / "training_report.json", report, overwrite=args.overwrite)
     print(f"wrote_model={output_dir}")
     print(f"wrote_report={report_path}")
 
 
 if __name__ == "__main__":
     main()
-

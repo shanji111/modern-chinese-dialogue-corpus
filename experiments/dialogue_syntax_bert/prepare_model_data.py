@@ -21,6 +21,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dev-ratio", type=float, default=0.15)
     parser.add_argument("--test-ratio", type=float, default=0.15)
     parser.add_argument("--seed", type=int, default=20260616)
+    parser.add_argument("--overwrite", action="store_true", help="Allow overwriting existing model-data artifacts.")
+    parser.add_argument(
+        "--force-overwrite-labels",
+        action="store_true",
+        help="Also allow overwriting existing JSONL artifacts that contain human annotation values.",
+    )
     return parser.parse_args()
 
 
@@ -66,10 +72,10 @@ def main() -> None:
     ]
     train, dev, test = split_records(records, args.dev_ratio, args.test_ratio, args.seed)
     output_dir = Path(args.output_dir)
-    write_jsonl(output_dir / "all.jsonl", records)
-    write_jsonl(output_dir / "train.jsonl", train)
-    write_jsonl(output_dir / "dev.jsonl", dev)
-    write_jsonl(output_dir / "test.jsonl", test)
+    write_jsonl(output_dir / "all.jsonl", records, overwrite=args.overwrite, force_overwrite_labels=args.force_overwrite_labels)
+    write_jsonl(output_dir / "train.jsonl", train, overwrite=args.overwrite, force_overwrite_labels=args.force_overwrite_labels)
+    write_jsonl(output_dir / "dev.jsonl", dev, overwrite=args.overwrite, force_overwrite_labels=args.force_overwrite_labels)
+    write_jsonl(output_dir / "test.jsonl", test, overwrite=args.overwrite, force_overwrite_labels=args.force_overwrite_labels)
     metadata = {
         "label_keys": list(POSITIVE_LABEL_KEYS),
         "record_count": len(records),
@@ -78,7 +84,7 @@ def main() -> None:
         "test_count": len(test),
         "seed": args.seed,
     }
-    metadata_path = write_json(output_dir / "metadata.json", metadata)
+    metadata_path = write_json(output_dir / "metadata.json", metadata, overwrite=args.overwrite)
     print(f"records={len(records)} train={len(train)} dev={len(dev)} test={len(test)}")
     print(f"wrote_metadata={metadata_path}")
 

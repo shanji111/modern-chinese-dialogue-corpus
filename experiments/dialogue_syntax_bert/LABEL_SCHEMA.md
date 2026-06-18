@@ -3,6 +3,29 @@
 Use these labels as multi-label annotations for adjacent dialogue pairs. Mark a
 label only when the relation is visible in the A/B pair or its minimal context.
 
+## Allowed Annotation Values
+
+- `resonance_present` must be exactly one of: `yes`, `no`, `uncertain`.
+- Each `label_*` column must be exactly one of: `1`, `0`, `?`.
+- `evidence_span_a` and `evidence_span_b` must be direct substrings copied from
+  the original A/B turns.
+- Multiple evidence spans must be separated with `|||`.
+- When `resonance_present=no`, the core mechanism labels should normally be `0`.
+- When `resonance_present=yes`, at least one core mechanism label should be `1`.
+- `label_analogy_candidate` is exploratory and is not part of first-stage core
+  rule F1 evaluation.
+
+Core mechanism labels for first-stage evaluation:
+
+- `label_reproduction`
+- `label_parallelism`
+- `label_selective_reuse`
+- `label_repair`
+- `label_contrast`
+
+`label_analogy_candidate` should still be filled when relevant, but it is
+reported separately.
+
 ## 重现 (`reproduction`)
 
 B reuses a lexical item, phrase, or compact expression from A.
@@ -85,4 +108,3 @@ Do not mark when:
 
 Use this when no positive relation is clear at the current annotation
 granularity. If `no_relation` is marked, leave all positive labels blank or 0.
-

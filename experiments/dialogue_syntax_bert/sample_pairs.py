@@ -8,16 +8,20 @@ corpus database.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
+import re
+import unicodedata
 from collections import Counter, defaultdict
 from pathlib import Path
 from statistics import mean
 
-from io_utils import artifact_path, connect_sqlite_readonly, write_csv, write_jsonl
+from io_utils import artifact_path, connect_sqlite_readonly, write_csv, write_jsonl, write_text
 
 
 PAIR_TABLE = "dialogue_pairs"
+SCHEMA_VERSION = "dialogue_syntax_bert_v1"
 FLAG_COLUMNS = (
     "has_lexical_echo",
     "has_pattern_reuse",
@@ -54,6 +58,10 @@ HUMAN_ANNOTATION_COLUMNS = [
 ]
 
 OUTPUT_COLUMNS = [
+    "schema_version",
+    "sampling_seed",
+    "normalized_pair_hash",
+    "conversation_group_key",
     "sample_layer",
     "pair_id",
     "conversation_id",
@@ -70,6 +78,8 @@ OUTPUT_COLUMNS = [
     "speaker_b",
     "turn_b",
     *FLAG_COLUMNS,
+    "shared_terms",
+    "markers",
     *RULE_OUTPUT_COLUMNS,
     *HUMAN_ANNOTATION_COLUMNS,
 ]
@@ -96,6 +106,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-text-chars", type=int, default=260, help="Skip pairs with either turn longer than this.")
     parser.add_argument("--max-per-conversation", type=int, default=2, help="Maximum sampled pairs per conversation.")
     parser.add_argument("--seed", type=int, default=20260616, help="Python sampling seed.")
+    parser.add_argument("--overwrite", action="store_true", help="Allow overwriting existing artifact files.")
+    parser.add_argument(
+        "--force-overwrite-labels",
+        action="store_true",
+        help="Also allow overwriting existing CSV/JSONL artifacts that contain human annotation values.",
+    )
     return parser.parse_args()
 
 
@@ -133,6 +149,22 @@ def safe_json_list(raw: object) -> list[str]:
     if not isinstance(parsed, list):
         return []
     return [str(item) for item in parsed if str(item).strip()]
+
+
+def normalize_text_for_hash(text: object) -> str:
+    normalized = unicodedata.normalize("NFKC", str(text or "")).lower()
+    return re.sub(r"\s+", " ", normalized).strip()
+
+
+def normalized_pair_hash(text_a: object, text_b: object) -> str:
+    payload = normalize_text_for_hash(text_a) + "\n<PAIR>\n" + normalize_text_for_hash(text_b)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def conversation_group_key(dataset_name: object, conversation_key: object) -> str:
+    dataset = str(dataset_name or "").strip() or "unknown_dataset"
+    conversation = str(conversation_key or "").strip() or "unknown_conversation"
+    return f"{dataset}::{conversation}"
 
 
 def rule_values(row: dict[str, object]) -> dict[str, object]:
@@ -351,6 +383,11 @@ def sample_pilot_rows(conn, args: argparse.Namespace) -> tuple[list[dict[str, ob
 
 def build_output_row(row: dict[str, object]) -> dict[str, object]:
     output = {column: "" for column in OUTPUT_COLUMNS}
+    pair_hash = normalized_pair_hash(row.get("turn_a"), row.get("turn_b"))
+    output["schema_version"] = SCHEMA_VERSION
+    output["sampling_seed"] = row.get("sampling_seed", "")
+    output["normalized_pair_hash"] = pair_hash
+    output["conversation_group_key"] = conversation_group_key(row.get("dataset"), row.get("conversation_id"))
     for column in (
         "sample_layer",
         "pair_id",
@@ -368,6 +405,8 @@ def build_output_row(row: dict[str, object]) -> dict[str, object]:
         "speaker_b",
         "turn_b",
         *FLAG_COLUMNS,
+        "shared_terms",
+        "markers",
     ):
         output[column] = row.get(column, "")
     output.update(rule_values(row))
@@ -485,7 +524,11 @@ def build_sampling_report(
         "- speaker: `speaker_a`, `speaker_b`",
         "- source/category/dataset: `source`, `category`, `dataset_name` -> `dataset`",
         "- rule flags: `has_lexical_echo`, `has_pattern_reuse`, `has_question_response`, `has_negation_turn`, `has_repair_repetition`",
-        "- rule evidence: `shared_terms`, `markers` are flattened into short evidence columns.",
+        "- rule evidence: raw `shared_terms`, raw `markers`, plus flattened `rule_evidence_terms` and `rule_markers`.",
+        "- duplicate-text protection: `normalized_pair_hash` is SHA-256 over normalized `turn_a + turn_b`.",
+        "- conversation split protection: `conversation_group_key` is `dataset_name::conversation_key` and should not cross train/dev/test.",
+        "- experiment metadata: `schema_version` and `sampling_seed` are written into each row.",
+        "- future train/dev/test checks must require disjoint `pair_id`, `normalized_pair_hash`, and `conversation_group_key` sets.",
         "",
         "## Annotation Columns",
         "",
@@ -499,24 +542,31 @@ def build_sampling_report(
     return "\n".join(lines)
 
 
-def write_sampling_report(path: Path, report: str) -> Path:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(report, encoding="utf-8")
-    return path
-
-
 def main() -> None:
     args = parse_args()
     db_path = Path(args.db).resolve()
     with connect_sqlite_readonly(db_path) as conn:
         rows, metadata = sample_pilot_rows(conn, args)
 
+    for row in rows:
+        row["sampling_seed"] = args.seed
     output_rows = [build_output_row(row) for row in rows]
     output_dir = Path(args.output_dir)
-    csv_path = write_csv(output_dir / "pilot_50.csv", output_rows, OUTPUT_COLUMNS)
-    jsonl_path = write_jsonl(output_dir / "pilot_50.jsonl", output_rows)
+    csv_path = write_csv(
+        output_dir / "pilot_50.csv",
+        output_rows,
+        OUTPUT_COLUMNS,
+        overwrite=args.overwrite,
+        force_overwrite_labels=args.force_overwrite_labels,
+    )
+    jsonl_path = write_jsonl(
+        output_dir / "pilot_50.jsonl",
+        output_rows,
+        overwrite=args.overwrite,
+        force_overwrite_labels=args.force_overwrite_labels,
+    )
     report = build_sampling_report(output_rows, metadata, db_path)
-    report_path = write_sampling_report(output_dir / "sampling_report.md", report)
+    report_path = write_text(output_dir / "sampling_report.md", report, overwrite=args.overwrite)
     print(f"sampled_pairs={len(output_rows)}")
     print(f"wrote_csv={csv_path}")
     print(f"wrote_jsonl={jsonl_path}")
