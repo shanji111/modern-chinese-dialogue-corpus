@@ -9,6 +9,11 @@ from io_utils import read_csv
 
 
 REQUIRED_COLUMNS = (
+    "schema_version",
+    "sampling_seed",
+    "normalized_pair_hash",
+    "conversation_group_key",
+    "sample_stratum",
     "pair_id",
     "conversation_id",
     "entry_id",
@@ -74,7 +79,12 @@ def main() -> None:
     if duplicate_pair_ids:
         errors.append(f"duplicate_pair_ids={duplicate_pair_ids}")
 
-    conversation_counts = Counter(row.get("conversation_id", "") for row in rows)
+    pair_hashes = [row.get("normalized_pair_hash", "") for row in rows]
+    duplicate_hashes = len(pair_hashes) - len(set(pair_hashes))
+    if duplicate_hashes:
+        errors.append(f"duplicate_normalized_pair_hash={duplicate_hashes}")
+
+    conversation_counts = Counter(row.get("conversation_group_key") or row.get("conversation_id", "") for row in rows)
     max_seen = max(conversation_counts.values()) if conversation_counts else 0
     if max_seen > args.max_per_conversation:
         errors.append(f"max_conversation_count={max_seen} limit={args.max_per_conversation}")
@@ -92,13 +102,14 @@ def main() -> None:
     if accidentally_filled:
         errors.append(f"human_columns_not_blank={accidentally_filled}")
 
-    layer_counts = Counter(row.get("sample_layer", "") for row in rows)
+    layer_counts = Counter(row.get("sample_stratum") or row.get("sample_layer", "") for row in rows)
     source_counts = Counter(row.get("source", "") for row in rows)
     dataset_counts = Counter(row.get("dataset", "") for row in rows)
 
     print("integrity_check")
     print(f"rows={len(rows)}")
     print(f"duplicate_pair_ids={duplicate_pair_ids}")
+    print(f"duplicate_normalized_pair_hash={duplicate_hashes}")
     print(f"max_conversation_count={max_seen}")
     print(f"empty_turn_a={empty_a}")
     print(f"empty_turn_b={empty_b}")
@@ -115,4 +126,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

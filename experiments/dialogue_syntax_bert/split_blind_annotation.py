@@ -1,4 +1,4 @@
-"""Split an unblinded pilot CSV into blind annotation and evaluation key CSVs."""
+"""Split an unblinded sample CSV into blind annotation and evaluation key CSVs."""
 
 from __future__ import annotations
 
@@ -41,7 +41,6 @@ KEY_COLUMNS = [
     "schema_version",
     "normalized_pair_hash",
     "conversation_group_key",
-    "split_group_key",
     "rule_summary",
     "rule_any_positive",
     *FLAG_COLUMNS,
@@ -77,7 +76,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--input-csv",
         default=str(artifact_path("pilot_50", "pilot_50.csv")),
-        help="Unblinded pilot CSV produced by sample_pairs.py.",
+        help="Unblinded sample CSV produced by sample_pairs.py.",
     )
     parser.add_argument(
         "--output-dir",
@@ -85,6 +84,11 @@ def parse_args() -> argparse.Namespace:
         help="Directory for blind annotation and evaluation key CSVs.",
     )
     parser.add_argument("--prefix", default="P50", help="Annotation ID prefix.")
+    parser.add_argument(
+        "--output-prefix",
+        default="",
+        help="Output filename prefix. Defaults to the input CSV stem.",
+    )
     parser.add_argument("--sampling-seed", default="20260616")
     parser.add_argument("--schema-version", default=SCHEMA_VERSION)
     parser.add_argument("--overwrite", action="store_true", help="Allow overwriting existing output CSVs.")
@@ -171,15 +175,16 @@ def main() -> None:
     blind_rows, key_rows = build_rows(rows, args)
     assert_blind_has_no_forbidden_columns(blind_rows)
     output_dir = Path(args.output_dir)
+    output_prefix = args.output_prefix or Path(args.input_csv).stem
     blind_path = write_csv(
-        output_dir / "pilot_50_annotation_blind.csv",
+        output_dir / f"{output_prefix}_annotation_blind.csv",
         blind_rows,
         BLIND_COLUMNS,
         overwrite=args.overwrite,
         force_overwrite_labels=args.force_overwrite_labels,
     )
     key_path = write_csv(
-        output_dir / "pilot_50_evaluation_key.csv",
+        output_dir / f"{output_prefix}_evaluation_key.csv",
         key_rows,
         KEY_COLUMNS,
         overwrite=args.overwrite,

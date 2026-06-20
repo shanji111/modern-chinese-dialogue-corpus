@@ -1,4 +1,4 @@
-"""Sample dialogue pairs for pilot annotation.
+"""Sample dialogue pairs for offline dialogue-syntax annotation.
 
 The script reads `dialogue_pairs` from a SQLite database in read-only mode and
 writes annotation-ready CSV/JSONL/report artifacts. It never writes to the
@@ -62,7 +62,7 @@ OUTPUT_COLUMNS = [
     "sampling_seed",
     "normalized_pair_hash",
     "conversation_group_key",
-    "sample_layer",
+    "sample_stratum",
     "pair_id",
     "conversation_id",
     "entry_id",
@@ -84,11 +84,19 @@ OUTPUT_COLUMNS = [
     *HUMAN_ANNOTATION_COLUMNS,
 ]
 
-LAYER_TARGET_RATIOS = (
+PILOT_TARGET_RATIOS = (
     ("rule_positive", 0.36),
     ("rule_negative_random", 0.28),
     ("hard_negative_shared_weak_rule", 0.20),
     ("source_dataset_diverse", 0.16),
+)
+
+FORMAL_V1_TARGET_RATIOS = (
+    ("rule_positive", 0.30),
+    ("rule_negative_random", 0.20),
+    ("hard_negative_or_boundary", 0.20),
+    ("potential_false_negative", 0.20),
+    ("analogy_or_parallel_candidate", 0.10),
 )
 
 
@@ -98,9 +106,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         default=str(artifact_path("pilot_50")),
-        help="Artifact directory for pilot_50.csv, pilot_50.jsonl, and sampling_report.md.",
+        help="Artifact directory for sample CSV/JSONL/report outputs.",
     )
-    parser.add_argument("--sample-size", type=int, default=50, help="Total pilot sample size.")
+    parser.add_argument("--sample-size", type=int, default=50, help="Total sample size.")
+    parser.add_argument(
+        "--sampling-plan",
+        choices=("pilot", "formal_300_v1"),
+        default="pilot",
+        help="Stratified sampling plan to use.",
+    )
+    parser.add_argument(
+        "--output-prefix",
+        default="pilot_50",
+        help="Prefix for generated CSV/JSONL filenames, e.g. formal_300_v1.",
+    )
     parser.add_argument("--source", default="", help="Optional source filter.")
     parser.add_argument("--category", default="", help="Optional category filter.")
     parser.add_argument("--max-text-chars", type=int, default=260, help="Skip pairs with either turn longer than this.")
@@ -232,11 +251,18 @@ def candidate_rows(conn, args: argparse.Namespace, extra_clause: str = "") -> li
     return [dict(row) for row in rows]
 
 
-def layer_targets(sample_size: int) -> dict[str, int]:
+def layer_ratios(sampling_plan: str) -> tuple[tuple[str, float], ...]:
+    if sampling_plan == "formal_300_v1":
+        return FORMAL_V1_TARGET_RATIOS
+    return PILOT_TARGET_RATIOS
+
+
+def layer_targets(sample_size: int, sampling_plan: str) -> dict[str, int]:
+    ratios = layer_ratios(sampling_plan)
     remaining = sample_size
     targets = {}
-    for index, (layer, ratio) in enumerate(LAYER_TARGET_RATIOS):
-        if index == len(LAYER_TARGET_RATIOS) - 1:
+    for index, (layer, ratio) in enumerate(ratios):
+        if index == len(ratios) - 1:
             count = remaining
         else:
             count = int(round(sample_size * ratio))
@@ -245,12 +271,63 @@ def layer_targets(sample_size: int) -> dict[str, int]:
     return targets
 
 
+def flags_positive_clause() -> str:
+    return "(" + " OR ".join(f"COALESCE({flag}, 0) = 1" for flag in FLAG_COLUMNS) + ")"
+
+
+def flags_negative_clause() -> str:
+    return " AND ".join(f"COALESCE({flag}, 0) = 0" for flag in FLAG_COLUMNS)
+
+
+def like_any(columns: tuple[str, ...], patterns: tuple[str, ...]) -> str:
+    clauses = []
+    for column in columns:
+        for pattern in patterns:
+            clauses.append(f"{column} LIKE '%{pattern}%'")
+    return "(" + " OR ".join(clauses) + ")"
+
+
+def formal_layer_clauses() -> dict[str, str]:
+    negative = flags_negative_clause()
+    has_shared_terms = "COALESCE(shared_terms, '[]') NOT IN ('[]', '')"
+    questionish = like_any(("text_a",), ("？", "?", "什么", "谁", "哪", "何", "吗", "么"))
+    demonstrative_b = like_any(("text_b",), ("这", "此", "那个", "这些", "这俩", "那"))
+    handoff_b = (
+        "(text_b LIKE '%请%回答%' OR text_b LIKE '%请%说%' "
+        "OR text_b LIKE '%让%回答%' OR text_b LIKE '%让%说%')"
+    )
+    short_answer = "(LENGTH(COALESCE(text_b, '')) <= 12 OR LENGTH(COALESCE(text_a, '')) <= 12)"
+    repair_or_contrast = like_any(
+        ("text_b",),
+        ("不", "不是", "没有", "但是", "不过", "其实", "错", "应该", "不对"),
+    )
+    analogy_or_parallel = like_any(
+        ("text_a", "text_b"),
+        ("胜于", "不如", "比", "像", "如同", "一样", "不是", "而是", "反过来"),
+    )
+    hard_boundary = (
+        f"({has_shared_terms} OR COALESCE(has_question_response, 0) = 1 "
+        f"OR {demonstrative_b} OR {handoff_b} OR {short_answer})"
+    )
+    potential_false_negative = (
+        f"({negative}) AND ({questionish} OR {demonstrative_b} OR {short_answer} OR {repair_or_contrast})"
+    )
+    return {
+        "rule_positive": flags_positive_clause(),
+        "rule_negative_random": negative,
+        "hard_negative_or_boundary": hard_boundary,
+        "potential_false_negative": potential_false_negative,
+        "analogy_or_parallel_candidate": f"({analogy_or_parallel} OR COALESCE(has_pattern_reuse, 0) = 1)",
+    }
+
+
 def choose_candidates(
     candidates: list[dict[str, object]],
-    layer: str,
+    stratum: str,
     target: int,
     rng: random.Random,
     selected_ids: set[int],
+    selected_hashes: set[str],
     conversation_counts: Counter,
     max_per_conversation: int,
     prefer_new_datasets: bool = False,
@@ -288,15 +365,19 @@ def choose_candidates(
     selected = []
     for row in pool:
         pair_id = int(row["pair_id"])
-        conversation_id = str(row.get("conversation_id") or "")
+        pair_hash = normalized_pair_hash(row.get("turn_a"), row.get("turn_b"))
+        conv_group = conversation_group_key(row.get("dataset"), row.get("conversation_id"))
         if pair_id in selected_ids:
             continue
-        if conversation_counts[conversation_id] >= max_per_conversation:
+        if pair_hash in selected_hashes:
+            continue
+        if conversation_counts[conv_group] >= max_per_conversation:
             continue
         selected_ids.add(pair_id)
-        conversation_counts[conversation_id] += 1
+        selected_hashes.add(pair_hash)
+        conversation_counts[conv_group] += 1
         row = dict(row)
-        row["sample_layer"] = layer
+        row["sample_stratum"] = stratum
         selected.append(row)
         if selected_datasets is not None:
             selected_datasets.add(str(row.get("dataset") or ""))
@@ -307,36 +388,44 @@ def choose_candidates(
 
 def sample_pilot_rows(conn, args: argparse.Namespace) -> tuple[list[dict[str, object]], dict[str, object]]:
     rng = random.Random(args.seed)
-    targets = layer_targets(args.sample_size)
+    targets = layer_targets(args.sample_size, args.sampling_plan)
     selected_ids: set[int] = set()
+    selected_hashes: set[str] = set()
     conversation_counts: Counter = Counter()
     selected_datasets: set[str] = set()
     selected_rows: list[dict[str, object]] = []
 
-    positive_clause = "(" + " OR ".join(f"{flag} = 1" for flag in FLAG_COLUMNS) + ")"
-    negative_clause = " AND ".join(f"{flag} = 0" for flag in FLAG_COLUMNS)
+    positive_clause = flags_positive_clause()
+    negative_clause = flags_negative_clause()
     weak_shared_clause = (
         "COALESCE(shared_terms, '[]') NOT IN ('[]', '') "
-        "AND has_pattern_reuse = 0 "
-        "AND has_question_response = 0 "
-        "AND has_negation_turn = 0 "
-        "AND has_repair_repetition = 0"
+        "AND COALESCE(has_pattern_reuse, 0) = 0 "
+        "AND COALESCE(has_question_response, 0) = 0 "
+        "AND COALESCE(has_negation_turn, 0) = 0 "
+        "AND COALESCE(has_repair_repetition, 0) = 0"
     )
 
-    layer_candidates = {
-        "rule_positive": candidate_rows(conn, args, positive_clause),
-        "rule_negative_random": candidate_rows(conn, args, negative_clause),
-        "hard_negative_shared_weak_rule": candidate_rows(conn, args, weak_shared_clause),
-        "source_dataset_diverse": candidate_rows(conn, args),
-    }
+    if args.sampling_plan == "formal_300_v1":
+        clauses = formal_layer_clauses()
+        layer_candidates = {layer: candidate_rows(conn, args, clause) for layer, clause in clauses.items()}
+        layer_order = tuple(targets.keys())
+    else:
+        layer_candidates = {
+            "rule_positive": candidate_rows(conn, args, positive_clause),
+            "rule_negative_random": candidate_rows(conn, args, negative_clause),
+            "hard_negative_shared_weak_rule": candidate_rows(conn, args, weak_shared_clause),
+            "source_dataset_diverse": candidate_rows(conn, args),
+        }
+        layer_order = ("rule_positive", "rule_negative_random", "hard_negative_shared_weak_rule")
 
-    for layer in ("rule_positive", "rule_negative_random", "hard_negative_shared_weak_rule"):
+    for layer in layer_order:
         rows = choose_candidates(
             layer_candidates[layer],
             layer,
             targets[layer],
             rng,
             selected_ids,
+            selected_hashes,
             conversation_counts,
             args.max_per_conversation,
             prefer_new_datasets=True,
@@ -344,26 +433,30 @@ def sample_pilot_rows(conn, args: argparse.Namespace) -> tuple[list[dict[str, ob
         )
         selected_rows.extend(rows)
 
-    diverse_rows = choose_candidates(
-        layer_candidates["source_dataset_diverse"],
-        "source_dataset_diverse",
-        targets["source_dataset_diverse"],
-        rng,
-        selected_ids,
-        conversation_counts,
-        args.max_per_conversation,
-        prefer_new_datasets=True,
-        selected_datasets=selected_datasets,
-    )
-    selected_rows.extend(diverse_rows)
+    if args.sampling_plan != "formal_300_v1":
+        diverse_rows = choose_candidates(
+            layer_candidates["source_dataset_diverse"],
+            "source_dataset_diverse",
+            targets["source_dataset_diverse"],
+            rng,
+            selected_ids,
+            selected_hashes,
+            conversation_counts,
+            args.max_per_conversation,
+            prefer_new_datasets=True,
+            selected_datasets=selected_datasets,
+        )
+        selected_rows.extend(diverse_rows)
 
     if len(selected_rows) < args.sample_size:
+        filler_candidates = candidate_rows(conn, args)
         filler = choose_candidates(
-            layer_candidates["source_dataset_diverse"],
+            filler_candidates,
             "fill_random",
             args.sample_size - len(selected_rows),
             rng,
             selected_ids,
+            selected_hashes,
             conversation_counts,
             args.max_per_conversation,
             selected_datasets=selected_datasets,
@@ -375,6 +468,7 @@ def sample_pilot_rows(conn, args: argparse.Namespace) -> tuple[list[dict[str, ob
         "candidate_counts": {layer: len(rows) for layer, rows in layer_candidates.items()},
         "seed": args.seed,
         "max_per_conversation": args.max_per_conversation,
+        "sampling_plan": args.sampling_plan,
         "sample_size_requested": args.sample_size,
         "sample_size_actual": len(selected_rows),
     }
@@ -409,6 +503,7 @@ def build_output_row(row: dict[str, object]) -> dict[str, object]:
         "markers",
     ):
         output[column] = row.get(column, "")
+    output["sample_stratum"] = row.get("sample_stratum", row.get("sample_layer", ""))
     output.update(rule_values(row))
     for column in HUMAN_ANNOTATION_COLUMNS:
         output[column] = ""
@@ -444,20 +539,25 @@ def build_sampling_report(
     metadata: dict[str, object],
     db_path: Path,
 ) -> str:
-    layer_counts = Counter(str(row.get("sample_layer") or "") for row in rows)
+    layer_counts = Counter(str(row.get("sample_stratum") or row.get("sample_layer") or "") for row in rows)
     pair_ids = [int(row["pair_id"]) for row in rows]
-    conversation_ids = [str(row.get("conversation_id") or "") for row in rows]
-    conversation_counts = Counter(conversation_ids)
+    conversation_groups = [str(row.get("conversation_group_key") or "") for row in rows]
+    conversation_counts = Counter(conversation_groups)
+    pair_hashes = [str(row.get("normalized_pair_hash") or "") for row in rows]
+    hash_counts = Counter(pair_hashes)
     empty_a = sum(1 for row in rows if not str(row.get("turn_a") or "").strip())
     empty_b = sum(1 for row in rows if not str(row.get("turn_b") or "").strip())
     lengths_a = [len(str(row.get("turn_a") or "")) for row in rows]
     lengths_b = [len(str(row.get("turn_b") or "")) for row in rows]
     duplicate_pairs = len(pair_ids) - len(set(pair_ids))
+    duplicate_hashes = len(pair_hashes) - len(set(pair_hashes))
     repeated_conversations = sum(1 for count in conversation_counts.values() if count > 1)
     max_conversation_count = max(conversation_counts.values()) if conversation_counts else 0
+    source_counts = Counter(str(row.get("source") or "") for row in rows)
+    dataset_counts = Counter(str(row.get("dataset") or "") for row in rows)
 
     lines = [
-        "# Pilot 50 Sampling Report",
+        "# Sampling Report",
         "",
         "## Database Access",
         "",
@@ -470,11 +570,12 @@ def build_sampling_report(
         f"- Requested: {metadata['sample_size_requested']}",
         f"- Actual: {metadata['sample_size_actual']}",
         f"- Seed: {metadata['seed']}",
+        f"- Sampling plan: {metadata.get('sampling_plan', 'pilot')}",
         f"- Max per conversation: {metadata['max_per_conversation']}",
         "",
-        "## Layer Counts",
+        "## Stratum Counts",
         "",
-        "| layer | target | sampled | candidate_pool |",
+        "| sample_stratum | target | sampled | candidate_pool |",
         "| --- | ---: | ---: | ---: |",
     ]
     targets = metadata["targets"]
@@ -486,7 +587,27 @@ def build_sampling_report(
 
     lines.extend([
         "",
-        "## Source / Dataset Distribution",
+        "## Source Distribution",
+        "",
+        "| source | count |",
+        "| --- | ---: |",
+    ])
+    for source, count in source_counts.most_common():
+        lines.append(f"| {source or '(empty)'} | {count} |")
+
+    lines.extend([
+        "",
+        "## Dataset Distribution",
+        "",
+        "| dataset | count |",
+        "| --- | ---: |",
+    ])
+    for dataset, count in dataset_counts.most_common():
+        lines.append(f"| {dataset or '(empty)'} | {count} |")
+
+    lines.extend([
+        "",
+        "## Source / Category / Dataset Distribution",
         "",
         "| source | category | dataset | count |",
         "| --- | --- | --- | ---: |",
@@ -499,10 +620,37 @@ def build_sampling_report(
         "## Duplicate And Empty Checks",
         "",
         f"- Duplicate pair IDs: {duplicate_pairs}",
-        f"- Conversations appearing more than once: {repeated_conversations}",
-        f"- Max samples from one conversation: {max_conversation_count}",
+        f"- Duplicate normalized_pair_hash values: {duplicate_hashes}",
+        f"- conversation_group_key values appearing more than once: {repeated_conversations}",
+        f"- Max samples from one conversation_group_key: {max_conversation_count}",
         f"- Empty A-turn texts: {empty_a}",
         f"- Empty B-turn texts: {empty_b}",
+        "",
+        "## Repeated Conversation Groups",
+        "",
+        "| conversation_group_key | count |",
+        "| --- | ---: |",
+    ])
+    for group, count in conversation_counts.most_common(20):
+        if count > 1:
+            lines.append(f"| {group} | {count} |")
+    if all(count <= 1 for count in conversation_counts.values()):
+        lines.append("| (none) | 0 |")
+
+    lines.extend([
+        "",
+        "## Repeated normalized_pair_hash Values",
+        "",
+        "| normalized_pair_hash | count |",
+        "| --- | ---: |",
+    ])
+    for pair_hash, count in hash_counts.most_common(20):
+        if count > 1:
+            lines.append(f"| `{pair_hash}` | {count} |")
+    if all(count <= 1 for count in hash_counts.values()):
+        lines.append("| (none) | 0 |")
+
+    lines.extend([
         "",
         "## Text Lengths",
         "",
@@ -552,15 +700,16 @@ def main() -> None:
         row["sampling_seed"] = args.seed
     output_rows = [build_output_row(row) for row in rows]
     output_dir = Path(args.output_dir)
+    output_prefix = args.output_prefix
     csv_path = write_csv(
-        output_dir / "pilot_50.csv",
+        output_dir / f"{output_prefix}.csv",
         output_rows,
         OUTPUT_COLUMNS,
         overwrite=args.overwrite,
         force_overwrite_labels=args.force_overwrite_labels,
     )
     jsonl_path = write_jsonl(
-        output_dir / "pilot_50.jsonl",
+        output_dir / f"{output_prefix}.jsonl",
         output_rows,
         overwrite=args.overwrite,
         force_overwrite_labels=args.force_overwrite_labels,
