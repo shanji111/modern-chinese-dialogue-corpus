@@ -1,4 +1,5 @@
 import hashlib
+import mimetypes
 import os
 import uuid
 from pathlib import Path
@@ -219,6 +220,27 @@ class S3StorageBackend:
                 "Key": key,
                 "ResponseContentDisposition": f'attachment; filename="{download_name or Path(key).name}"',
             },
+            ExpiresIn=3600,
+        )
+        return redirect(url)
+
+    def get_object_redirect_response(self, object_key, download_name=None):
+        key = (object_key or "").strip().lstrip("/")
+        if not key:
+            raise FileNotFoundError("")
+        if self.public_base_url:
+            return redirect(f"{self.public_base_url}/{key}")
+
+        content_type = mimetypes.guess_type(download_name or Path(key).name)[0]
+        params = {
+            "Bucket": self.bucket,
+            "Key": key,
+        }
+        if content_type:
+            params["ResponseContentType"] = content_type
+        url = self.client().generate_presigned_url(
+            "get_object",
+            Params=params,
             ExpiresIn=3600,
         )
         return redirect(url)
