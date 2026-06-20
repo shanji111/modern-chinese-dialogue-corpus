@@ -26,6 +26,40 @@ Core mechanism labels for first-stage evaluation:
 `label_analogy_candidate` should still be filled when relevant, but it is
 reported separately.
 
+## Boundary Principles
+
+These principles summarize the pilot boundary decisions and should be used
+when a pair sits between ordinary adjacency and dialogue-syntax resonance.
+
+- Ordinary factual question-answer pairs are not automatically resonance. If B
+  only provides a price, fact, object, or routine answer, and there is no
+  locatable reproduction, slot filling, structural alignment, or selective
+  uptake from A, mark `resonance_present=no`.
+- Slot-filling question-answer pairs may count as weak resonance. If A opens a
+  clear interrogative slot and B fills that slot while preserving a recoverable
+  question-answer frame, mark `resonance_present=yes`; common core labels are
+  `label_parallelism=1` and/or `label_selective_reuse=1`.
+- Handoff answers are not resonance by default. If B merely redirects the
+  question to another speaker or asks someone else to answer, without reusing
+  the structural resources of A, mark `resonance_present=no`.
+- Demonstratives such as "this", "that", "these", `此`, `这`, or `那个` may
+  count as `label_selective_reuse=1` when they stably point back to a concrete
+  object, set, proposition, or evaluation type in A and B uses that referent for
+  further questioning, denial, evaluation, or contrast. If the referent is not
+  stable, use `uncertain` or leave the core label as `?`.
+- Pure stance alignment is not a first-stage core label. If B only agrees,
+  endorses, rejects, or echoes a stance without stable form, structure, or
+  referential uptake, mark `resonance_present=no` or `uncertain` and explain the
+  boundary in notes.
+- Analogy is exploratory in the first stage. Mark
+  `label_analogy_candidate=1` when a cross-domain or relational mapping is
+  visible, but do not include it in core F1. If the analogy also has
+  reproduction, parallelism, or selective reuse, mark the relevant core labels
+  too; otherwise keep the core mechanism as `?` or `0` as appropriate.
+- Garbled, mismatched, or unreliable pairs should not be forced into a positive
+  label. Mark `resonance_present=uncertain`, use `?` for unstable mechanism
+  labels when needed, and explain that the pair may need later exclusion.
+
 ## 重现 (`reproduction`)
 
 B reuses a lexical item, phrase, or compact expression from A.

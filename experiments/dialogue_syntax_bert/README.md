@@ -41,6 +41,8 @@ deployment configuration, migrations, and the main `corpus.db` write path.
 - `validate_annotations.py`: validates filled blind annotation CSVs without
   modifying them.
 - `split_safety.py`: helper functions for future train/dev/test leakage checks.
+- `inspect_corpus_schema.py`: read-only schema inspection for dialogue-pair tables.
+- `check_sample_integrity.py`: structural checks for sample CSVs.
 
 ## Split Safety Fields
 
@@ -99,7 +101,10 @@ between partitions:
      --key .\experiments\dialogue_syntax_bert\artifacts\pilot_50\pilot_50_evaluation_key.csv
    ```
 
-6. Run non-finetuned baselines:
+6. Run non-finetuned baselines only after a formal human gold set exists.
+
+   Do not use pilot 50 as a training or benchmark set. Run these only after the
+   final human-labeled dataset is complete and the test split is frozen.
 
    ```powershell
    python -B .\experiments\dialogue_syntax_bert\similarity_baseline.py `
@@ -109,7 +114,12 @@ between partitions:
    Add `--bert-model <local-or-cached-model>` only in an experiment environment
    where `torch` and `transformers` are installed.
 
-7. Prepare model data and finetune offline:
+7. Prepare model data and finetune offline only after gold labels and frozen tests.
+
+   `prepare_model_data.py` and `bert_pair_classifier.py` are not pilot-50 tools.
+   Use them only after the formal human gold set has been completed, reviewed,
+   and split with leakage checks for `pair_id`, `normalized_pair_hash`, and
+   `conversation_group_key`.
 
    ```powershell
    python -B .\experiments\dialogue_syntax_bert\prepare_model_data.py `
