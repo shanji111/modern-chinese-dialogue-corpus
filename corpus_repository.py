@@ -2325,6 +2325,7 @@ def query_turn_search_page(keyword="", source="", year="", category="", dataset_
                 f"""
                 SELECT conversation_key,
                        turn_index,
+                       speaker_label,
                        turn_text
                 FROM {TURN_TABLE}
                 WHERE conversation_key IN ({key_markers})
@@ -2333,7 +2334,10 @@ def query_turn_search_page(keyword="", source="", year="", category="", dataset_
                 [*keys, *neighbor_indexes],
             ))
             neighbors = {
-                (row["conversation_key"], row["turn_index"]): row.get("turn_text") or ""
+                (row["conversation_key"], row["turn_index"]): {
+                    "speaker": row.get("speaker_label") or "",
+                    "text": row.get("turn_text") or "",
+                }
                 for row in neighbor_rows
             }
 
@@ -2359,10 +2363,13 @@ def query_turn_search_page(keyword="", source="", year="", category="", dataset_
                 "license_note": entry.get("license_note") or "",
                 "conversation_id": key,
                 "speaker": row.get("speaker_label") or "",
+                "current_speaker": row.get("speaker_label") or "",
                 "content": row.get("turn_text") or "",
-                "prev_segment": neighbors.get((key, turn_index - 1), ""),
+                "prev_speaker": (neighbors.get((key, turn_index - 1)) or {}).get("speaker", ""),
+                "prev_segment": (neighbors.get((key, turn_index - 1)) or {}).get("text", ""),
                 "current_segment": row.get("turn_text") or "",
-                "next_segment": neighbors.get((key, turn_index + 1), ""),
+                "next_speaker": (neighbors.get((key, turn_index + 1)) or {}).get("speaker", ""),
+                "next_segment": (neighbors.get((key, turn_index + 1)) or {}).get("text", ""),
             })
         return results
     except Exception as exc:

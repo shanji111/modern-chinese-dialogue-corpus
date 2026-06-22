@@ -565,6 +565,14 @@ def get_optional(item, field_name):
     return item[field_name] if field_name in item.keys() else None
 
 
+def format_turn_segment_with_speaker(text, speaker=""):
+    text = (text or "").strip()
+    if not text:
+        return ""
+    speaker = (speaker or "").strip() or "未标注"
+    return f"{speaker}：{text}"
+
+
 def split_dialogue_units(text):
     text = (text or "").replace("\r\n", "\n").replace("\r", "\n").strip()
     if not text:
@@ -1272,17 +1280,22 @@ def build_segment_context(item, keyword, left_len=80, right_len=80):
     next_segment = get_optional(item, "next_segment")
 
     if prev_segment or current_segment or next_segment:
-        hit_segment = current_segment or ""
+        prev_display = format_turn_segment_with_speaker(prev_segment, get_optional(item, "prev_speaker"))
+        hit_segment = format_turn_segment_with_speaker(
+            current_segment or "",
+            get_optional(item, "current_speaker") or get_optional(item, "speaker"),
+        )
+        next_display = format_turn_segment_with_speaker(next_segment, get_optional(item, "next_speaker"))
         return {
             "file_name": item["title"],
             "dialogue_id": get_optional(item, "conversation_id") or get_optional(item, "dialogue_id") or item["id"],
-            "prev_segment": prev_segment or "",
+            "prev_segment": prev_display,
             "hit_segment": hit_segment,
             "hit_segment_html": highlight_keyword(hit_segment, keyword),
-            "next_segment": next_segment or "",
-            "modal_prev_segment": prev_segment or "",
+            "next_segment": next_display,
+            "modal_prev_segment": prev_display,
             "modal_hit_segment": hit_segment,
-            "modal_next_segment": next_segment or "",
+            "modal_next_segment": next_display,
             "labels": dialogue_label_set(),
         }
 
