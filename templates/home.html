@@ -30,17 +30,17 @@
             <input type="hidden" name="view" value="ccl">
 
             <div class="bcc-search-box">
-                <input type="text" name="q" class="bcc-search-input" placeholder="输入检索词，如：你好 / 没关系 / 我觉得">
+                <input type="text" name="q" class="bcc-search-input" placeholder="输入检索词或正则式，如：我觉得 / 还.{0,6}可以">
                 <button type="submit" class="bcc-search-button">检索</button>
             </div>
 
             <div class="bcc-search-extra legacy-search-examples">
                 <span class="example-label">检索示例：</span>
-                <a href="{{ url_for('search', q='你好', view='ccl', advanced='1') }}">你好</a>
-                <a href="{{ url_for('search', q='谢谢', view='ccl', advanced='1') }}">谢谢</a>
-                <a href="{{ url_for('search', q='我觉得', view='ccl', advanced='1') }}">我觉得</a>
-                <a href="{{ url_for('search', q='没关系', view='ccl', advanced='1') }}">没关系</a>
-                <a href="{{ url_for('search', q='真的吗', view='ccl', advanced='1') }}">真的吗</a>
+                <a href="{{ url_for('search', q='还.{0,6}可以', view='ccl', advanced='1') }}">还.{0,6}可以</a>
+                <a href="{{ url_for('search', q='不.{0,4}知道', view='ccl', advanced='1') }}">不.{0,4}知道</a>
+                <a href="{{ url_for('search', q='(你|我)觉得', view='ccl', advanced='1') }}">(你|我)觉得</a>
+                <a href="{{ url_for('search', q='吃.{0,6}饭', view='ccl', advanced='1') }}">吃.{0,6}饭</a>
+                <a href="{{ url_for('search', q='下次.*见', view='ccl', advanced='1') }}">下次.*见</a>
             </div>
         </form>
 

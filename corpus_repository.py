@@ -48,7 +48,31 @@ DISPLAY_SOURCE_RULES = {
     ANCIENT_CHINESE_SOURCE: (TEXT_DIALOGUE_SOURCE, ANCIENT_CHINESE_CATEGORIES),
     TEXT_DIALOGUE_SOURCE: (TEXT_DIALOGUE_SOURCE, TEXT_DIALOGUE_CATEGORIES),
 }
-SEARCH_MODES = {"contains", "exact", "starts_with", "ends_with"}
+SEARCH_MODES = {"contains", "exact", "starts_with", "ends_with", "regex"}
+REGEX_SEARCH_MODE = "regex"
+
+
+def env_int(name, default):
+    try:
+        return int(os.environ.get(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+
+
+MAX_REGEX_PATTERN_CHARS = env_int("MAX_REGEX_PATTERN_CHARS", 80)
+SLOW_REGEX_PATTERNS = (
+    re.compile(r"\([^)]*[+*][^)]*\)\s*(?:[+*]|\{\d*,?\d*\})"),
+    re.compile(r"(?:\.\*){4,}"),
+    re.compile(r"\\[1-9]"),
+)
+REGEX_HINT_PATTERNS = (
+    re.compile(r"\{\d+(?:,\d*)?\}"),
+    re.compile(r"\[[^\]]+\]"),
+    re.compile(r"\([^)]*\|[^)]*\)"),
+    re.compile(r"\.\*|\.\+|\.\?"),
+    re.compile(r"\\[AbBdDsSwWZz]"),
+    re.compile(r"(^|[^\\])[\^$]"),
+)
 MERGED_DIALOGUE_TITLE_PATTERN = re.compile(r"\s*合并大对话\s*")
 SORT_OPTIONS = {
     "id_desc": "id DESC",
@@ -1867,6 +1891,52 @@ def normalize_search_filters(filters=None):
     return filters
 
 
+def compile_search_regex(pattern):
+    return re.compile(pattern, re.IGNORECASE)
+
+
+def validate_regex_pattern(pattern):
+    pattern = (pattern or "").strip()
+    if not pattern:
+        return ""
+    if len(pattern) > MAX_REGEX_PATTERN_CHARS:
+        return f"正则表达式过长，请控制在 {MAX_REGEX_PATTERN_CHARS} 个字符以内。"
+    if is_postgres() and "(?" in pattern:
+        return "当前数据库的正则检索暂不支持 (?...) 扩展语法。"
+    for slow_pattern in SLOW_REGEX_PATTERNS:
+        if slow_pattern.search(pattern):
+            return "这个正则表达式可能导致查询过慢，请简化重复结构。"
+    try:
+        compiled = compile_search_regex(pattern)
+    except re.error as exc:
+        return f"正则表达式有误：{exc}"
+    if compiled.match(""):
+        return "这个正则表达式可以匹配空文本，请加上更明确的字词。"
+    return ""
+
+
+def looks_like_regex_pattern(pattern):
+    pattern = (pattern or "").strip()
+    if not pattern:
+        return False
+    return any(hint.search(pattern) for hint in REGEX_HINT_PATTERNS)
+
+
+def promote_auto_regex_filter(keyword="", filters=None):
+    filters = normalize_search_filters(filters)
+    if filters["mode"] == "contains" and looks_like_regex_pattern(keyword):
+        filters = dict(filters)
+        filters["mode"] = REGEX_SEARCH_MODE
+    return filters
+
+
+def validate_search_request(keyword="", filters=None):
+    filters = normalize_search_filters(filters)
+    if filters["mode"] == REGEX_SEARCH_MODE:
+        return validate_regex_pattern(keyword)
+    return ""
+
+
 def build_like_pattern(value, mode="contains"):
     escaped = escape_like(value)
     if mode == "exact":
@@ -1883,6 +1953,22 @@ def add_text_search_clause(where_clauses, params, keyword, columns, mode="contai
         return
     marker = placeholder()
     prefix = f"{table_name}." if table_name else ""
+    if mode == REGEX_SEARCH_MODE:
+        error = validate_regex_pattern(keyword)
+        if error:
+            raise ValueError(error)
+        joiner = " AND " if negate else " OR "
+        if is_postgres():
+            operator = "!~*" if negate else "~*"
+            parts = [f"COALESCE({prefix}{column}, '') {operator} {marker}" for column in columns]
+        else:
+            parts = []
+            for column in columns:
+                expression = f"COALESCE({prefix}{column}, '') REGEXP {marker}"
+                parts.append(f"NOT ({expression})" if negate else expression)
+        where_clauses.append(f"({joiner.join(parts)})")
+        params.extend([keyword] * len(columns))
+        return
     like_operator = "ILIKE" if is_postgres() else "LIKE"
     operator = f"NOT {like_operator}" if negate else like_operator
     joiner = " AND " if negate else " OR "

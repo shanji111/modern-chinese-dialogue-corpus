@@ -137,6 +137,10 @@ a:hover {
     display: none;
 }
 
+.new-home-page .legacy-search-examples {
+    display: block;
+}
+
 /* ========== Search Form / Tabs ========== */
 .category-tabs {
     width: 100%;
@@ -661,6 +665,15 @@ a:hover {
     color: white;
     padding: 8px 12px;
     font-size: 15px;
+}
+
+.search-error-message {
+    margin: 10px 0 12px;
+    padding: 10px 14px;
+    border: 1px solid #f3c07a;
+    background: #fff8e8;
+    color: #8a4b00;
+    font-size: 14px;
 }
 
 .result-list {

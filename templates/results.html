@@ -75,6 +75,7 @@
                             <option value="exact" {% if advanced_filters.mode == 'exact' %}selected{% endif %}>完全匹配</option>
                             <option value="starts_with" {% if advanced_filters.mode == 'starts_with' %}selected{% endif %}>以关键词开头</option>
                             <option value="ends_with" {% if advanced_filters.mode == 'ends_with' %}selected{% endif %}>以关键词结尾</option>
+                            <option value="regex" {% if advanced_filters.mode == 'regex' %}selected{% endif %}>正则表达式</option>
                         </select>
                     </label>
                     <label>
@@ -146,6 +147,10 @@
         </div>
     </div>
 
+    {% if search_error_message %}
+        <div class="search-error-message">{{ search_error_message }}</div>
+    {% endif %}
+
     <div class="result-view-tabs">
         <a href="{{ url_for('search', **dict(query_args, view='ccl', page=1)) }}"
            class="tab-item {% if view_mode == 'ccl' %}active{% endif %}">居中检索视图</a>
@@ -159,7 +164,7 @@
 
     {% if view_mode == "dialogue" %}
         {% set dialogues = dialogue_results %}
-        {% set empty_message = "暂无可展示的完整对话。" %}
+        {% set empty_message = search_error_message or "暂无可展示的完整对话。" %}
         {% include "_dialogue_strips.html" %}
     {% else %}
         {% include "_ccl_results.html" %}

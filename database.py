@@ -1,5 +1,7 @@
 import os
+import re
 import sqlite3
+from functools import lru_cache
 from pathlib import Path
 from urllib.parse import parse_qsl, quote, unquote, urlparse, urlunparse
 
@@ -10,6 +12,29 @@ DATABASE_PATH = Path(os.environ.get("DATABASE_PATH", BASE_DIR / "corpus.db"))
 DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
 if not DATABASE_PATH.is_absolute():
     DATABASE_PATH = BASE_DIR / DATABASE_PATH
+
+
+@lru_cache(maxsize=256)
+def compile_sqlite_regex(pattern):
+    return re.compile(str(pattern or ""), re.IGNORECASE)
+
+
+def sqlite_regexp(pattern, value):
+    if pattern is None or value is None:
+        return 0
+    try:
+        return 1 if compile_sqlite_regex(pattern).search(str(value)) else 0
+    except re.error:
+        return 0
+
+
+def configure_sqlite_connection(conn):
+    conn.row_factory = sqlite3.Row
+    try:
+        conn.create_function("REGEXP", 2, sqlite_regexp, deterministic=True)
+    except (TypeError, sqlite3.NotSupportedError):
+        conn.create_function("REGEXP", 2, sqlite_regexp)
+    return conn
 
 
 def redact_database_url(database_url=DATABASE_URL):
@@ -70,8 +95,7 @@ class SQLiteDatabaseBackend:
 
     def connect(self):
         conn = sqlite3.connect(self.database_path)
-        conn.row_factory = sqlite3.Row
-        return conn
+        return configure_sqlite_connection(conn)
 
 
 class PostgresDatabaseBackend:
@@ -121,5 +145,4 @@ def get_readonly_db_connection():
         return get_db_connection()
     sqlite_path = quote(str(DATABASE_PATH.resolve()).replace(os.sep, "/"), safe="/:")
     conn = sqlite3.connect(f"file:{sqlite_path}?mode=ro", uri=True)
-    conn.row_factory = sqlite3.Row
-    return conn
+    return configure_sqlite_connection(conn)

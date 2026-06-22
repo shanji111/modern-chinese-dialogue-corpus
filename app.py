@@ -550,14 +550,36 @@ def insert_approved_multimodal_submission(conn, submission):
     ))
 
 
-def split_context(text, keyword, left_len=30, right_len=30):
+def find_search_match(text, keyword, use_regex=False):
+    text = text or ""
+    keyword = (keyword or "").strip()
+    if not keyword:
+        return None
+    if use_regex:
+        try:
+            match = corpus_repository.compile_search_regex(keyword).search(text)
+        except re.error:
+            return None
+        if not match or match.start() == match.end():
+            return None
+        return match.start(), match.end()
+
     idx = text.find(keyword)
     if idx == -1:
+        return None
+    return idx, idx + len(keyword)
+
+
+def split_context(text, keyword, left_len=30, right_len=30, use_regex=False):
+    text = text or ""
+    span = find_search_match(text, keyword, use_regex=use_regex)
+    if not span:
         return text[:left_len], "", text[left_len:left_len + right_len]
 
+    idx, end_idx = span
     left = text[max(0, idx - left_len):idx]
-    hit = text[idx:idx + len(keyword)]
-    right = text[idx + len(keyword): idx + len(keyword) + right_len]
+    hit = text[idx:end_idx]
+    right = text[end_idx: end_idx + right_len]
     return left, hit, right
 
 
@@ -614,10 +636,28 @@ def trim_units(units, max_len, keep_tail=False):
     return trim_text(text, max_len, keep_tail=keep_tail)
 
 
-def highlight_keyword(text, keyword):
+def highlight_keyword(text, keyword, use_regex=False):
     text = text or ""
     if not keyword:
         return escape(text)
+    if use_regex:
+        try:
+            pattern = corpus_repository.compile_search_regex(keyword)
+        except re.error:
+            return escape(text)
+        highlighted = []
+        last_index = 0
+        for match in pattern.finditer(text):
+            if match.start() == match.end():
+                continue
+            highlighted.append(str(escape(text[last_index:match.start()])))
+            highlighted.append(f'<span class="segment-hit-word">{ escape(match.group(0)) }</span>')
+            last_index = match.end()
+        if not highlighted:
+            return escape(text)
+        highlighted.append(str(escape(text[last_index:])))
+        return Markup("".join(highlighted))
+
     parts = text.split(keyword)
     if len(parts) == 1:
         return escape(text)
@@ -1165,13 +1205,13 @@ def clean_interview_turn(turn):
     return turn
 
 
-def build_interview_context(content, keyword="", left_len=30, right_len=30):
+def build_interview_context(content, keyword="", left_len=30, right_len=30, use_regex=False):
     content = content or ""
     if keyword:
         turns = split_interview_turns(content)
         cleaned_turns = [clean_interview_turn(turn) for turn in turns]
         for index, turn in enumerate(cleaned_turns):
-            if keyword in turn:
+            if find_search_match(turn, keyword, use_regex=use_regex):
                 prev_turn = cleaned_turns[index - 1] if index > 0 else ""
                 next_turn = cleaned_turns[index + 1] if index + 1 < len(cleaned_turns) else ""
                 return prev_turn, turn, next_turn, prev_turn, next_turn
@@ -1181,6 +1221,7 @@ def build_interview_context(content, keyword="", left_len=30, right_len=30):
         keyword,
         INTERVIEW_RESULT_SIDE_CHARS,
         INTERVIEW_RESULT_SIDE_CHARS,
+        use_regex=use_regex,
     )
     fallback = (fallback_left + fallback_hit + fallback_right).strip()
     fallback = fallback or trim_text(content, INTERVIEW_RESULT_HIT_CHARS)
@@ -1236,35 +1277,36 @@ def build_conversation_refs_from_search_results(results):
     return conversations
 
 
-def annotate_dialogues_for_keyword(dialogues, keyword):
+def annotate_dialogues_for_keyword(dialogues, keyword, use_regex=False):
     keyword = (keyword or "").strip()
     for dialogue in dialogues:
         match_count = 0
         for turn in dialogue.get("turns") or []:
             text = turn.get("turn_text") or ""
-            is_hit = bool(keyword and keyword in text)
+            is_hit = bool(find_search_match(text, keyword, use_regex=use_regex))
             turn["is_hit"] = is_hit
-            turn["turn_text_html"] = highlight_keyword(text, keyword)
+            turn["turn_text_html"] = highlight_keyword(text, keyword, use_regex=use_regex)
             if is_hit:
                 match_count += 1
         dialogue["match_count"] = match_count
     return dialogues
 
 
-def build_segment_context(item, keyword, left_len=80, right_len=80):
+def build_segment_context(item, keyword, left_len=80, right_len=80, use_regex=False):
     if is_interview_item(item):
         prev_segment, hit_segment, next_segment, modal_prev, modal_next = build_interview_context(
             item["content"] or "",
             keyword,
             left_len,
             right_len,
+            use_regex=use_regex,
         )
         return {
             "file_name": item["title"],
             "dialogue_id": item["id"],
             "prev_segment": prev_segment,
             "hit_segment": hit_segment,
-            "hit_segment_html": highlight_keyword(hit_segment, keyword),
+            "hit_segment_html": highlight_keyword(hit_segment, keyword, use_regex=use_regex),
             "next_segment": next_segment,
             "modal_prev_segment": modal_prev or prev_segment,
             "modal_hit_segment": hit_segment,
@@ -1291,7 +1333,7 @@ def build_segment_context(item, keyword, left_len=80, right_len=80):
             "dialogue_id": get_optional(item, "conversation_id") or get_optional(item, "dialogue_id") or item["id"],
             "prev_segment": prev_display,
             "hit_segment": hit_segment,
-            "hit_segment_html": highlight_keyword(hit_segment, keyword),
+            "hit_segment_html": highlight_keyword(hit_segment, keyword, use_regex=use_regex),
             "next_segment": next_display,
             "modal_prev_segment": prev_display,
             "modal_hit_segment": hit_segment,
@@ -1318,19 +1360,19 @@ def build_segment_context(item, keyword, left_len=80, right_len=80):
     hit_index = 0
     if keyword:
         for index, unit in enumerate(units):
-            if keyword in unit:
+            if find_search_match(unit, keyword, use_regex=use_regex):
                 hit_index = index
                 break
         else:
             whole = content
-            left, hit, right = split_context(whole, keyword, left_len, right_len)
+            left, hit, right = split_context(whole, keyword, left_len, right_len, use_regex=use_regex)
             hit_text = hit or trim_text(whole, max(left_len + right_len, 80))
             return {
                 "file_name": item["title"],
                 "dialogue_id": item["id"],
                 "prev_segment": left,
                 "hit_segment": hit_text,
-                "hit_segment_html": highlight_keyword(hit_text, keyword),
+                "hit_segment_html": highlight_keyword(hit_text, keyword, use_regex=use_regex),
                 "next_segment": right,
                 "modal_prev_segment": left,
                 "modal_hit_segment": hit_text,
@@ -1348,7 +1390,7 @@ def build_segment_context(item, keyword, left_len=80, right_len=80):
         "dialogue_id": item["id"],
         "prev_segment": prev_segment_text,
         "hit_segment": hit_segment,
-        "hit_segment_html": highlight_keyword(hit_segment, keyword),
+        "hit_segment_html": highlight_keyword(hit_segment, keyword, use_regex=use_regex),
         "next_segment": next_segment_text,
         "modal_prev_segment": prev_segment_text,
         "modal_hit_segment": hit_segment,
@@ -1394,6 +1436,9 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         "has_audio": (args.get("has_audio") or "").strip(),
         "sort": (args.get("sort") or "id_desc").strip(),
     })
+    advanced_filters = corpus_repository.promote_auto_regex_filter(keyword, advanced_filters)
+    use_regex_search = advanced_filters.get("mode") == corpus_repository.REGEX_SEARCH_MODE
+    search_error_message = corpus_repository.validate_search_request(keyword, advanced_filters)
     is_advanced_search = corpus_repository.has_advanced_filters(advanced_filters) or args.get("advanced") == "1"
     left_len = (args.get("left") or "30").strip()
     right_len = (args.get("right") or "30").strip()
@@ -1422,19 +1467,19 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         search_backend == "postgres"
         and corpus_repository.POSTGRES_FAST_SEARCH
     )
-    use_turn_search = should_use_turn_search(keyword, year, advanced_filters)
+    use_turn_search = False if search_error_message else should_use_turn_search(keyword, year, advanced_filters)
     defer_exact_count = view_mode == "dialogue" or (
         allow_deferred_ccl_count
         and view_mode == "ccl"
         and should_defer_ccl_count(keyword, source, category, advanced_filters, search_backend)
     )
-    if use_turn_search or fast_search or defer_exact_count:
+    if search_error_message or use_turn_search or fast_search or defer_exact_count:
         total = 0
     elif search_backend == "fts":
         total = count_search_results_fts(keyword, source, year, category, advanced_filters)
     else:
         total = count_search_results(keyword, source, year, category, advanced_filters)
-    total_pages = 1 if (use_turn_search or fast_search or defer_exact_count) else max(1, math.ceil(total / per_page))
+    total_pages = 1 if (search_error_message or use_turn_search or fast_search or defer_exact_count) else max(1, math.ceil(total / per_page))
 
     if not use_turn_search and not fast_search and not defer_exact_count and page > total_pages:
         page = total_pages
@@ -1452,7 +1497,9 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
     end_idx = start_idx + per_page
 
     query_limit = per_page + 1 if (use_turn_search or fast_search or defer_exact_count) else per_page
-    if use_turn_search:
+    if search_error_message:
+        page_rows = []
+    elif use_turn_search:
         page_rows = corpus_repository.query_turn_search_page(
             keyword=keyword,
             source=source,
@@ -1491,7 +1538,7 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
     page_results = []
     for item in page_rows:
         if keyword:
-            left, hit, right = split_context(item["content"], keyword, left_len, right_len)
+            left, hit, right = split_context(item["content"], keyword, left_len, right_len, use_regex=use_regex_search)
         else:
             left, hit, right = "", "", item["content"][:right_len]
 
@@ -1499,7 +1546,7 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         result["left_context"] = left
         result["hit"] = hit
         result["right_context"] = right
-        result.update(build_segment_context(item, keyword, left_len, right_len))
+        result.update(build_segment_context(item, keyword, left_len, right_len, use_regex=use_regex_search))
         result["source_url"] = result.get("source_url") or ""
         result["crawl_source"] = result.get("crawl_source") or result.get("dataset_name") or result.get("category") or ""
         result["crawl_date"] = result.get("crawl_date") or ""
@@ -1515,6 +1562,7 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         dialogue_results = annotate_dialogues_for_keyword(
             query_dialogues_for_conversations(conversations),
             keyword,
+            use_regex=use_regex_search,
         )
 
     start_no = start_idx + 1 if total > 0 else 0
@@ -1555,6 +1603,8 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         "datasets": datasets,
         "advanced_filters": advanced_filters,
         "is_advanced_search": is_advanced_search,
+        "search_error_message": search_error_message,
+        "ccl_empty_message": search_error_message or "暂无结果。",
         "resonance_search_enabled": RESONANCE_SEARCH_ENABLED,
         "query_args": query_args,
         "page": page,
