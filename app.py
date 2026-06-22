@@ -1404,15 +1404,8 @@ def should_defer_ccl_count(keyword, source, category, advanced_filters, search_b
 
 
 def should_use_turn_search(keyword, year, advanced_filters):
-    if not keyword or year:
+    if not keyword:
         return False
-    defaults = corpus_repository.normalize_search_filters()
-    allowed_differences = {"dataset_name"}
-    for key, default_value in defaults.items():
-        if key in allowed_differences:
-            continue
-        if advanced_filters.get(key) != default_value:
-            return False
     return advanced_filters.get("field") in {"content", "segment"}
 
 
@@ -1505,9 +1498,9 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
             source=source,
             year=year,
             category=category,
-            dataset_name=advanced_filters.get("dataset_name", ""),
             limit=query_limit,
             offset=start_idx,
+            filters=advanced_filters,
         )
     elif search_backend == "fts":
         page_rows = query_search_page_fts(

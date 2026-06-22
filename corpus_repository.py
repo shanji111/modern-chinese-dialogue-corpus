@@ -2033,6 +2033,80 @@ def build_sqlite_filter_clauses(source="", year="", category="", table_name="", 
     return where_clauses, params
 
 
+TURN_SEARCH_SORT_OPTIONS = {
+    "id_desc": "dt.id DESC",
+    "id_asc": "dt.id ASC",
+    "year_desc": "e.year IS NULL, e.year DESC, dt.id DESC",
+    "year_asc": "e.year IS NULL, e.year ASC, dt.id DESC",
+    "title_asc": "COALESCE(e.title, '') ASC, dt.id DESC",
+    "start_time_asc": "e.start_time IS NULL, e.start_time ASC, dt.id DESC",
+}
+
+
+def build_turn_search_where(keyword="", source="", year="", category="", filters=None):
+    filters = normalize_search_filters(filters)
+    where_clauses = []
+    params = []
+    marker = placeholder()
+
+    add_text_search_clause(
+        where_clauses,
+        params,
+        keyword,
+        ("turn_text",),
+        filters["mode"],
+        table_name="dt",
+    )
+    add_display_source_filters(where_clauses, params, source, category, "dt")
+    if year:
+        try:
+            where_clauses.append(f"e.year = {marker}")
+            params.append(int(year))
+        except ValueError:
+            pass
+    if filters["year_from"]:
+        add_int_filter(where_clauses, params, "year", filters["year_from"], ">=", "e")
+    if filters["year_to"]:
+        add_int_filter(where_clauses, params, "year", filters["year_to"], "<=", "e")
+    if filters["dataset_name"]:
+        where_clauses.append(f"dt.dataset_name = {marker}")
+        params.append(filters["dataset_name"])
+    if filters["speaker"]:
+        like_operator = "ILIKE" if is_postgres() else "LIKE"
+        where_clauses.append(f"COALESCE(dt.speaker_label, '') {like_operator} {marker} ESCAPE '\\'")
+        params.append(build_like_pattern(filters["speaker"]))
+    if filters["title"]:
+        like_operator = "ILIKE" if is_postgres() else "LIKE"
+        where_clauses.append(f"COALESCE(e.title, '') {like_operator} {marker} ESCAPE '\\'")
+        params.append(build_like_pattern(filters["title"]))
+    if filters["content_min"]:
+        try:
+            where_clauses.append(f"LENGTH(dt.turn_text) >= {marker}")
+            params.append(int(filters["content_min"]))
+        except (TypeError, ValueError):
+            pass
+    if filters["content_max"]:
+        try:
+            where_clauses.append(f"LENGTH(dt.turn_text) <= {marker}")
+            params.append(int(filters["content_max"]))
+        except (TypeError, ValueError):
+            pass
+    if filters["has_audio"] == "1":
+        where_clauses.append("e.audio_file IS NOT NULL AND TRIM(e.audio_file) != ''")
+    add_text_search_clause(
+        where_clauses,
+        params,
+        filters["exclude"],
+        ("turn_text",),
+        "contains",
+        negate=True,
+        table_name="dt",
+    )
+    where_sql = f"WHERE {' AND '.join(where_clauses)}" if where_clauses else ""
+    order_sql = TURN_SEARCH_SORT_OPTIONS.get(filters["sort"], TURN_SEARCH_SORT_OPTIONS["id_desc"])
+    return where_sql, params, order_sql
+
+
 def build_postgres_search_where(keyword="", source="", year="", category="", filters=None):
     where_clauses = []
     params = []
@@ -2326,26 +2400,15 @@ def query_search_page_fts(keyword="", source="", year="", category="", limit=50,
         close_connection(conn)
 
 
-def query_turn_search_page(keyword="", source="", year="", category="", dataset_name="", limit=50, offset=0):
+def query_turn_search_page(keyword="", source="", year="", category="", dataset_name="", limit=50, offset=0, filters=None):
     if not keyword:
         return []
     marker = placeholder()
-    like_operator = "ILIKE" if is_postgres() else "LIKE"
-    where_clauses = [f"COALESCE(dt.turn_text, '') {like_operator} {marker} ESCAPE '\\'"]
-    params = [build_like_pattern(keyword)]
-    add_display_source_filters(where_clauses, params, source, category, "dt")
+    filters = normalize_search_filters(filters)
     if dataset_name:
-        where_clauses.append(f"dt.dataset_name = {marker}")
-        params.append(dataset_name)
-    entry_join_sql = ""
-    if year:
-        try:
-            entry_join_sql = "JOIN corpus_entries e ON e.id = dt.entry_id"
-            where_clauses.append(f"e.year = {marker}")
-            params.append(int(year))
-        except ValueError:
-            pass
-    where_sql = f"WHERE {' AND '.join(where_clauses)}"
+        filters = dict(filters)
+        filters["dataset_name"] = dataset_name
+    where_sql, params, order_sql = build_turn_search_where(keyword, source, year, category, filters)
     conn = timed_connection("query_turn_search_page")
     try:
         hit_rows = fetch_all_dicts(conn.execute(
@@ -2360,9 +2423,9 @@ def query_turn_search_page(keyword="", source="", year="", category="", dataset_
                    dt.dataset_name,
                    dt.conversation_key
             FROM {TURN_TABLE} dt
-            {entry_join_sql}
+            JOIN corpus_entries e ON e.id = dt.entry_id
             {where_sql}
-            ORDER BY dt.id DESC
+            ORDER BY {order_sql}
             LIMIT {marker} OFFSET {marker}
             """,
             [*params, limit, offset],
