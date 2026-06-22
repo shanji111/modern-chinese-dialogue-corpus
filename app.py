@@ -565,11 +565,32 @@ def get_optional(item, field_name):
     return item[field_name] if field_name in item.keys() else None
 
 
+POST_INDEX_SPEAKER_RE = re.compile(r"^\s*(?:【)?\[\s*(帖\d+)\s*\](?:】)?\s*[：:]\s*(.*)\s*$")
+POST_INDEX_INLINE_RE = re.compile(r"^\s*(?:【)?(帖\d+)(?:】)?\s*[：:]\s*(.*)\s*$")
+
+
+def extract_embedded_segment_speaker(text):
+    text = (text or "").strip()
+    if not text:
+        return "", ""
+    for pattern in (POST_INDEX_SPEAKER_RE, POST_INDEX_INLINE_RE):
+        match = pattern.match(text)
+        if match:
+            return match.group(1).strip(), match.group(2).strip()
+    return "", text
+
+
 def format_turn_segment_with_speaker(text, speaker=""):
     text = (text or "").strip()
     if not text:
         return ""
-    speaker = (speaker or "").strip() or "未标注"
+    speaker = (speaker or "").strip()
+    if not speaker or speaker in {"—", "-", "－", "未知", "无", "未标注"}:
+        embedded_speaker, embedded_text = extract_embedded_segment_speaker(text)
+        if embedded_speaker and embedded_text:
+            speaker = embedded_speaker
+            text = embedded_text
+    speaker = speaker or "未标注"
     return f"{speaker}：{text}"
 
 
