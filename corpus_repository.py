@@ -2035,6 +2035,83 @@ def regex_literal_prefilters(pattern, max_literals=2, min_literal_len=2):
     return literals[:max_literals]
 
 
+def parse_regex_literal_piece(piece):
+    literal = []
+    escaped = False
+    for char in piece or "":
+        if escaped:
+            if char in "AbBdDsSwWZz0123456789":
+                return None
+            literal.append(char)
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+            continue
+        if char in ".^$*+?{}[]()|":
+            return None
+        literal.append(char)
+    if escaped:
+        return None
+    return "".join(literal)
+
+
+def regex_literal_alternatives(pattern, max_alternatives=8):
+    pattern = normalize_regex_pattern(pattern)
+    if not pattern:
+        return []
+    alternatives = [""]
+    index = 0
+    while index < len(pattern):
+        char = pattern[index]
+        if char == "\\":
+            if index + 1 >= len(pattern):
+                return []
+            literal = parse_regex_literal_piece(pattern[index:index + 2])
+            if literal is None:
+                return []
+            options = [literal]
+            index += 2
+        elif char == "(":
+            end = index + 1
+            escaped = False
+            while end < len(pattern):
+                current = pattern[end]
+                if escaped:
+                    escaped = False
+                elif current == "\\":
+                    escaped = True
+                elif current == "(":
+                    return []
+                elif current == ")":
+                    break
+                end += 1
+            if end >= len(pattern) or pattern[end] != ")":
+                return []
+            group = pattern[index + 1:end]
+            pieces = group.split("|")
+            if len(pieces) < 2:
+                return []
+            options = []
+            for piece in pieces:
+                literal = parse_regex_literal_piece(piece)
+                if not literal:
+                    return []
+                options.append(literal)
+            index = end + 1
+        elif char in ".^$*+?{}[]|)":
+            return []
+        else:
+            options = [char]
+            index += 1
+
+        alternatives = [prefix + option for prefix in alternatives for option in options]
+        if len(alternatives) > max_alternatives:
+            return []
+
+    return alternatives
+
+
 def build_like_pattern(value, mode="contains"):
     escaped = escape_like(value)
     if mode == "exact":
@@ -2057,6 +2134,18 @@ def add_text_search_clause(where_clauses, params, keyword, columns, mode="contai
         if error:
             raise ValueError(error)
         joiner = " AND " if negate else " OR "
+        literal_alternatives = [] if negate else regex_literal_alternatives(regex_keyword)
+        if literal_alternatives:
+            like_operator = "ILIKE" if is_postgres() else "LIKE"
+            parts = []
+            for column in columns:
+                expression = f"COALESCE({prefix}{column}, '')"
+                checks = [f"{expression} {like_operator} {marker} ESCAPE '\\'" for _ in literal_alternatives]
+                parts.append(f"({' OR '.join(checks)})")
+            where_clauses.append(f"({joiner.join(parts)})")
+            for _ in columns:
+                params.extend(build_like_pattern(literal) for literal in literal_alternatives)
+            return
         prefilters = [] if negate else regex_literal_prefilters(regex_keyword)
         if is_postgres():
             operator = "!~*" if negate else "~*"
