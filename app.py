@@ -1318,28 +1318,6 @@ def annotate_dialogues_for_keyword(dialogues, keyword, use_regex=False):
 
 
 def build_segment_context(item, keyword, left_len=80, right_len=80, use_regex=False):
-    if is_interview_item(item):
-        prev_segment, hit_segment, next_segment, modal_prev, modal_next = build_interview_context(
-            item["content"] or "",
-            keyword,
-            left_len,
-            right_len,
-            use_regex=use_regex,
-        )
-        return {
-            "file_name": item["title"],
-            "dialogue_id": item["id"],
-            "prev_segment": prev_segment,
-            "hit_segment": hit_segment,
-            "hit_segment_html": highlight_keyword(hit_segment, keyword, use_regex=use_regex),
-            "next_segment": next_segment,
-            "modal_prev_segment": modal_prev or prev_segment,
-            "modal_hit_segment": hit_segment,
-            "modal_next_segment": modal_next or next_segment,
-            "labels": interview_label_set(),
-            "is_interview": True,
-        }
-
     left_len = min(left_len, MAX_RESULT_SIDE_CHARS)
     right_len = min(right_len, MAX_RESULT_SIDE_CHARS)
     prev_segment = get_optional(item, "prev_segment")
@@ -1364,6 +1342,28 @@ def build_segment_context(item, keyword, left_len=80, right_len=80, use_regex=Fa
             "modal_hit_segment": hit_segment,
             "modal_next_segment": next_display,
             "labels": dialogue_label_set(),
+        }
+
+    if is_interview_item(item):
+        prev_segment, hit_segment, next_segment, modal_prev, modal_next = build_interview_context(
+            item["content"] or "",
+            keyword,
+            left_len,
+            right_len,
+            use_regex=use_regex,
+        )
+        return {
+            "file_name": item["title"],
+            "dialogue_id": item["id"],
+            "prev_segment": prev_segment,
+            "hit_segment": hit_segment,
+            "hit_segment_html": highlight_keyword(hit_segment, keyword, use_regex=use_regex),
+            "next_segment": next_segment,
+            "modal_prev_segment": modal_prev or prev_segment,
+            "modal_hit_segment": hit_segment,
+            "modal_next_segment": modal_next or next_segment,
+            "labels": interview_label_set(),
+            "is_interview": True,
         }
 
     content = item["content"] or ""
