@@ -1465,13 +1465,8 @@ def should_use_turn_search(keyword, year, advanced_filters):
     return advanced_filters.get("field") in {"content", "segment"}
 
 
-def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_count=False):
-    keyword = (args.get("q") or "").strip()
-    source = (args.get("source") or "").strip()
-    year = (args.get("year") or "").strip()
-    category = (args.get("category") or "").strip()
-    view_mode = normalize_search_view(args.get("view", default_view))
-    advanced_filters = corpus_repository.normalize_search_filters({
+def normalize_search_filters_from_args(args):
+    return corpus_repository.normalize_search_filters({
         "field": (args.get("field") or "content").strip(),
         "mode": (args.get("mode") or "contains").strip(),
         "exclude": (args.get("exclude") or "").strip(),
@@ -1485,6 +1480,15 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         "has_audio": (args.get("has_audio") or "").strip(),
         "sort": (args.get("sort") or "id_desc").strip(),
     })
+
+
+def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_count=False):
+    keyword = (args.get("q") or "").strip()
+    source = (args.get("source") or "").strip()
+    year = (args.get("year") or "").strip()
+    category = (args.get("category") or "").strip()
+    view_mode = normalize_search_view(args.get("view", default_view))
+    advanced_filters = normalize_search_filters_from_args(args)
     advanced_filters = corpus_repository.promote_auto_regex_filter(keyword, advanced_filters)
     use_regex_search = advanced_filters.get("mode") == corpus_repository.REGEX_SEARCH_MODE
     search_error_message = corpus_repository.validate_search_request(keyword, advanced_filters)
@@ -1517,32 +1521,27 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         and corpus_repository.POSTGRES_FAST_SEARCH
     )
     use_turn_search = False if search_error_message else should_use_turn_search(keyword, year, advanced_filters)
-    turn_search_exact_count = (
-        use_turn_search
-        and corpus_repository.should_count_turn_search(keyword, advanced_filters)
-    )
     defer_exact_count = (not use_turn_search) and (view_mode == "dialogue" or (
         allow_deferred_ccl_count
         and view_mode == "ccl"
         and should_defer_ccl_count(keyword, source, category, advanced_filters, search_backend)
     ))
-    defer_turn_count = use_turn_search and not turn_search_exact_count
-    if search_error_message or use_turn_search or defer_turn_count or fast_search or defer_exact_count:
+    if search_error_message or use_turn_search or fast_search or defer_exact_count:
         total = 0
     elif search_backend == "fts":
         total = count_search_results_fts(keyword, source, year, category, advanced_filters)
     else:
         total = count_search_results(keyword, source, year, category, advanced_filters)
-    deferred_count = search_error_message or defer_turn_count or fast_search or defer_exact_count
-    total_pages = 1 if (deferred_count or use_turn_search) else max(1, math.ceil(total / per_page))
+    deferred_count = search_error_message or use_turn_search or fast_search or defer_exact_count
+    total_pages = 1 if deferred_count else max(1, math.ceil(total / per_page))
 
-    if not deferred_count and not use_turn_search and page > total_pages:
+    if not deferred_count and page > total_pages:
         page = total_pages
 
     start_idx = (page - 1) * per_page
     end_idx = start_idx + per_page
 
-    query_limit = per_page + 1 if (deferred_count or turn_search_exact_count) else per_page
+    query_limit = per_page + 1 if deferred_count else per_page
     if search_error_message:
         page_rows = []
     elif use_turn_search:
@@ -1575,50 +1574,11 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
             offset=start_idx,
             filters=advanced_filters,
         )
-    has_next_page = (deferred_count or turn_search_exact_count) and len(page_rows) > per_page
+    has_next_page = deferred_count and len(page_rows) > per_page
     if deferred_count:
         page_rows = page_rows[:per_page]
         total = start_idx + len(page_rows) + (1 if has_next_page else 0)
         total_pages = page + 1 if has_next_page else page
-    elif turn_search_exact_count:
-        if has_next_page:
-            page_rows = page_rows[:per_page]
-            total = corpus_repository.count_turn_search_results(
-                keyword=keyword,
-                source=source,
-                year=year,
-                category=category,
-                filters=advanced_filters,
-            )
-        elif page > 1:
-            if page_rows:
-                total = start_idx + len(page_rows)
-            else:
-                total = corpus_repository.count_turn_search_results(
-                    keyword=keyword,
-                    source=source,
-                    year=year,
-                    category=category,
-                    filters=advanced_filters,
-                )
-        else:
-            total = len(page_rows)
-        total_pages = max(1, math.ceil(total / per_page))
-        if total > 0 and page > total_pages:
-            page = total_pages
-            start_idx = (page - 1) * per_page
-            end_idx = start_idx + per_page
-            page_rows = corpus_repository.query_turn_search_page(
-                keyword=keyword,
-                source=source,
-                year=year,
-                category=category,
-                limit=query_limit,
-                offset=start_idx,
-                filters=advanced_filters,
-            )
-            if len(page_rows) > per_page:
-                page_rows = page_rows[:per_page]
 
     page_window_size = 10
     half_window = page_window_size // 2
@@ -1677,6 +1637,15 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         "advanced": "1" if is_advanced_search else "",
         **advanced_filters,
     }
+    total_is_estimated = deferred_count and has_next_page
+    search_count_url = ""
+    count_pending_label = "统计中..."
+    if total_is_estimated and not search_error_message:
+        count_args = dict(query_args)
+        count_args.pop("page", None)
+        search_count_url = url_for("search_count", **count_args)
+        if use_regex_search:
+            count_pending_label = "正则统计中..."
 
     return {
         "keyword": keyword,
@@ -1689,7 +1658,9 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         "results": page_results,
         "dialogue_results": dialogue_results,
         "total": total,
-        "total_is_estimated": deferred_count and has_next_page,
+        "total_is_estimated": total_is_estimated,
+        "search_count_url": search_count_url,
+        "count_pending_label": count_pending_label,
         "sources": sources,
         "years": years,
         "categories": categories,
@@ -1804,6 +1775,8 @@ def browse_dialogues():
             "right_len",
             "year",
             "search_backend",
+            "search_count_url",
+            "count_pending_label",
         ):
             context[key] = search_context[key]
         context["advanced_filters"] = search_context["advanced_filters"]
@@ -1905,6 +1878,38 @@ def search():
         "results.html",
         **build_search_results_context(request.args, allow_deferred_ccl_count=True),
     )
+
+
+@app.route("/api/search/count")
+def search_count():
+    keyword = (request.args.get("q") or "").strip()
+    source = (request.args.get("source") or "").strip()
+    year = (request.args.get("year") or "").strip()
+    category = (request.args.get("category") or "").strip()
+    advanced_filters = normalize_search_filters_from_args(request.args)
+    advanced_filters = corpus_repository.promote_auto_regex_filter(keyword, advanced_filters)
+    search_error_message = corpus_repository.validate_search_request(keyword, advanced_filters)
+    if search_error_message:
+        return jsonify({"ok": False, "error": search_error_message}), 400
+
+    search_backend = get_active_search_backend()
+    try:
+        if should_use_turn_search(keyword, year, advanced_filters):
+            total = corpus_repository.count_turn_search_results(
+                keyword=keyword,
+                source=source,
+                year=year,
+                category=category,
+                filters=advanced_filters,
+            )
+        elif search_backend == "fts":
+            total = count_search_results_fts(keyword, source, year, category, advanced_filters)
+        else:
+            total = count_search_results(keyword, source, year, category, advanced_filters)
+    except Exception as exc:
+        print(f"search_count failed: {exc}", flush=True)
+        return jsonify({"ok": False, "error": "统计暂时不可用"}), 500
+    return jsonify({"ok": True, "total": int(total)})
 
 
 @app.route("/resonance")

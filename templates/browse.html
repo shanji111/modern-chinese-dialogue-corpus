@@ -142,9 +142,13 @@
                 中检索：<b>“{{ keyword }}”</b>
             {% endif %}
         </div>
-        <div class="summary-right">
+        <div class="summary-right"{% if view_mode == "ccl" and search_count_url %} data-search-count-url="{{ search_count_url }}"{% endif %}>
             {% if view_mode == "ccl" %}
-                共在 {% if total_is_estimated %}至少 {% endif %}<b>{{ total|format_count }}</b> 条记录中出现，这是第 <b>{{ start_no }} - {{ end_no }}</b> 条
+                {% if total_is_estimated and search_count_url %}
+                    <span data-count-status>{{ count_pending_label }}</span>，这是第 <b>{{ start_no }} - {{ end_no }}</b> 条
+                {% else %}
+                    共在 {% if total_is_estimated %}至少 {% endif %}<b>{{ total|format_count }}</b> 条记录中出现，这是第 <b>{{ start_no }} - {{ end_no }}</b> 条
+                {% endif %}
             {% else %}
                 共 {% if total_is_estimated %}至少 {% endif %}<b>{{ total|format_count }}</b> 个{% if keyword %}匹配{% endif %}完整对话，当前第 <b>{{ start_no }} - {{ end_no }}</b> 个
             {% endif %}
@@ -191,6 +195,31 @@
     {% endif %}
 
     {% include "_context_modal.html" %}
+
+    <script>
+    (function () {
+        const summary = document.querySelector("[data-search-count-url]");
+        if (!summary) {
+            return;
+        }
+        fetch(summary.dataset.searchCountUrl, { headers: { Accept: "application/json" } })
+            .then((response) => response.ok ? response.json() : null)
+            .then((data) => {
+                if (!data || data.ok !== true || typeof data.total !== "number") {
+                    return;
+                }
+                const status = summary.querySelector("[data-count-status]");
+                if (!status) {
+                    return;
+                }
+                status.textContent = "共在 ";
+                const total = document.createElement("b");
+                total.textContent = String(data.total);
+                status.append(total, " 条记录中出现");
+            })
+            .catch(() => {});
+    })();
+    </script>
 
 </body>
 </html>

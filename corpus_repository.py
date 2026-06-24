@@ -73,6 +73,23 @@ REGEX_HINT_PATTERNS = (
     re.compile(r"\\[AbBdDsSwWZz]"),
     re.compile(r"(^|[^\\])[\^$]"),
 )
+REGEX_PUNCT_TRANSLATION = str.maketrans({
+    "（": "(",
+    "）": ")",
+    "｜": "|",
+    "［": "[",
+    "］": "]",
+    "｛": "{",
+    "｝": "}",
+    "，": ",",
+    "．": ".",
+    "＊": "*",
+    "＋": "+",
+    "？": "?",
+    "＾": "^",
+    "＄": "$",
+    "＼": "\\",
+})
 MERGED_DIALOGUE_TITLE_PATTERN = re.compile(r"\s*合并大对话\s*")
 SORT_OPTIONS = {
     "id_desc": "id DESC",
@@ -1891,12 +1908,16 @@ def normalize_search_filters(filters=None):
     return filters
 
 
+def normalize_regex_pattern(pattern):
+    return (pattern or "").translate(REGEX_PUNCT_TRANSLATION)
+
+
 def compile_search_regex(pattern):
-    return re.compile(pattern, re.IGNORECASE)
+    return re.compile(normalize_regex_pattern(pattern), re.IGNORECASE)
 
 
 def validate_regex_pattern(pattern):
-    pattern = (pattern or "").strip()
+    pattern = normalize_regex_pattern((pattern or "").strip())
     if not pattern:
         return ""
     if len(pattern) > MAX_REGEX_PATTERN_CHARS:
@@ -1916,7 +1937,7 @@ def validate_regex_pattern(pattern):
 
 
 def looks_like_regex_pattern(pattern):
-    pattern = (pattern or "").strip()
+    pattern = normalize_regex_pattern((pattern or "").strip())
     if not pattern:
         return False
     return any(hint.search(pattern) for hint in REGEX_HINT_PATTERNS)
@@ -1938,6 +1959,7 @@ def validate_search_request(keyword="", filters=None):
 
 
 def regex_literal_prefilters(pattern, max_literals=2, min_literal_len=2):
+    pattern = normalize_regex_pattern(pattern)
     literals = []
     current = []
     escaped = False
@@ -2030,11 +2052,12 @@ def add_text_search_clause(where_clauses, params, keyword, columns, mode="contai
     marker = placeholder()
     prefix = f"{table_name}." if table_name else ""
     if mode == REGEX_SEARCH_MODE:
-        error = validate_regex_pattern(keyword)
+        regex_keyword = normalize_regex_pattern(keyword)
+        error = validate_regex_pattern(regex_keyword)
         if error:
             raise ValueError(error)
         joiner = " AND " if negate else " OR "
-        prefilters = [] if negate else regex_literal_prefilters(keyword)
+        prefilters = [] if negate else regex_literal_prefilters(regex_keyword)
         if is_postgres():
             operator = "!~*" if negate else "~*"
             parts = []
@@ -2054,7 +2077,7 @@ def add_text_search_clause(where_clauses, params, keyword, columns, mode="contai
         where_clauses.append(f"({joiner.join(parts)})")
         for _ in columns:
             params.extend(build_like_pattern(literal) for literal in prefilters)
-            params.append(keyword)
+            params.append(regex_keyword)
         return
     like_operator = "ILIKE" if is_postgres() else "LIKE"
     operator = f"NOT {like_operator}" if negate else like_operator
