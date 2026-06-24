@@ -1,0 +1,388 @@
+:root {
+    --guide-bg: #eef3f8;
+    --guide-surface: #ffffff;
+    --guide-surface-soft: #f6f9fd;
+    --guide-border: #d6e0f5;
+    --guide-border-strong: #c4d4f0;
+    --guide-text: #2c3b52;
+    --guide-text-soft: #5b6c82;
+    --guide-primary: #2e63c7;
+    --guide-primary-deep: #214f9c;
+    --guide-shadow: 0 16px 34px rgba(33, 79, 156, 0.08);
+}
+
+body.guide-page {
+    background:
+        radial-gradient(circle at top left, rgba(46, 99, 199, 0.1), transparent 28%),
+        radial-gradient(circle at top right, rgba(46, 99, 199, 0.08), transparent 24%),
+        var(--guide-bg);
+    color: var(--guide-text);
+    overflow-x: auto;
+}
+
+.guide-shell {
+    width: min(1340px, calc(100vw - 32px));
+    min-width: 1180px;
+    margin: 0 auto;
+    padding: 22px 0 34px;
+    display: grid;
+    grid-template-columns: 268px minmax(0, 1fr);
+    gap: 22px;
+    box-sizing: border-box;
+}
+
+.guide-sidebar {
+    position: sticky;
+    top: 18px;
+    align-self: start;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 268px;
+    min-width: 268px;
+}
+
+.guide-sidebar-brand,
+.guide-toc,
+.guide-sidebar-panel,
+.guide-header,
+.guide-overview-card,
+.guide-section,
+.guide-faq-item {
+    background: var(--guide-surface);
+    border: 1px solid var(--guide-border);
+    box-shadow: var(--guide-shadow);
+}
+
+.guide-sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-radius: 16px;
+    padding: 16px 18px;
+    text-decoration: none;
+}
+
+.guide-brand-mark {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, var(--guide-primary), #5f8de0);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+}
+
+.guide-brand-copy strong,
+.guide-brand-copy small {
+    display: block;
+}
+
+.guide-brand-copy strong {
+    color: var(--guide-primary-deep);
+    font-size: 15px;
+}
+
+.guide-brand-copy small {
+    color: var(--guide-text-soft);
+    font-size: 12px;
+    margin-top: 2px;
+}
+
+.guide-toc,
+.guide-sidebar-panel {
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.guide-toc {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.guide-toc-link {
+    display: block;
+    padding: 9px 12px;
+    border-radius: 10px;
+    color: var(--guide-text-soft);
+    font-size: 14px;
+    font-weight: 700;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.guide-toc-link:hover,
+.guide-toc-link.is-active {
+    background: #eaf1ff;
+    color: var(--guide-primary-deep);
+    text-decoration: none;
+}
+
+.guide-sidebar-title {
+    color: var(--guide-primary-deep);
+    font-size: 13px;
+    font-weight: 700;
+    margin-bottom: 10px;
+}
+
+.guide-sidebar-panel a {
+    display: block;
+    color: var(--guide-text-soft);
+    font-size: 14px;
+}
+
+.guide-sidebar-panel a + a {
+    margin-top: 8px;
+}
+
+.guide-main {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.guide-header {
+    border-radius: 24px;
+    padding: 28px 30px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(246, 249, 253, 0.98));
+}
+
+.guide-header-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 18px;
+}
+
+.guide-action-link {
+    display: inline-block;
+    padding: 9px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--guide-border);
+    background: #fff;
+    color: var(--guide-primary);
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.guide-action-link:hover {
+    background: #f3f7ff;
+    text-decoration: none;
+}
+
+.guide-header h1 {
+    margin: 0;
+    color: var(--guide-primary-deep);
+    font-size: 36px;
+    line-height: 1.2;
+    font-family: "STSong", "SimSun", "宋体", serif;
+}
+
+.guide-subtitle {
+    margin: 12px 0 0;
+    color: var(--guide-text-soft);
+    font-size: 16px;
+    line-height: 1.8;
+}
+
+.guide-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+}
+
+.guide-overview-card {
+    border-radius: 18px;
+    padding: 18px;
+}
+
+.guide-overview-card h2 {
+    margin: 0 0 10px;
+    color: var(--guide-primary-deep);
+    font-size: 18px;
+}
+
+.guide-overview-card p {
+    margin: 0;
+    color: var(--guide-text-soft);
+    line-height: 1.75;
+}
+
+.guide-section {
+    border-radius: 22px;
+    padding: 24px 26px 28px;
+}
+
+.guide-section h2 {
+    margin: 0 0 14px;
+    padding: 0 0 12px;
+    border-bottom: 1px solid #e3ebf7;
+    color: var(--guide-primary-deep);
+    font-size: 25px;
+    font-weight: 700;
+}
+
+.guide-section p {
+    margin: 0 0 14px;
+    color: var(--guide-text-soft);
+    font-size: 15px;
+    line-height: 1.9;
+}
+
+.guide-note-text {
+    margin-top: 14px !important;
+    padding: 12px 14px;
+    border-left: 3px solid var(--guide-primary);
+    background: var(--guide-surface-soft);
+    color: var(--guide-text-soft);
+}
+
+.guide-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid var(--guide-border);
+    border-radius: 14px;
+    background: #fff;
+}
+
+.guide-table {
+    width: 100%;
+    min-width: 760px;
+    border-collapse: collapse;
+}
+
+.guide-table thead {
+    background: #edf3ff;
+}
+
+.guide-table th,
+.guide-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid #e5ecf8;
+    text-align: left;
+    vertical-align: top;
+    line-height: 1.75;
+    font-size: 14px;
+}
+
+.guide-table th {
+    color: var(--guide-primary-deep);
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.guide-table td {
+    color: var(--guide-text-soft);
+}
+
+.guide-table code {
+    color: var(--guide-primary-deep);
+    font-family: "Consolas", "Menlo", monospace;
+    font-size: 13px;
+}
+
+.guide-table a {
+    color: var(--guide-primary-deep);
+}
+
+.guide-subsection + .guide-subsection {
+    margin-top: 16px;
+}
+
+.guide-subsection h3 {
+    margin: 0 0 8px;
+    color: var(--guide-primary-deep);
+    font-size: 18px;
+}
+
+.guide-subsection p {
+    margin-bottom: 0;
+}
+
+.guide-figure {
+    margin: 16px auto 0;
+    max-width: 1120px;
+}
+
+.guide-figure-frame {
+    padding: 12px;
+    border: 1px solid var(--guide-border);
+    border-radius: 18px;
+    background: linear-gradient(180deg, #fbfdff, #f4f8ff);
+}
+
+.guide-figure img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--guide-border-strong);
+    border-radius: 10px;
+    background: #fff;
+}
+
+.guide-figure figcaption {
+    margin-top: 10px;
+    color: var(--guide-text-soft);
+    font-size: 14px;
+    line-height: 1.7;
+    text-align: center;
+}
+
+.guide-figure + .guide-table-wrap {
+    margin-top: 16px;
+}
+
+.guide-faq-list {
+    display: grid;
+    gap: 12px;
+}
+
+.guide-faq-item {
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.guide-faq-item summary {
+    list-style: none;
+    cursor: pointer;
+    padding: 16px 18px;
+    position: relative;
+    color: var(--guide-primary-deep);
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.guide-faq-item summary::-webkit-details-marker {
+    display: none;
+}
+
+.guide-faq-item summary::after {
+    content: "+";
+    position: absolute;
+    right: 18px;
+    top: 13px;
+    color: var(--guide-primary);
+    font-size: 22px;
+    line-height: 1;
+}
+
+.guide-faq-item[open] summary::after {
+    content: "-";
+}
+
+.guide-faq-body {
+    padding: 0 18px 18px;
+}
+
+.guide-faq-body p {
+    margin: 0;
+}
+
+.guide-faq-body p + p {
+    margin-top: 12px;
+}

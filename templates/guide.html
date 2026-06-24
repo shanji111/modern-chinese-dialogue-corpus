@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>汉语对话语料库使用说明</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='guide.css') }}">
+</head>
+<body class="guide-page">
+    <div class="guide-shell">
+        <aside class="guide-sidebar">
+            <a href="{{ url_for('home') }}" class="guide-sidebar-brand">
+                <span class="guide-brand-mark">语</span>
+                <span class="guide-brand-copy">
+                    <strong>汉语对话语料库</strong>
+                    <small>使用说明</small>
+                </span>
+            </a>
+
+            <nav class="guide-toc" aria-label="页面目录">
+                {% for item in guide_nav_items %}
+                    <a href="#{{ item.id }}" class="guide-toc-link" data-guide-nav="{{ item.id }}">{{ item.label }}</a>
+                {% endfor %}
+            </nav>
+
+            <div class="guide-sidebar-panel">
+                <div class="guide-sidebar-title">相关入口</div>
+                <a href="{{ url_for('data_sources') }}">数据来源与许可说明</a>
+                <a href="{{ url_for('submit') }}">提交语料材料</a>
+                {% if resonance_search_enabled %}
+                    <a href="{{ url_for('resonance_search') }}">对话句法检索</a>
+                {% endif %}
+            </div>
+        </aside>
+
+        <main class="guide-main">
+            <header class="guide-header">
+                <div class="guide-header-actions">
+                    <a href="{{ url_for('home') }}" class="guide-action-link">返回首页</a>
+                    <a href="{{ url_for('data_sources') }}" class="guide-action-link">查看许可说明</a>
+                </div>
+                <h1>汉语对话语料库使用说明</h1>
+                <p class="guide-subtitle">本说明介绍汉语对话语料库的语料构成、检索方式、结果展示、统计功能与引用规范。</p>
+            </header>
+
+            <div class="guide-overview-grid">
+                {% for card in guide_overview_cards %}
+                    <section class="guide-overview-card">
+                        <h2>{{ card.title }}</h2>
+                        <p>{{ card.body }}</p>
+                    </section>
+                {% endfor %}
+            </div>
+
+            <section class="guide-section" id="intro" data-guide-section>
+                <h2>一、简介</h2>
+                {% for paragraph in guide_intro_paragraphs %}
+                    <p>{{ paragraph }}</p>
+                {% endfor %}
+            </section>
+
+            <section class="guide-section" id="corpus" data-guide-section>
+                <h2>二、语料构成</h2>
+                <div class="guide-table-wrap">
+                    <table class="guide-table">
+                        <thead>
+                            <tr>
+                                <th>语料类型</th>
+                                <th>主要内容</th>
+                                <th>适用研究问题</th>
+                                <th>备注</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in guide_corpus_rows %}
+                                <tr>
+                                    <td>{{ row.corpus_type }}</td>
+                                    <td>{{ row.main_content }}</td>
+                                    <td>{{ row.research_use }}</td>
+                                    <td>{{ row.remark }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="guide-section" id="methods" data-guide-section>
+                <h2>三、主要检索方式</h2>
+                <div class="guide-table-wrap">
+                    <table class="guide-table">
+                        <thead>
+                            <tr>
+                                <th>检索方式</th>
+                                <th>适用对象</th>
+                                <th>说明</th>
+                                <th>示例</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in guide_method_rows %}
+                                <tr>
+                                    <td>{{ row.method_name }}</td>
+                                    <td>{{ row.target_text }}</td>
+                                    <td>{{ row.description }}</td>
+                                    <td>{{ row.example_text }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <p class="guide-note-text">普通检索和正则检索的匹配单位通常是当前话轮或当前片段，不会自动跨越前后多个话轮。若需要观察上下文，应在结果页打开完整对话视图或上下文按钮。</p>
+            </section>
+
+            <section class="guide-section" id="examples" data-guide-section>
+                <h2>四、检索式示例</h2>
+                <div class="guide-table-wrap">
+                    <table class="guide-table">
+                        <thead>
+                            <tr>
+                                <th>检索目的</th>
+                                <th>检索式</th>
+                                <th>说明</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in guide_query_example_rows %}
+                                <tr>
+                                    <td>{{ row.purpose }}</td>
+                                    <td><a href="{{ url_for('search', q=row.query_text, advanced='1', view='ccl') }}"><code>{{ row.query_text }}</code></a></td>
+                                    <td>{{ row.description }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="guide-section" id="advanced" data-guide-section>
+                <h2>五、高级检索字段</h2>
+                <figure class="guide-figure">
+                    <div class="guide-figure-frame">
+                        <img src="{{ url_for('static', filename=guide_advanced_figure.image_path) }}"
+                             alt="{{ guide_advanced_figure.image_alt }}">
+                    </div>
+                </figure>
+                <div class="guide-table-wrap">
+                    <table class="guide-table">
+                        <thead>
+                            <tr>
+                                <th>字段</th>
+                                <th>作用</th>
+                                <th>适用场景</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in guide_advanced_field_rows %}
+                                <tr>
+                                    <td>{{ row.field_name }}</td>
+                                    <td>{{ row.field_role }}</td>
+                                    <td>{{ row.field_scenario }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <section class="guide-section" id="results" data-guide-section>
+                <h2>六、结果展示与统计</h2>
+                {% for item in guide_result_sections %}
+                    <section class="guide-subsection">
+                        <h3>{{ item.title }}</h3>
+                        <p>{{ item.body }}</p>
+                        {% if item.image_path %}
+                            <figure class="guide-figure">
+                                <div class="guide-figure-frame">
+                                    <img src="{{ url_for('static', filename=item.image_path) }}"
+                                         alt="{{ item.image_alt or item.title }}">
+                                </div>
+                                {% if item.caption %}
+                                    <figcaption>{{ item.caption }}</figcaption>
+                                {% endif %}
+                            </figure>
+                        {% endif %}
+                    </section>
+                {% endfor %}
+            </section>
+
+            <section class="guide-section" id="multimodal" data-guide-section>
+                <h2>七、多模态与音频说明</h2>
+                {% for paragraph in guide_multimodal_paragraphs %}
+                    <p>{{ paragraph }}</p>
+                {% endfor %}
+            </section>
+
+            <section class="guide-section" id="usage" data-guide-section>
+                <h2>八、使用与引用</h2>
+                {% for paragraph in guide_usage_paragraphs %}
+                    <p>{{ paragraph }}</p>
+                {% endfor %}
+            </section>
+
+            <section class="guide-section" id="faq" data-guide-section>
+                <h2>九、常见问题</h2>
+                <div class="guide-faq-list">
+                    {% for item in guide_faq_items %}
+                        <details class="guide-faq-item">
+                            <summary>{{ item.question }}</summary>
+                            <div class="guide-faq-body">
+                                {% if item.answer_paragraphs %}
+                                    {% for paragraph in item.answer_paragraphs %}
+                                        <p>{{ paragraph }}</p>
+                                    {% endfor %}
+                                {% else %}
+                                    <p>{{ item.answer }}</p>
+                                {% endif %}
+                            </div>
+                        </details>
+                    {% endfor %}
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='guide.js') }}"></script>
+</body>
+</html>

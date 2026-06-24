@@ -17,6 +17,7 @@ from database import DATABASE_BACKEND, DATABASE_PATH, DATABASE_URL, get_db_conne
 from db_utils import compute_content_hash, utc_timestamp
 from services.audio_service import build_corpus_audio_url, get_corpus_audio_response
 from services.browse_service import build_browse_context, build_home_context
+from services.guide_service import build_guide_context
 from services.submission_storage_service import (
     build_submission_download_response,
     delete_submission_upload,
@@ -1726,6 +1727,14 @@ insert_approved_multimodal_submission = corpus_repository.insert_approved_multim
 @app.route("/")
 def home():
     return render_template("home.html", **build_home_context())
+
+
+@app.route("/guide")
+def guide():
+    return render_template(
+        "guide.html",
+        **build_guide_context(resonance_search_enabled=RESONANCE_SEARCH_ENABLED),
+    )
 
 
 @app.route("/data-sources")

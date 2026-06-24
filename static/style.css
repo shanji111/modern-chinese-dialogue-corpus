@@ -32,6 +32,13 @@ a:hover {
     padding-bottom: 54px;
 }
 
+.home-topbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    margin: 0 0 18px 0;
+}
+
 .site-title {
     text-align: center;
     font-size: 42px;
@@ -43,19 +50,51 @@ a:hover {
 }
 
 .home-action-links {
-    text-align: center;
-    margin: 0 0 18px 0;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0 26px;
+    margin: 0;
 }
 
-.home-action-links a {
-    display: inline-block;
-    border: 1px solid #c9d3e6;
-    border-radius: 6px;
-    background: #fff;
-    color: #2e63c7;
-    padding: 8px 14px;
+.home-action-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 0 8px;
+    color: #7f8792;
     font-size: 14px;
-    font-weight: 700;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+}
+
+.home-action-link::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 1.5px;
+    background: #7f8792;
+    transform: scaleX(0);
+    transform-origin: center;
+    transition: transform 0.18s ease, background 0.18s ease;
+}
+
+.home-action-link:hover,
+.home-action-link:focus-visible,
+.home-action-link:active {
+    color: #5f6875;
+    text-decoration: none;
+}
+
+.home-action-link:hover::after,
+.home-action-link:focus-visible::after,
+.home-action-link:active::after {
+    transform: scaleX(1);
+    background: #5f6875;
 }
 
 .data-source-title {

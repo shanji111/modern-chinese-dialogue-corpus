@@ -7,11 +7,14 @@
 </head>
 <body class="home-page new-home-page">
     <div class="landing-container">
-        <div class="site-title data-source-title">数据来源与许可说明</div>
-
-        <div class="home-action-links">
-            <a href="{{ url_for('home') }}">返回首页</a>
+        <div class="home-topbar">
+            <nav class="home-action-links" aria-label="辅助导航">
+                <a href="{{ url_for('home') }}" class="home-action-link">返回首页</a>
+                <a href="{{ url_for('guide') }}" class="home-action-link">使用说明</a>
+            </nav>
         </div>
+
+        <div class="site-title data-source-title">数据来源与许可说明</div>
 
         <section class="license-summary-panel">
             <p>

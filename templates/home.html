@@ -7,6 +7,13 @@
 </head>
 <body class="home-page new-home-page">
     <div class="landing-container">
+        <div class="home-topbar">
+            <nav class="home-action-links" aria-label="辅助导航">
+                <a href="{{ url_for('guide') }}" class="home-action-link">使用说明</a>
+                <a href="{{ url_for('data_sources') }}" class="home-action-link">数据来源与许可</a>
+            </nav>
+        </div>
+
         <div class="site-title">汉语对话语料库</div>
 
         <div class="category-tabs" id="category-tabs">
@@ -60,12 +67,6 @@
                     </div>
                 </a>
             {% endfor %}
-
-            <article class="corpus-card">
-                <h3 class="corpus-card-title">数据来源与许可说明</h3>
-                <p>本平台语料包括研究者自建或授权提交的文本、录音与多模态材料；公开语音样例仅在许可证允许范围内使用，并标注来源与许可信息。对于不适合再分发的数据集，仅展示来源说明、元数据或转写片段，不直接公开托管音频。</p>
-                <a href="{{ url_for('data_sources') }}" class="corpus-card-link">查看说明</a>
-            </article>
         </section>
 
         <div class="contribution-panel">
