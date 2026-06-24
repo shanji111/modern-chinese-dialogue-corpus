@@ -608,16 +608,28 @@ def format_turn_segment_with_speaker(text, speaker=""):
     if not text:
         return ""
     speaker = (speaker or "").strip()
+    embedded_speaker, embedded_text = extract_embedded_segment_speaker(text)
+    if not embedded_speaker:
+        embedded_speaker, embedded_text = corpus_repository.parse_speaker_turn(text)
+    if embedded_speaker and embedded_text and (
+        not speaker
+        or speaker in PLACEHOLDER_DISPLAY_SPEAKERS
+        or speaker == embedded_speaker
+    ):
+        speaker = embedded_speaker
+        text = embedded_text
     if not speaker or speaker in PLACEHOLDER_DISPLAY_SPEAKERS:
-        embedded_speaker, embedded_text = extract_embedded_segment_speaker(text)
-        if embedded_speaker and embedded_text:
-            speaker = embedded_speaker
-            text = embedded_text
-        else:
-            speaker = "——"
-    elif speaker == "未标注":
         speaker = "——"
     return f"{speaker}：{text}"
+
+
+def trim_hit_segment(text, keyword, left_len=30, right_len=30, use_regex=False):
+    text = (text or "").strip()
+    if len(text) <= MAX_RESULT_HIT_CHARS:
+        return text
+    left, hit, right = split_context(text, keyword, left_len, right_len, use_regex=use_regex)
+    centered = (left + hit + right).strip()
+    return centered or trim_text(text, MAX_RESULT_HIT_CHARS)
 
 
 def split_dialogue_units(text):
@@ -1325,12 +1337,31 @@ def build_segment_context(item, keyword, left_len=80, right_len=80, use_regex=Fa
     next_segment = get_optional(item, "next_segment")
 
     if prev_segment or current_segment or next_segment:
-        prev_display = format_turn_segment_with_speaker(prev_segment, get_optional(item, "prev_speaker"))
+        prev_display = format_turn_segment_with_speaker(
+            trim_text(prev_segment, left_len, keep_tail=True),
+            get_optional(item, "prev_speaker"),
+        )
+        hit_segment_text = trim_hit_segment(
+            current_segment or "",
+            keyword,
+            left_len,
+            right_len,
+            use_regex=use_regex,
+        )
         hit_segment = format_turn_segment_with_speaker(
+            hit_segment_text,
+            get_optional(item, "current_speaker") or get_optional(item, "speaker"),
+        )
+        next_display = format_turn_segment_with_speaker(
+            trim_text(next_segment, right_len),
+            get_optional(item, "next_speaker"),
+        )
+        modal_prev_display = format_turn_segment_with_speaker(prev_segment, get_optional(item, "prev_speaker"))
+        modal_hit_segment = format_turn_segment_with_speaker(
             current_segment or "",
             get_optional(item, "current_speaker") or get_optional(item, "speaker"),
         )
-        next_display = format_turn_segment_with_speaker(next_segment, get_optional(item, "next_speaker"))
+        modal_next_display = format_turn_segment_with_speaker(next_segment, get_optional(item, "next_speaker"))
         return {
             "file_name": item["title"],
             "dialogue_id": get_optional(item, "conversation_id") or get_optional(item, "dialogue_id") or item["id"],
@@ -1338,9 +1369,9 @@ def build_segment_context(item, keyword, left_len=80, right_len=80, use_regex=Fa
             "hit_segment": hit_segment,
             "hit_segment_html": highlight_keyword(hit_segment, keyword, use_regex=use_regex),
             "next_segment": next_display,
-            "modal_prev_segment": prev_display,
-            "modal_hit_segment": hit_segment,
-            "modal_next_segment": next_display,
+            "modal_prev_segment": modal_prev_display,
+            "modal_hit_segment": modal_hit_segment,
+            "modal_next_segment": modal_next_display,
             "labels": dialogue_label_set(),
         }
 
@@ -1496,39 +1527,22 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         and should_defer_ccl_count(keyword, source, category, advanced_filters, search_backend)
     ))
     defer_turn_count = use_turn_search and not turn_search_exact_count
-    if search_error_message or defer_turn_count or fast_search or defer_exact_count:
+    if search_error_message or use_turn_search or defer_turn_count or fast_search or defer_exact_count:
         total = 0
-    elif use_turn_search:
-        total = corpus_repository.count_turn_search_results(
-            keyword=keyword,
-            source=source,
-            year=year,
-            category=category,
-            filters=advanced_filters,
-        )
     elif search_backend == "fts":
         total = count_search_results_fts(keyword, source, year, category, advanced_filters)
     else:
         total = count_search_results(keyword, source, year, category, advanced_filters)
     deferred_count = search_error_message or defer_turn_count or fast_search or defer_exact_count
-    total_pages = 1 if deferred_count else max(1, math.ceil(total / per_page))
+    total_pages = 1 if (deferred_count or use_turn_search) else max(1, math.ceil(total / per_page))
 
-    if not deferred_count and page > total_pages:
+    if not deferred_count and not use_turn_search and page > total_pages:
         page = total_pages
-
-    page_window_size = 10
-    half_window = page_window_size // 2
-    page_window_start = max(1, page - half_window)
-    page_window_end = page_window_start + page_window_size - 1
-
-    if page_window_end > total_pages:
-        page_window_end = total_pages
-        page_window_start = max(1, page_window_end - page_window_size + 1)
 
     start_idx = (page - 1) * per_page
     end_idx = start_idx + per_page
 
-    query_limit = per_page + 1 if deferred_count else per_page
+    query_limit = per_page + 1 if (deferred_count or turn_search_exact_count) else per_page
     if search_error_message:
         page_rows = []
     elif use_turn_search:
@@ -1561,11 +1575,59 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
             offset=start_idx,
             filters=advanced_filters,
         )
-    has_next_page = deferred_count and len(page_rows) > per_page
+    has_next_page = (deferred_count or turn_search_exact_count) and len(page_rows) > per_page
     if deferred_count:
         page_rows = page_rows[:per_page]
         total = start_idx + len(page_rows) + (1 if has_next_page else 0)
         total_pages = page + 1 if has_next_page else page
+    elif turn_search_exact_count:
+        if has_next_page:
+            page_rows = page_rows[:per_page]
+            total = corpus_repository.count_turn_search_results(
+                keyword=keyword,
+                source=source,
+                year=year,
+                category=category,
+                filters=advanced_filters,
+            )
+        elif page > 1:
+            if page_rows:
+                total = start_idx + len(page_rows)
+            else:
+                total = corpus_repository.count_turn_search_results(
+                    keyword=keyword,
+                    source=source,
+                    year=year,
+                    category=category,
+                    filters=advanced_filters,
+                )
+        else:
+            total = len(page_rows)
+        total_pages = max(1, math.ceil(total / per_page))
+        if total > 0 and page > total_pages:
+            page = total_pages
+            start_idx = (page - 1) * per_page
+            end_idx = start_idx + per_page
+            page_rows = corpus_repository.query_turn_search_page(
+                keyword=keyword,
+                source=source,
+                year=year,
+                category=category,
+                limit=query_limit,
+                offset=start_idx,
+                filters=advanced_filters,
+            )
+            if len(page_rows) > per_page:
+                page_rows = page_rows[:per_page]
+
+    page_window_size = 10
+    half_window = page_window_size // 2
+    page_window_start = max(1, page - half_window)
+    page_window_end = page_window_start + page_window_size - 1
+
+    if page_window_end > total_pages:
+        page_window_end = total_pages
+        page_window_start = max(1, page_window_end - page_window_size + 1)
 
     page_results = []
     for item in page_rows:
