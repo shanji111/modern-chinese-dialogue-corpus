@@ -160,6 +160,7 @@
            class="tab-item {% if view_mode == 'ccl' %}active{% endif %}">居中检索视图</a>
         <a href="{{ url_for('search', **dict(query_args, view='dialogue', page=1)) }}"
            class="tab-item {% if view_mode == 'dialogue' %}active{% endif %}">完整对话视图</a>
+        <a href="{{ url_for('guide') }}" class="tab-item">使用说明</a>
         {% if source %}
             <a href="{{ url_for('browse_dialogues', source=source, category=category, dataset_name=advanced_filters.dataset_name) }}"
                class="browse-search-link">浏览当前范围</a>

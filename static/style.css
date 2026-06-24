@@ -482,6 +482,14 @@ a:hover {
         line-height: 1.25;
     }
 
+    .home-topbar {
+        margin-bottom: 14px;
+    }
+
+    .home-action-links {
+        gap: 0 18px;
+    }
+
     .category-tabs {
         justify-content: flex-start;
         flex-wrap: nowrap;
@@ -1556,6 +1564,10 @@ a:hover {
 .back-home-link {
     color: #2e63c7;
     font-size: 14px;
+}
+
+.back-home-link + .back-home-link {
+    margin-left: 14px;
 }
 
 .upload-success-box {

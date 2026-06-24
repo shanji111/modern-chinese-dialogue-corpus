@@ -11,6 +11,7 @@
         <div class="browse-page-header">
             <div>
                 <a href="{{ url_for('home') }}" class="back-home-link">返回首页</a>
+                <a href="{{ url_for('guide') }}" class="back-home-link">使用说明</a>
                 <h1>{{ source or "全领域" }}</h1>
             </div>
         </div>
@@ -160,6 +161,7 @@
            class="tab-item {% if view_mode == 'ccl' %}active{% endif %}">居中检索视图</a>
         <a href="{{ url_for('browse_dialogues', **dict(query_args, view='dialogue', page=1)) }}"
            class="tab-item {% if view_mode == 'dialogue' %}active{% endif %}">完整对话视图</a>
+        <a href="{{ url_for('guide') }}" class="tab-item">使用说明</a>
         <a href="{{ url_for('search', **dict(query_args, view='ccl', page=1)) }}"
            class="tab-item browse-advanced-link">高级检索</a>
     </div>
