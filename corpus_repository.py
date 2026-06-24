@@ -1937,6 +1937,82 @@ def validate_search_request(keyword="", filters=None):
     return ""
 
 
+def regex_literal_prefilters(pattern, max_literals=2, min_literal_len=2):
+    literals = []
+    current = []
+    escaped = False
+    in_class = False
+    in_quantifier = False
+    group_depth = 0
+    has_top_level_alternation = False
+
+    def flush_current():
+        if current:
+            literal = "".join(current)
+            current.clear()
+            if len(literal) >= min_literal_len and literal not in literals:
+                literals.append(literal)
+
+    for char in pattern or "":
+        if escaped:
+            if group_depth == 0 and not in_class and char not in "AbBdDsSwWZz0123456789":
+                current.append(char)
+            else:
+                flush_current()
+            escaped = False
+            continue
+        if char == "\\":
+            escaped = True
+            continue
+        if in_quantifier:
+            if char == "}":
+                in_quantifier = False
+            continue
+        if in_class:
+            if char == "]":
+                in_class = False
+            continue
+        if char == "[":
+            flush_current()
+            in_class = True
+            continue
+        if char == "(":
+            flush_current()
+            group_depth += 1
+            continue
+        if char == ")" and group_depth:
+            flush_current()
+            group_depth -= 1
+            continue
+        if group_depth:
+            continue
+        if char in "*?":
+            if current:
+                current.pop()
+            flush_current()
+            continue
+        if char == "{":
+            if current:
+                current.pop()
+            flush_current()
+            in_quantifier = True
+            continue
+        if char == "|":
+            flush_current()
+            has_top_level_alternation = True
+            continue
+        if char in ".^$+}|":
+            flush_current()
+            continue
+        current.append(char)
+
+    flush_current()
+    if has_top_level_alternation:
+        return []
+    literals.sort(key=len, reverse=True)
+    return literals[:max_literals]
+
+
 def build_like_pattern(value, mode="contains"):
     escaped = escape_like(value)
     if mode == "exact":
@@ -1958,16 +2034,27 @@ def add_text_search_clause(where_clauses, params, keyword, columns, mode="contai
         if error:
             raise ValueError(error)
         joiner = " AND " if negate else " OR "
+        prefilters = [] if negate else regex_literal_prefilters(keyword)
         if is_postgres():
             operator = "!~*" if negate else "~*"
-            parts = [f"COALESCE({prefix}{column}, '') {operator} {marker}" for column in columns]
+            parts = []
+            for column in columns:
+                expression = f"COALESCE({prefix}{column}, '')"
+                checks = [f"{expression} ILIKE {marker} ESCAPE '\\'" for _ in prefilters]
+                checks.append(f"{expression} {operator} {marker}")
+                parts.append(f"({' AND '.join(checks)})")
         else:
             parts = []
             for column in columns:
-                expression = f"COALESCE({prefix}{column}, '') REGEXP {marker}"
-                parts.append(f"NOT ({expression})" if negate else expression)
+                expression = f"COALESCE({prefix}{column}, '')"
+                checks = [f"{expression} LIKE {marker} ESCAPE '\\'" for _ in prefilters]
+                checks.append(f"{expression} REGEXP {marker}")
+                expression = f"({' AND '.join(checks)})"
+                parts.append(f"NOT {expression}" if negate else expression)
         where_clauses.append(f"({joiner.join(parts)})")
-        params.extend([keyword] * len(columns))
+        for _ in columns:
+            params.extend(build_like_pattern(literal) for literal in prefilters)
+            params.append(keyword)
         return
     like_operator = "ILIKE" if is_postgres() else "LIKE"
     operator = f"NOT {like_operator}" if negate else like_operator
