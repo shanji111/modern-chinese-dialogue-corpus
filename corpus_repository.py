@@ -2194,6 +2194,16 @@ def build_turn_search_where(keyword="", source="", year="", category="", filters
     return where_sql, params, order_sql
 
 
+def should_count_turn_search(keyword="", filters=None):
+    keyword = (keyword or "").strip()
+    if not keyword:
+        return False
+    filters = normalize_search_filters(filters)
+    if filters["mode"] == REGEX_SEARCH_MODE:
+        return bool(regex_literal_prefilters(keyword))
+    return len(keyword) >= 2
+
+
 def build_postgres_search_where(keyword="", source="", year="", category="", filters=None):
     where_clauses = []
     params = []
@@ -2612,6 +2622,30 @@ def query_turn_search_page(keyword="", source="", year="", category="", dataset_
         if "dialogue_turns" in str(exc).lower():
             return []
         raise
+    finally:
+        close_connection(conn)
+
+
+def count_turn_search_results(keyword="", source="", year="", category="", dataset_name="", filters=None):
+    if not keyword:
+        return 0
+    filters = normalize_search_filters(filters)
+    if dataset_name:
+        filters = dict(filters)
+        filters["dataset_name"] = dataset_name
+    where_sql, params, _ = build_turn_search_where(keyword, source, year, category, filters)
+    conn = timed_connection("count_turn_search_results")
+    try:
+        row = fetch_one_dict(conn.execute(
+            f"""
+            SELECT COUNT(*) AS total
+            FROM {TURN_TABLE} dt
+            JOIN corpus_entries e ON e.id = dt.entry_id
+            {where_sql}
+            """,
+            params,
+        ))
+        return int((row or {}).get("total") or 0)
     finally:
         close_connection(conn)
 

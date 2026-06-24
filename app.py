@@ -1486,20 +1486,34 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         and corpus_repository.POSTGRES_FAST_SEARCH
     )
     use_turn_search = False if search_error_message else should_use_turn_search(keyword, year, advanced_filters)
-    defer_exact_count = view_mode == "dialogue" or (
+    turn_search_exact_count = (
+        use_turn_search
+        and corpus_repository.should_count_turn_search(keyword, advanced_filters)
+    )
+    defer_exact_count = (not use_turn_search) and (view_mode == "dialogue" or (
         allow_deferred_ccl_count
         and view_mode == "ccl"
         and should_defer_ccl_count(keyword, source, category, advanced_filters, search_backend)
-    )
-    if search_error_message or use_turn_search or fast_search or defer_exact_count:
+    ))
+    defer_turn_count = use_turn_search and not turn_search_exact_count
+    if search_error_message or defer_turn_count or fast_search or defer_exact_count:
         total = 0
+    elif use_turn_search:
+        total = corpus_repository.count_turn_search_results(
+            keyword=keyword,
+            source=source,
+            year=year,
+            category=category,
+            filters=advanced_filters,
+        )
     elif search_backend == "fts":
         total = count_search_results_fts(keyword, source, year, category, advanced_filters)
     else:
         total = count_search_results(keyword, source, year, category, advanced_filters)
-    total_pages = 1 if (search_error_message or use_turn_search or fast_search or defer_exact_count) else max(1, math.ceil(total / per_page))
+    deferred_count = search_error_message or defer_turn_count or fast_search or defer_exact_count
+    total_pages = 1 if deferred_count else max(1, math.ceil(total / per_page))
 
-    if not use_turn_search and not fast_search and not defer_exact_count and page > total_pages:
+    if not deferred_count and page > total_pages:
         page = total_pages
 
     page_window_size = 10
@@ -1514,7 +1528,7 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
     start_idx = (page - 1) * per_page
     end_idx = start_idx + per_page
 
-    query_limit = per_page + 1 if (use_turn_search or fast_search or defer_exact_count) else per_page
+    query_limit = per_page + 1 if deferred_count else per_page
     if search_error_message:
         page_rows = []
     elif use_turn_search:
@@ -1547,8 +1561,8 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
             offset=start_idx,
             filters=advanced_filters,
         )
-    has_next_page = (use_turn_search or fast_search or defer_exact_count) and len(page_rows) > per_page
-    if use_turn_search or fast_search or defer_exact_count:
+    has_next_page = deferred_count and len(page_rows) > per_page
+    if deferred_count:
         page_rows = page_rows[:per_page]
         total = start_idx + len(page_rows) + (1 if has_next_page else 0)
         total_pages = page + 1 if has_next_page else page
@@ -1613,7 +1627,7 @@ def build_search_results_context(args, default_view="ccl", allow_deferred_ccl_co
         "results": page_results,
         "dialogue_results": dialogue_results,
         "total": total,
-        "total_is_estimated": (use_turn_search or defer_exact_count) and has_next_page,
+        "total_is_estimated": deferred_count and has_next_page,
         "sources": sources,
         "years": years,
         "categories": categories,
