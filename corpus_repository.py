@@ -2242,6 +2242,13 @@ TURN_SEARCH_SORT_OPTIONS = {
 }
 
 
+def turn_search_needs_entry_join(year="", filters=None):
+    filters = normalize_search_filters(filters)
+    if year or filters["year_from"] or filters["year_to"] or filters["title"] or filters["has_audio"] == "1":
+        return True
+    return filters["sort"] in {"year_desc", "year_asc", "title_asc", "start_time_asc"}
+
+
 def build_turn_search_where(keyword="", source="", year="", category="", filters=None):
     filters = normalize_search_filters(filters)
     where_clauses = []
@@ -2618,6 +2625,7 @@ def query_turn_search_page(keyword="", source="", year="", category="", dataset_
         filters = dict(filters)
         filters["dataset_name"] = dataset_name
     where_sql, params, order_sql = build_turn_search_where(keyword, source, year, category, filters)
+    entry_join_sql = "JOIN corpus_entries e ON e.id = dt.entry_id" if turn_search_needs_entry_join(year, filters) else ""
     conn = timed_connection("query_turn_search_page")
     try:
         hit_rows = fetch_all_dicts(conn.execute(
@@ -2632,7 +2640,7 @@ def query_turn_search_page(keyword="", source="", year="", category="", dataset_
                    dt.dataset_name,
                    dt.conversation_key
             FROM {TURN_TABLE} dt
-            JOIN corpus_entries e ON e.id = dt.entry_id
+            {entry_join_sql}
             {where_sql}
             ORDER BY {order_sql}
             LIMIT {marker} OFFSET {marker}
@@ -2746,13 +2754,14 @@ def count_turn_search_results(keyword="", source="", year="", category="", datas
         filters = dict(filters)
         filters["dataset_name"] = dataset_name
     where_sql, params, _ = build_turn_search_where(keyword, source, year, category, filters)
+    entry_join_sql = "JOIN corpus_entries e ON e.id = dt.entry_id" if turn_search_needs_entry_join(year, filters) else ""
     conn = timed_connection("count_turn_search_results")
     try:
         row = fetch_one_dict(conn.execute(
             f"""
             SELECT COUNT(*) AS total
             FROM {TURN_TABLE} dt
-            JOIN corpus_entries e ON e.id = dt.entry_id
+            {entry_join_sql}
             {where_sql}
             """,
             params,
