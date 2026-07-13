@@ -1,0 +1,62 @@
+{
+  "generated_at": "2026-06-21T00:00:00+08:00",
+  "description": "gold_v1 is the master file; gold_v1_binary excludes uncertain rows for binary training and evaluation.",
+  "files": [
+    {
+      "file_name": "formal_300_v1_gold_v1.csv",
+      "relative_path": "formal_300_v1_gold_v1.csv",
+      "size_bytes": 173073,
+      "sha256": "f62aea988980f32e7de13d03d2b85f0ee30970a357919be68b4aa52c54ac4c96",
+      "rows": 300,
+      "line_count": null,
+      "resonance_distribution": {
+        "yes": 228,
+        "no": 58,
+        "uncertain": 14
+      }
+    },
+    {
+      "file_name": "formal_300_v1_gold_v1.xlsx",
+      "relative_path": "formal_300_v1_gold_v1.xlsx",
+      "size_bytes": 132647,
+      "sha256": "e355f7a2d9d57d6335234531729b5f120fe2abd386a06337e17456cf941868ee",
+      "rows": 300,
+      "line_count": null,
+      "resonance_distribution": {
+        "yes": 228,
+        "no": 58,
+        "uncertain": 14
+      }
+    },
+    {
+      "file_name": "formal_300_v1_gold_v1_binary.csv",
+      "relative_path": "formal_300_v1_gold_v1_binary.csv",
+      "size_bytes": 108916,
+      "sha256": "1aa73e182eca60c2baf87c9a55b2c5883a55bbe65d187b5ed45a6e3e5f1f9808",
+      "rows": 286,
+      "line_count": null,
+      "resonance_distribution": {
+        "yes": 228,
+        "no": 58
+      }
+    },
+    {
+      "file_name": "formal_300_v1_gold_v1_freeze_report.md",
+      "relative_path": "formal_300_v1_gold_v1_freeze_report.md",
+      "size_bytes": 2315,
+      "sha256": "3ebf7f1ab6035fe8c4b1e35a591404190d73e5dacef41f564055e1b79ad7f357",
+      "rows": null,
+      "line_count": 50,
+      "resonance_distribution": null
+    },
+    {
+      "file_name": "formal_300_v1_evaluation_key.csv",
+      "relative_path": "formal_300_v1_evaluation_key.csv",
+      "size_bytes": 73741,
+      "sha256": "93c60d6afe05f79d29915c70915b8a26cf4424a9eec07cb4995b43b21b4daea5",
+      "rows": 300,
+      "line_count": null,
+      "resonance_distribution": null
+    }
+  ]
+}

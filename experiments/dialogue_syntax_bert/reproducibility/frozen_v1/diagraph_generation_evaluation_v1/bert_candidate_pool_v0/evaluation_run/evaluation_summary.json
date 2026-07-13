@@ -1,0 +1,30 @@
+{
+  "run_name": "bert_candidate_pool_v0",
+  "relaxed_threshold": 0.5,
+  "summary": {
+    "gold_column_count": 135,
+    "valid_prediction_count": 70,
+    "invalid_prediction_count": 0,
+    "exact_match_count": 21,
+    "relaxed_match_count": 51,
+    "exact_column_precision": 0.3,
+    "exact_column_recall": 0.155556,
+    "exact_column_f1": 0.204878,
+    "relaxed_column_precision": 0.728571,
+    "relaxed_column_recall": 0.377778,
+    "relaxed_column_f1": 0.497561,
+    "relation_type_accuracy_on_exact_matches": 0.904762,
+    "relation_type_accuracy_on_relaxed_matches": 0.627451,
+    "core_column_precision": 0.688889,
+    "core_column_recall": 0.313131,
+    "missing_core_rate": 0.686869,
+    "false_core_rate": 0.311111,
+    "overgeneration_rate": 0.271429,
+    "missing_column_rate": 0.622222,
+    "mean_abs_column_count_error_by_pair": 1.46,
+    "pair_count": 50,
+    "pairs_with_zero_matched_columns": 20,
+    "pairs_with_missing_core_columns": 42,
+    "pairs_with_high_overgeneration": 4
+  }
+}

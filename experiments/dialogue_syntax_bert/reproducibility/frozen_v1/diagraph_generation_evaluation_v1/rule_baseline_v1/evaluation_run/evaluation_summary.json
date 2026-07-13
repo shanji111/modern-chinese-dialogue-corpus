@@ -1,0 +1,30 @@
+{
+  "run_name": "rule_baseline_prediction_v1",
+  "relaxed_threshold": 0.5,
+  "summary": {
+    "gold_column_count": 135,
+    "valid_prediction_count": 67,
+    "invalid_prediction_count": 0,
+    "exact_match_count": 21,
+    "relaxed_match_count": 49,
+    "exact_column_precision": 0.313433,
+    "exact_column_recall": 0.155556,
+    "exact_column_f1": 0.207921,
+    "relaxed_column_precision": 0.731343,
+    "relaxed_column_recall": 0.362963,
+    "relaxed_column_f1": 0.485149,
+    "relation_type_accuracy_on_exact_matches": 0.904762,
+    "relation_type_accuracy_on_relaxed_matches": 0.591837,
+    "core_column_precision": 0.717949,
+    "core_column_recall": 0.282828,
+    "missing_core_rate": 0.717172,
+    "false_core_rate": 0.282051,
+    "overgeneration_rate": 0.268657,
+    "missing_column_rate": 0.637037,
+    "mean_abs_column_count_error_by_pair": 1.48,
+    "pair_count": 50,
+    "pairs_with_zero_matched_columns": 20,
+    "pairs_with_missing_core_columns": 43,
+    "pairs_with_high_overgeneration": 3
+  }
+}

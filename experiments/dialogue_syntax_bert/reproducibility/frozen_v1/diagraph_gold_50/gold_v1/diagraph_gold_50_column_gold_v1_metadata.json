@@ -1,0 +1,28 @@
+{
+  "gold_name": "diagraph_gold_50_column_gold_v1",
+  "version": "v1",
+  "created_from": "full_diagraph_gold_50_column_gold_candidate_active_spot_reviewed",
+  "pair_count": 50,
+  "active_column_count": 135,
+  "all_rows_count": 151,
+  "source_batches": [
+    "pilot10 reviewed_v1",
+    "remaining_easy_medium21 reviewed_v1",
+    "remaining_hard19 reviewed_v1",
+    "targeted spot review applied"
+  ],
+  "spot_review": {
+    "keep": 16,
+    "revise": 4,
+    "delete": 0
+  },
+  "pair_level_gold_reference": [
+    "formal_300_v1 gold_v1",
+    "formal_300_v1 gold_v1_binary"
+  ],
+  "bert_used_for_column_gold": false,
+  "database_touched": false,
+  "website_touched": false,
+  "frozen": true,
+  "notes": "BERT/hybrid belongs to pair-level shadow experiments only; this column gold was produced through rule-guided human/AI-assisted annotation and review."
+}

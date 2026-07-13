@@ -1,0 +1,274 @@
+{
+  "features": [
+    "char_unigram_jaccard",
+    "char_bigram_jaccard",
+    "char_overlap_ratio",
+    "length_ratio",
+    "rule_any_positive_score",
+    "rule_flag_count",
+    "combined_similarity_score"
+  ],
+  "trained_model": false,
+  "runs_bert": false,
+  "threshold_selection": "threshold swept on dev split for best F1; no model training",
+  "threshold": 0,
+  "dev": {
+    "precision": 0.7906976744186046,
+    "recall": 1,
+    "f1": 0.8831168831168831,
+    "tp": 34,
+    "fp": 9,
+    "fn": 0,
+    "tn": 0,
+    "support": 34,
+    "total": 43
+  },
+  "test": {
+    "precision": 0.7906976744186046,
+    "recall": 1,
+    "f1": 0.8831168831168831,
+    "tp": 34,
+    "fp": 9,
+    "fn": 0,
+    "tn": 0,
+    "support": 34,
+    "total": 43
+  },
+  "full": {
+    "precision": 0.7972027972027972,
+    "recall": 1,
+    "f1": 0.88715953307393,
+    "tp": 228,
+    "fp": 58,
+    "fn": 0,
+    "tn": 0,
+    "support": 228,
+    "total": 286
+  },
+  "rule_baseline": {
+    "precision": 0.8733333333333333,
+    "recall": 0.5745614035087719,
+    "f1": 0.693121693121693,
+    "tp": 131,
+    "fp": 19,
+    "fn": 97,
+    "tn": 39,
+    "support": 228,
+    "total": 286
+  },
+  "failure_cases": {
+    "false_positives": [
+      {
+        "annotation_id": "F300V1-0004",
+        "split": "train",
+        "score": 0.2701923076923077,
+        "source": "文本对话",
+        "dataset_name": "红楼梦"
+      },
+      {
+        "annotation_id": "F300V1-0011",
+        "split": "train",
+        "score": 0.2663333333333333,
+        "source": "文本对话",
+        "dataset_name": "老乞大"
+      },
+      {
+        "annotation_id": "F300V1-0022",
+        "split": "dev",
+        "score": 0.2654673283705542,
+        "source": "网络回帖",
+        "dataset_name": "tieba-305w"
+      },
+      {
+        "annotation_id": "F300V1-0029",
+        "split": "dev",
+        "score": 0.24276190476190473,
+        "source": "文本对话",
+        "dataset_name": "平凡的世界"
+      },
+      {
+        "annotation_id": "F300V1-0035",
+        "split": "train",
+        "score": 0.19255865427180166,
+        "source": "访谈语料",
+        "dataset_name": "china_interview"
+      },
+      {
+        "annotation_id": "F300V1-0041",
+        "split": "dev",
+        "score": 0.4070803321328531,
+        "source": "访谈语料",
+        "dataset_name": "mfa_press"
+      },
+      {
+        "annotation_id": "F300V1-0062",
+        "split": "train",
+        "score": 0.2025252525252525,
+        "source": "日常对话",
+        "dataset_name": "douban-multiturn-100w"
+      },
+      {
+        "annotation_id": "F300V1-0064",
+        "split": "train",
+        "score": 0.25277777777777777,
+        "source": "日常对话",
+        "dataset_name": "qingyun-11w"
+      },
+      {
+        "annotation_id": "F300V1-0066",
+        "split": "dev",
+        "score": 0.2247126436781609,
+        "source": "网络回帖",
+        "dataset_name": "贴吧回帖"
+      },
+      {
+        "annotation_id": "F300V1-0070",
+        "split": "train",
+        "score": 0.2443311160384331,
+        "source": "访谈语料",
+        "dataset_name": "china_live"
+      },
+      {
+        "annotation_id": "F300V1-0071",
+        "split": "train",
+        "score": 0.22594202898550725,
+        "source": "文本对话",
+        "dataset_name": "清平山堂话本"
+      },
+      {
+        "annotation_id": "F300V1-0078",
+        "split": "test",
+        "score": 0.2515519568151147,
+        "source": "文本对话",
+        "dataset_name": "朴通事"
+      },
+      {
+        "annotation_id": "F300V1-0086",
+        "split": "train",
+        "score": 0.23313163910178836,
+        "source": "文本对话",
+        "dataset_name": "骆驼祥子"
+      },
+      {
+        "annotation_id": "F300V1-0090",
+        "split": "train",
+        "score": 0.2776190476190476,
+        "source": "日常对话",
+        "dataset_name": "qingyun-11w"
+      },
+      {
+        "annotation_id": "F300V1-0093",
+        "split": "train",
+        "score": 0.023076923076923078,
+        "source": "日常对话",
+        "dataset_name": "青云语料"
+      },
+      {
+        "annotation_id": "F300V1-0094",
+        "split": "train",
+        "score": 0.09,
+        "source": "多模态语料",
+        "dataset_name": "local-audio-demo"
+      },
+      {
+        "annotation_id": "F300V1-0095",
+        "split": "train",
+        "score": 0.17222222222222222,
+        "source": "文本对话",
+        "dataset_name": "红楼梦"
+      },
+      {
+        "annotation_id": "F300V1-0101",
+        "split": "train",
+        "score": 0.1400952380952381,
+        "source": "网络回帖",
+        "dataset_name": "tieba-305w"
+      },
+      {
+        "annotation_id": "F300V1-0108",
+        "split": "train",
+        "score": 0.15863095238095237,
+        "source": "访谈语料",
+        "dataset_name": "mfa_press"
+      },
+      {
+        "annotation_id": "F300V1-0115",
+        "split": "test",
+        "score": 0.013043478260869565,
+        "source": "日常对话",
+        "dataset_name": "chatterbot-1k"
+      },
+      {
+        "annotation_id": "F300V1-0121",
+        "split": "train",
+        "score": 0.13636363636363635,
+        "source": "日常对话",
+        "dataset_name": "qingyun-11w"
+      },
+      {
+        "annotation_id": "F300V1-0123",
+        "split": "train",
+        "score": 0.028124999999999997,
+        "source": "访谈语料",
+        "dataset_name": "china_interview"
+      },
+      {
+        "annotation_id": "F300V1-0125",
+        "split": "train",
+        "score": 0.15,
+        "source": "网络回帖",
+        "dataset_name": "tieba-305w"
+      },
+      {
+        "annotation_id": "F300V1-0126",
+        "split": "train",
+        "score": 0.019354838709677417,
+        "source": "文本对话",
+        "dataset_name": "世说新语"
+      },
+      {
+        "annotation_id": "F300V1-0130",
+        "split": "train",
+        "score": 0.09375,
+        "source": "影视对白",
+        "dataset_name": "subtitle-useless"
+      },
+      {
+        "annotation_id": "F300V1-0132",
+        "split": "train",
+        "score": 0.07575444398511781,
+        "source": "访谈语料",
+        "dataset_name": "mfa_press"
+      },
+      {
+        "annotation_id": "F300V1-0134",
+        "split": "train",
+        "score": 0.0375,
+        "source": "日常对话",
+        "dataset_name": "chatterbot"
+      },
+      {
+        "annotation_id": "F300V1-0138",
+        "split": "dev",
+        "score": 0.06592071611253197,
+        "source": "日常对话",
+        "dataset_name": "douban-multiturn-100w"
+      },
+      {
+        "annotation_id": "F300V1-0140",
+        "split": "train",
+        "score": 0.03387096774193548,
+        "source": "文本对话",
+        "dataset_name": "平凡的世界"
+      },
+      {
+        "annotation_id": "F300V1-0142",
+        "split": "test",
+        "score": 0.01730769230769231,
+        "source": "日常对话",
+        "dataset_name": "青云语料"
+      }
+    ],
+    "false_negatives": []
+  }
+}

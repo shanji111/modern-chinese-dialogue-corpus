@@ -1,0 +1,191 @@
+{
+  "seed": 20260621,
+  "ratios_requested": {
+    "train": 0.7,
+    "dev": 0.15,
+    "test": 0.15
+  },
+  "rows_total": 286,
+  "split_targets": {
+    "train": {
+      "rows": 200,
+      "yes": 160,
+      "no": 40
+    },
+    "dev": {
+      "rows": 43,
+      "yes": 34,
+      "no": 9
+    },
+    "test": {
+      "rows": 43,
+      "yes": 34,
+      "no": 9
+    }
+  },
+  "splits": {
+    "train": {
+      "rows": 200,
+      "resonance": {
+        "yes": 160,
+        "no": 40
+      },
+      "sample_stratum": {
+        "rule_positive": 62,
+        "analogy_or_parallel_candidate": 20,
+        "potential_false_negative": 38,
+        "rule_negative_random": 42,
+        "hard_negative_or_boundary": 38
+      },
+      "source": {
+        "文本对话": 122,
+        "日常对话": 34,
+        "访谈语料": 21,
+        "网络回帖": 11,
+        "影视对白": 8,
+        "多模态语料": 4
+      },
+      "dataset_name": {
+        "世说新语": 8,
+        "douban-multiturn-100w": 11,
+        "qingyun-11w": 6,
+        "平凡的世界": 10,
+        "清平山堂话本": 10,
+        "青云语料": 7,
+        "水浒传": 7,
+        "朱子语类": 9,
+        "唐传奇": 8,
+        "雷雨": 9,
+        "论语": 12,
+        "西游记": 6,
+        "红楼梦": 11,
+        "孟子": 7,
+        "mfa_press": 10,
+        "贴吧回帖": 4,
+        "老乞大": 6,
+        "朴通事": 8,
+        "subtitle-useless": 8,
+        "骆驼祥子": 11,
+        "china_interview": 7,
+        "chatterbot": 6,
+        "tieba-305w": 7,
+        "china_live": 4,
+        "local-audio-demo": 4,
+        "chatterbot-1k": 4
+      }
+    },
+    "dev": {
+      "rows": 43,
+      "resonance": {
+        "yes": 34,
+        "no": 9
+      },
+      "sample_stratum": {
+        "rule_positive": 15,
+        "hard_negative_or_boundary": 11,
+        "potential_false_negative": 5,
+        "rule_negative_random": 9,
+        "analogy_or_parallel_candidate": 3
+      },
+      "source": {
+        "文本对话": 22,
+        "访谈语料": 6,
+        "日常对话": 11,
+        "影视对白": 1,
+        "网络回帖": 3
+      },
+      "dataset_name": {
+        "老乞大": 3,
+        "孟子": 4,
+        "china_interview": 3,
+        "世说新语": 4,
+        "china_live": 2,
+        "qingyun-11w": 4,
+        "水浒传": 2,
+        "红楼梦": 2,
+        "平凡的世界": 3,
+        "青云语料": 3,
+        "chatterbot-1k": 2,
+        "douban-multiturn-100w": 2,
+        "唐传奇": 1,
+        "朴通事": 1,
+        "西游记": 1,
+        "subtitle-useless": 1,
+        "论语": 1,
+        "mfa_press": 1,
+        "tieba-305w": 1,
+        "贴吧回帖": 2
+      }
+    },
+    "test": {
+      "rows": 43,
+      "resonance": {
+        "yes": 34,
+        "no": 9
+      },
+      "sample_stratum": {
+        "potential_false_negative": 12,
+        "rule_positive": 12,
+        "rule_negative_random": 6,
+        "hard_negative_or_boundary": 7,
+        "analogy_or_parallel_candidate": 6
+      },
+      "source": {
+        "网络回帖": 4,
+        "日常对话": 7,
+        "文本对话": 24,
+        "访谈语料": 4,
+        "影视对白": 4
+      },
+      "dataset_name": {
+        "tieba-305w": 2,
+        "chatterbot": 3,
+        "贴吧回帖": 2,
+        "世说新语": 2,
+        "骆驼祥子": 1,
+        "china_interview": 2,
+        "清平山堂话本": 1,
+        "水浒传": 1,
+        "朱子语类": 3,
+        "老乞大": 3,
+        "西游记": 3,
+        "朴通事": 2,
+        "唐传奇": 3,
+        "qingyun-11w": 1,
+        "subtitle-useless": 4,
+        "论语": 2,
+        "china_live": 1,
+        "孟子": 1,
+        "雷雨": 1,
+        "青云语料": 2,
+        "chatterbot-1k": 1,
+        "红楼梦": 1,
+        "mfa_press": 1
+      }
+    }
+  },
+  "leak_checks": {
+    "annotation_id": {
+      "train_dev": [],
+      "train_test": [],
+      "dev_test": []
+    },
+    "pair_id": {
+      "train_dev": [],
+      "train_test": [],
+      "dev_test": []
+    },
+    "normalized_pair_hash": {
+      "train_dev": [],
+      "train_test": [],
+      "dev_test": []
+    },
+    "conversation_group_key": {
+      "train_dev": [],
+      "train_test": [],
+      "dev_test": []
+    }
+  },
+  "leakage_free": true,
+  "group_count": 281
+}

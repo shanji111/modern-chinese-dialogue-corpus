@@ -1,0 +1,136 @@
+﻿annotation_id,pair_id,column_id,span_a,span_b,relation_type,relation_strength,alignment_direction,is_core_column,supports_resonance,notes,reviewer_decision,reviewer_note,batch,source,dataset_name,difficulty_level,sample_stratum,spot_review_decision,spot_review_note,spot_review_applied
+F300V1-0020,2751447,C01,化学,化学,lexical_reproduction,strong,mutual,1,1,B复现A中被定义对象“化学”。,keep,,pilot10,日常对话,chatterbot-1k,easy,rule_positive,,,0
+F300V1-0020,2751447,C02,什么是化学,混合化学品的科学。,slot_filling,strong,A_to_B,1,1,B以定义形式回答A的“什么是X”问题。,keep,,pilot10,日常对话,chatterbot-1k,easy,rule_positive,,,0
+F300V1-0020,2751447,C03,什么,科学,slot_filling,medium,A_to_B,0,1,B用“科学”填入A中“什么”打开的类别槽位。,revise,“什么→科学”更像定义问答中的类别填槽，不宜标为 semantic_substitution；该栏辅助说明类别槽位，主链由 C01/C02 支撑。,pilot10,日常对话,chatterbot-1k,easy,rule_positive,,,0
+F300V1-0023,2678369,C01,你,我,coreference_or_demonstrative,strong,A_to_B,1,1,A中的“你”指向B，说话权转换后在B中成为“我”。,keep,,pilot10,文本对话,雷雨,medium,rule_positive,,,0
+F300V1-0023,2678369,C02,做什么,到书房,slot_filling,medium,A_to_B,1,1,B用“到书房”填入A询问的行动/去向槽位。,keep,,pilot10,文本对话,雷雨,medium,rule_positive,,,0
+F300V1-0023,2678369,C03,做什么,看看,slot_filling,strong,A_to_B,1,1,B用“看看”回答A询问的具体行为。,keep,,pilot10,文本对话,雷雨,medium,rule_positive,,,0
+F300V1-0023,2678369,C04,做什么,看看爸写的介绍信在那儿没有,slot_filling,medium,A_to_B,0,1,B给出完整行动内容，补足A的问题槽位。,revise,C04 是对 C02/C03 的整句扩展，适合作为辅助栏；核心行动槽位已由“到书房”“看看”承担。,pilot10,文本对话,雷雨,medium,rule_positive,,,0
+F300V1-0050,2708953,C01,那差来的,他,coreference_or_demonstrative,medium,A_to_B,1,1,,keep,,pilot10,文本对话,西游记,easy,rule_positive,,,0
+F300V1-0050,2708953,C02,叫做,叫做,lexical_reproduction,strong,mutual,1,1,,keep,,pilot10,文本对话,西游记,easy,rule_positive,,,0
+F300V1-0050,2708953,C03,甚么名字,巴山虎,slot_filling,strong,A_to_B,1,1,,keep,,pilot10,文本对话,西游记,easy,rule_positive,,,0
+F300V1-0050,2708953,C04,甚么名字,倚海龙,slot_filling,medium,A_to_B,0,1,,keep,,pilot10,文本对话,西游记,easy,rule_positive,,,0
+F300V1-0127,2715076,C01,大鹏与他是一母所生，故此有些亲处,这般比论,coreference_or_demonstrative,medium,A_to_B,1,1,B中的“这般比论”回指A中关于亲属关系的整段推理论证。,keep,,pilot10,文本对话,西游记,hard,rule_negative_random,keep,accepted in targeted spot review,1
+F300V1-0127,2715076,C02,大鹏与他是一母所生,妖精的外甥,analogy,strong,A_to_B,1,1,B沿用A的亲属推理逻辑，将“大鹏与孔雀同母”讽刺性延展为“如来是妖精外甥”。,keep,,pilot10,文本对话,西游记,hard,rule_negative_random,keep,accepted in targeted spot review,1
+F300V1-0127,2715076,C03,佛母,外甥,analogy,strong,A_to_B,1,1,A中“佛母”建立宗教亲属关系，B以“外甥”改写并延展这一亲属关系。,keep,,pilot10,文本对话,西游记,hard,rule_negative_random,keep,accepted in targeted spot review,1
+F300V1-0127,2715076,C04,大鹏,妖精,semantic_substitution,medium,A_to_B,0,1,B将A叙述中的“大鹏”贬称为“妖精”，形成评价性替换。,keep,,pilot10,文本对话,西游记,hard,rule_negative_random,revise,大鹏→妖精是评价性重命名，可作为辅助 semantic_substitution 支撑亲属类比链，但不应承担主链；主链由 C02/C03/C05 承担。,1
+F300V1-0127,2715076,C05,故此有些亲处,你还是妖精的外甥哩,semantic_substitution,strong,A_to_B,1,1,B把A的“有些亲处”具体化并讽刺化为“外甥”关系。,keep,,pilot10,文本对话,西游记,hard,rule_negative_random,keep,accepted in targeted spot review,1
+F300V1-0127,2715076,C06,佛母,你还是妖精的外甥哩,analogy,medium,A_to_B,0,1,A中的“佛母”亲属定位被B讽刺性改写为“外甥”关系；此栏辅助说明类比链条，不单独作为核心纵栏。,keep,该栏保留为非核心辅助链，用于说明“佛母”亲属定位如何被 B 讽刺性延展为“外甥”关系；不承担主链。,pilot10,文本对话,西游记,hard,rule_negative_random,keep,accepted in targeted spot review,1
+F300V1-0137,2734311,C01,哥哥你,我,coreference_or_demonstrative,strong,A_to_B,1,1,,keep,,pilot10,文本对话,老乞大,easy,rule_negative_random,,,0
+F300V1-0137,2734311,C02,贵姓,姓,lexical_reproduction,strong,mutual,1,1,,keep,,pilot10,文本对话,老乞大,easy,rule_negative_random,,,0
+F300V1-0137,2734311,C03,贵姓,王,slot_filling,strong,A_to_B,1,1,,keep,,pilot10,文本对话,老乞大,easy,rule_negative_random,,,0
+F300V1-0170,2801273,C01,你,我,coreference_or_demonstrative,strong,A_to_B,1,1,A中的“你”指向B，说话权转换后在B中成为“我”。,keep,,pilot10,日常对话,qingyun-11w,easy,hard_negative_or_boundary,,,0
+F300V1-0170,2801273,C02,喜欢,喜欢,lexical_reproduction,strong,mutual,1,1,B复现A中的“喜欢”。,keep,,pilot10,日常对话,qingyun-11w,easy,hard_negative_or_boundary,,,0
+F300V1-0170,2801273,C03,你喜欢的人,我喜欢你呀,slot_filling,strong,A_to_B,1,1,B将A打开的“喜欢的人”槽位补足为“你”，并改写为完整表白。,keep,,pilot10,日常对话,qingyun-11w,easy,hard_negative_or_boundary,,,0
+F300V1-0170,2801273,C04,你喜欢的人,当然有喽，我喜欢你呀,short_answer,weak,A_to_B,0,1,B先以“当然有喽”回应A的名词性询问，再给出具体对象。,revise,“当然有喽”是对隐含询问的短回应，但主共鸣链由“你/我”“喜欢/喜欢”“喜欢的人/喜欢你”承担，因此降为 weak auxiliary column。,pilot10,日常对话,qingyun-11w,easy,hard_negative_or_boundary,,,0
+F300V1-0196,2689629,C01,刚才,刚才,lexical_reproduction,strong,mutual,1,1,B复现A中的时间锚点“刚才”。,keep,,pilot10,日常对话,青云语料,medium,hard_negative_or_boundary,,,0
+F300V1-0196,2689629,C02,刚才,现在,contrast,strong,A_to_B,1,1,B用“刚才/现在”形成时间对比，回应A指出的前后不一致。,keep,,pilot10,日常对话,青云语料,medium,hard_negative_or_boundary,,,0
+F300V1-0196,2689629,C03,刚才还说女生,刚才是刚才，现在是现在,syntactic_parallelism,medium,A_to_B,1,1,B将A的“刚才还说”重构为“刚才是刚才，现在是现在”的对比式结构。,keep,,pilot10,日常对话,青云语料,medium,hard_negative_or_boundary,,,0
+F300V1-0196,2689629,C04,还说女生,世事都是会变的,pragmatic_function,medium,A_to_B,0,1,B以“世事会变”解释自己前后说法变化，是语义层面的回应。,revise,“世事都是会变的”不是对“还说女生”的直接语义替换，而是解释前后变化的语用性回应。,pilot10,日常对话,青云语料,medium,hard_negative_or_boundary,,,0
+F300V1-0211,2743169,C01,这,这样,coreference_or_demonstrative,weak,mutual,0,1,A/B都使用指示成分，B的“这样”指向A中的命题内容。,revise,“这/这样”表层指示关系较泛，真正核心纵栏是 C02 中“让其中一人抛弃朋友→这样”的命题回指。,pilot10,影视对白,subtitle-useless,hard,potential_false_negative,,,0
+F300V1-0211,2743169,C02,让其中一人抛弃朋友,这样,coreference_or_demonstrative,strong,A_to_B,1,1,B用“这样”回指A提出的“让其中一人抛弃朋友”这一命题。,keep,,pilot10,影视对白,subtitle-useless,hard,potential_false_negative,,,0
+F300V1-0211,2743169,C03,这意味着让其中一人抛弃朋友,是这样吗?,pragmatic_function,medium,A_to_B,1,1,B以短问句请求确认A的命题判断，形成弱承接。,revise,“是这样吗？”不是严格意义上的 short_answer，而是对 A 命题内容的确认请求，宜标为 pragmatic_function。,pilot10,影视对白,subtitle-useless,hard,potential_false_negative,,,0
+F300V1-0244,2734050,C01,善,善,lexical_reproduction,strong,mutual,1,1,,keep,,pilot10,文本对话,孟子,easy,potential_false_negative,,,0
+F300V1-0244,2734050,C02,信,信,lexical_reproduction,strong,mutual,1,1,,keep,,pilot10,文本对话,孟子,easy,potential_false_negative,,,0
+F300V1-0244,2734050,C03,善人也，信人也,何谓善？何谓信？,syntactic_parallelism,strong,A_to_B,1,1,,keep,,pilot10,文本对话,孟子,easy,potential_false_negative,,,0
+F300V1-0254,2718266,C01,顾养民,他,coreference_or_demonstrative,strong,A_to_B,0,1,B中的“他”回指A中的“顾养民”。,keep,,pilot10,文本对话,平凡的世界,medium,potential_false_negative,revise,顾养民→他是必要的指称辅助，但删去后主行动/修正链仍可由 C02/C03 支撑，因此降为 auxiliary。,1
+F300V1-0254,2718266,C02,捶一捶,打了他,semantic_substitution,strong,A_to_B,1,1,B将A的“捶一捶”改写为“打了他”，语义上指向同一暴力行动。,keep,,pilot10,文本对话,平凡的世界,medium,potential_false_negative,keep,accepted in targeted spot review,1
+F300V1-0254,2718266,C03,我想把顾养民捶一捶,你不要动手,repair,strong,A_to_B,1,1,B直接制止A提出的行动方案，形成修正性映射。,keep,,pilot10,文本对话,平凡的世界,medium,potential_false_negative,keep,accepted in targeted spot review,1
+F300V1-0254,2718266,C04,我,你,coreference_or_demonstrative,strong,A_to_B,0,1,A中的自称“我”在B中被转化为被劝阻对象“你”。,keep,,pilot10,文本对话,平凡的世界,medium,potential_false_negative,revise,我→你是说话权转换造成的指称辅助，不应与行动修正主链同等作为 core。,1
+F300V1-0254,2718266,C05,我想把顾养民捶一捶,由我出面,contrast,medium,A_to_B,0,1,B用“由我出面”替代A亲自动手的方案，形成行动主体和处理方式的对比。,keep,,pilot10,文本对话,平凡的世界,medium,potential_false_negative,revise,我想捶→由我出面说明行动主体和处理方式转移，可作为辅助 contrast；主链已由 C02 暴力行动改写和 C03 制止修正承担。,1
+F300V1-0024,2712070,C01,毒敌山琵琶洞,那山洞,coreference_or_demonstrative,strong,A_to_B,1,1,B用“那山洞”回指A中已经给出的具体洞府地点。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,西游记,easy,rule_positive,,,0
+F300V1-0209,2734257,C01,五美,五美,lexical_reproduction,strong,mutual,1,1,B直接复现A中的核心概念“五美”。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,论语,easy,hard_negative_or_boundary,,,0
+F300V1-0209,2734257,C02,尊五美,何谓五美？,pragmatic_function,medium,A_to_B,1,1,B把A中提出的概念转成解释请求，属于确认并追问概念内涵的语用性承接。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,论语,easy,hard_negative_or_boundary,,,0
+F300V1-0010,2773838,C01,msf,msf,lexical_reproduction,strong,mutual,1,1,两轮都围绕“msf”这一对象展开。,keep,accepted in easy_medium21 review,easy_medium21,日常对话,douban-multiturn-100w,easy,rule_positive,,,0
+F300V1-0010,2773838,C02,加入msf,申请msf,semantic_substitution,medium,A_to_B,1,1,B把A中的加入意图改写为更具体的申请行动。,keep,accepted in easy_medium21 review,easy_medium21,日常对话,douban-multiturn-100w,easy,rule_positive,,,0
+F300V1-0185,2734249,C01,是,是,lexical_reproduction,strong,mutual,1,1,B复现A中的肯定成分“是”。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,论语,easy,hard_negative_or_boundary,,,0
+F300V1-0185,2734249,C02,是也,是知津矣,syntactic_parallelism,medium,A_to_B,1,1,B沿着肯定式结构推进A的判断。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,论语,easy,hard_negative_or_boundary,,,0
+F300V1-0271,2754026,C01,私人飞机,私人飞机,lexical_reproduction,strong,mutual,1,1,B复现A中的核心对象“私人飞机”。,keep,accepted in easy_medium21 review,easy_medium21,网络回帖,tieba-305w,easy,analogy_or_parallel_candidate,,,0
+F300V1-0271,2754026,C02,私人飞机呢？,也会派私人飞机接,pragmatic_function,medium,A_to_B,1,1,B把A的追问改写成带条件的回应方案。,keep,accepted in easy_medium21 review,easy_medium21,网络回帖,tieba-305w,easy,analogy_or_parallel_candidate,,,0
+F300V1-0271,2754026,C03,我魔,我抬,semantic_substitution,weak,A_to_B,0,1,A/B分别以内群体称呼定位不同球队立场。,revise,“我魔/我抬”不宜标为 contrast；更像论坛语境中的球队昵称/立场称呼替换，且只能作为弱辅助栏。,easy_medium21,网络回帖,tieba-305w,easy,analogy_or_parallel_candidate,,,0
+F300V1-0002,2734081,C01,为政,为政,lexical_reproduction,strong,mutual,1,1,B多次复现A中的核心概念“为政”。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,论语,medium,rule_positive,,,0
+F300V1-0002,2734081,C02,不为政,是亦为政,repair,strong,A_to_B,1,1,B纠正A中“子不为政”的预设，明确提出“这也是为政”。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,论语,medium,rule_positive,,,0
+F300V1-0002,2734081,C03,子奚不为政？,奚其为为政！,syntactic_parallelism,medium,A_to_B,0,1,B沿用“奚/为政”的设问框架，但把设问方向反转。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,论语,medium,rule_positive,,,0
+F300V1-0055,2717672,C01,和晓霞一个班,和晓霞不一个班,repair,strong,A_to_B,1,1,B直接修正A关于班级关系的判断。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,平凡的世界,medium,rule_positive,,,0
+F300V1-0055,2717672,C02,和晓霞一个班,和润生是一个班,contrast,strong,A_to_B,1,1,B把同一“一个班”关系转移到新的同班对象上。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,平凡的世界,medium,rule_positive,,,0
+F300V1-0055,2717672,C03,一个班,一个班,lexical_reproduction,strong,mutual,1,1,A/B共享“一个班”的关系框架。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,平凡的世界,medium,rule_positive,,,0
+F300V1-0055,2717672,C04,晓霞,润生,contrast,medium,A_to_B,0,1,B用新的人物替换A预设的同班对象。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,平凡的世界,medium,rule_positive,,,0
+F300V1-0187,2678585,C01,倒了它,倒了它,lexical_reproduction,strong,mutual,1,1,B最终回到A提出的原动作。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,雷雨,medium,hard_negative_or_boundary,,,0
+F300V1-0187,2678585,C02,倒了它？,你还是倒了它,repair,strong,A_to_B,1,1,B在犹豫后重新确认A提出的动作方案。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,雷雨,medium,hard_negative_or_boundary,,,0
+F300V1-0187,2678585,C03,倒了它,先把它放在那儿,repair,medium,A_to_B,0,1,B先提出暂放方案，随后又改回执行A动作；该栏记录中间修正路径。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,雷雨,medium,hard_negative_or_boundary,,,0
+F300V1-0265,2736207,C01,哭,哭,lexical_reproduction,strong,mutual,1,1,A/B都把“哭”作为焦点动作。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,世说新语,medium,potential_false_negative,,,0
+F300V1-0265,2736207,C02,哭吊喭毕,君何为哭？,repair,strong,A_to_B,1,1,B对A的哭吊行为提出礼法性纠偏。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,世说新语,medium,potential_false_negative,,,0
+F300V1-0265,2736207,C03,哭吊喭毕,阮既不哭,contrast,medium,A_to_B,0,1,B以“阮既不哭”引入规范参照，对A的做法形成对照。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,世说新语,medium,potential_false_negative,,,0
+F300V1-0290,2723647,C01,宫嫔,宫嫔,lexical_reproduction,strong,mutual,1,1,B复现A中的场景对象“宫嫔”。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,唐传奇,medium,analogy_or_parallel_candidate,,,0
+F300V1-0290,2723647,C02,无双在焉,岂便及无双,contrast,strong,A_to_B,1,1,A担忧“无双在焉”，B则明确否定其轻易可及。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,唐传奇,medium,analogy_or_parallel_candidate,,,0
+F300V1-0290,2723647,C03,汝为我一窥，可乎？,宫嫔数千，岂便及无双。,pragmatic_function,medium,A_to_B,0,1,B没有直接执行“窥”，而是先对A的推测与请求作反驳式回应。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,唐传奇,medium,analogy_or_parallel_candidate,,,0
+F300V1-0290,2723647,C04,无双,无双,lexical_reproduction,strong,mutual,0,1,B复现A关注的核心人物“无双”。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,唐传奇,medium,analogy_or_parallel_candidate,,,0
+F300V1-0299,2689524,C01,死在家里,死在哥哥家里,syntactic_parallelism,strong,A_to_B,1,1,B延续“死在X里”的论证框架，只替换家庭关系位置。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,红楼梦,medium,analogy_or_parallel_candidate,,,0
+F300V1-0299,2689524,C02,太太的好心弄坏了,害了哥哥,analogy,strong,A_to_B,1,1,B沿用A的“会连累照拂者”的关系结构，替换受害对象并反向劝说。,keep,类比主链成立；B 沿用 A 的“死亡会连累照拂者”关系结构，将受害对象从太太转为哥哥。,easy_medium21,文本对话,红楼梦,medium,analogy_or_parallel_candidate,,,0
+F300V1-0299,2689524,C03,我该死在家里才是。,若是死在哥哥家里，岂不又害了哥哥呢。,analogy,strong,A_to_B,1,1,B把A的整句论证结构迁移到“哥哥家里”的新位置上。,keep,整句类比链可以保留为 core；它体现 A 的论证结构被 B 迁移到“哥哥家里”的新情境。,easy_medium21,文本对话,红楼梦,medium,analogy_or_parallel_candidate,,,0
+F300V1-0299,2689524,C04,死在这里,死在哥哥家里,contrast,medium,A_to_B,0,1,B把A的地点论证转移到新的家庭关系上，形成场所对照。,keep,地点对照与类比链有重叠，但作为 auxiliary contrast 可保留，不承担主链。,easy_medium21,文本对话,红楼梦,medium,analogy_or_parallel_candidate,,,0
+F300V1-0298,2693772,C01,撬动,撬动,lexical_reproduction,strong,mutual,1,1,B复现A中的关键行动词“撬动”。,keep,accepted in easy_medium21 review,easy_medium21,访谈语料,china_interview,medium,analogy_or_parallel_candidate,,,0
+F300V1-0298,2693772,C02,国际文化产业资源,“一带一路”国家,semantic_substitution,medium,A_to_B,1,1,B把A中的资源来源具体化为可参与的国家主体。,keep,accepted in easy_medium21 review,easy_medium21,访谈语料,china_interview,medium,analogy_or_parallel_candidate,,,0
+F300V1-0298,2693772,C03,实现合作共荣地可持续发展,参与“一带一路”建设,pragmatic_function,medium,A_to_B,1,1,B给出实现合作发展的操作路径，属于回答“如何实现”的语用性回应。,keep,accepted in easy_medium21 review,easy_medium21,访谈语料,china_interview,medium,analogy_or_parallel_candidate,,,0
+F300V1-0287,2696063,C01,北约,北约,lexical_reproduction,strong,mutual,1,1,A/B都以“北约”为核心评论对象。,keep,accepted in easy_medium21 review,easy_medium21,访谈语料,mfa_press,medium,analogy_or_parallel_candidate,keep,accepted in targeted spot review,1
+F300V1-0287,2696063,C02,与俄罗斯发生更广泛的冲突,与俄冲突,lexical_reproduction,strong,A_to_B,1,1,B压缩复现A中的冲突前提。,keep,accepted in easy_medium21 review,easy_medium21,访谈语料,mfa_press,medium,analogy_or_parallel_candidate,keep,accepted in targeted spot review,1
+F300V1-0287,2696063,C03,中国在欧洲拥有的基础设施项目,中欧合作,semantic_substitution,medium,A_to_B,0,1,B把A中的具体基础设施项目概括为更宽的中欧合作议题。,revise,“中国在欧洲拥有的基础设施项目→中欧合作”可以保留为概括性替换，但跨度较大，不宜作为 core column。,easy_medium21,访谈语料,mfa_press,medium,analogy_or_parallel_candidate,keep,accepted in targeted spot review,1
+F300V1-0287,2696063,C04,中方对此有何评论？,毫无道理，各方应坚决抵制。,pragmatic_function,medium,A_to_B,0,1,B给出明确的评论性结论。,keep,accepted in easy_medium21 review,easy_medium21,访谈语料,mfa_press,medium,analogy_or_parallel_candidate,keep,accepted in targeted spot review,1
+F300V1-0287,2696063,C05,将收回一些中国在欧洲拥有的基础设施项目,干扰破坏中欧合作,semantic_substitution,medium,A_to_B,0,1,B把A中的项目收回风险改写为干扰破坏合作的行为后果。,keep,可保留为 auxiliary semantic_substitution，用于说明“收回项目”被 B 改写为“干扰破坏合作”的行为后果。,easy_medium21,访谈语料,mfa_press,medium,analogy_or_parallel_candidate,keep,accepted in targeted spot review,1
+F300V1-0300,2733984,C01,为善,为善,lexical_reproduction,strong,mutual,1,1,A/B共享“为善”这一核心判断位。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,孟子,medium,analogy_or_parallel_candidate,,,0
+F300V1-0300,2733984,C02,为不善,为不善，非才之罪也,repair,strong,A_to_B,1,1,B承接A提出的“为不善”可能性，并给出修正式解释。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,孟子,medium,analogy_or_parallel_candidate,,,0
+F300V1-0300,2733984,C03,今曰‘性善’，然则彼皆非与？,乃若其情，则可以为善矣，乃所谓善也。,pragmatic_function,strong,A_to_B,1,1,B正面回应A对“性善”命题的质疑。,keep,虽然跨度较大，但该栏是 B 对 A 关于“性善”质疑的核心回应，可保留为 core pragmatic_function。,easy_medium21,文本对话,孟子,medium,analogy_or_parallel_candidate,,,0
+F300V1-0300,2733984,C04,性善,善也,semantic_substitution,medium,A_to_B,0,1,B把A中的命题焦点收束为“乃所谓善也”的定义性改写。,keep,“性善→善也”可保留为 auxiliary semantic_substitution，不承担主链。,easy_medium21,文本对话,孟子,medium,analogy_or_parallel_candidate,,,0
+F300V1-0204,2694237,C01,两岸交流,两岸交流合作,lexical_reproduction,strong,A_to_B,1,1,B延续A中的“两岸交流”议题，并扩展为合作表述。,keep,accepted in easy_medium21 review,easy_medium21,访谈语料,china_live,medium,hard_negative_or_boundary,,,0
+F300V1-0204,2694237,C02,对台新举措,十项促进两岸交流合作的政策措施,semantic_substitution,strong,A_to_B,1,1,B把A中的笼统“新举措”具体化为政策措施。,keep,“对台新举措→十项促进两岸交流合作的政策措施”替换位较清楚，可保留为 core semantic_substitution。,easy_medium21,访谈语料,china_live,medium,hard_negative_or_boundary,,,0
+F300V1-0204,2694237,C03,“介选”行为,攻击、污蔑、反对,contrast,medium,A_to_B,0,1,B把A中的指控性标签反向改写为对民进党当局行为的批评。,keep,可保留为 auxiliary contrast；它体现 A 的“介选”指控被 B 反向评价为“攻击、污蔑、反对”。,easy_medium21,访谈语料,china_live,medium,hard_negative_or_boundary,,,0
+F300V1-0204,2694237,C04,请问对此有何评论？,这再次充分暴露了民进党当局图谋“台独”的真实面目,pragmatic_function,medium,A_to_B,1,1,B给出正式评论性结论，承接A的问政式提问。,keep,accepted in easy_medium21 review,easy_medium21,访谈语料,china_live,medium,hard_negative_or_boundary,,,0
+F300V1-0052,2735205,C01,怎麽写,金”傍做“昔”字便是,slot_filling,strong,A_to_B,1,1,B直接回答A关于写法的提问。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,朴通事,medium,rule_positive,,,0
+F300V1-0052,2735205,C02,错”字,金”傍做“昔”字,slot_filling,strong,A_to_B,1,1,B用构字说明具体填补“错”字的写法槽位。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,朴通事,medium,rule_positive,,,0
+F300V1-0052,2735205,C03,字,字,lexical_reproduction,medium,mutual,0,1,A/B都围绕“字”的书写问题。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,朴通事,medium,rule_positive,,,0
+F300V1-0167,2841351,C01,什么样的电脑,各种计算机,slot_filling,strong,A_to_B,1,1,B用设备类型范围填入A的“什么样的电脑”槽位。,keep,accepted in easy_medium21 review,easy_medium21,日常对话,chatterbot,medium,hard_negative_or_boundary,,,0
+F300V1-0167,2841351,C02,电脑,计算机,semantic_substitution,medium,A_to_B,0,1,B把口语化“电脑”改写为“计算机”。,revise,“电脑/计算机”是术语层面的替换，可以作为辅助栏；核心链由“什么样的电脑→各种计算机”和设备列表承担。,easy_medium21,日常对话,chatterbot,medium,hard_negative_or_boundary,,,0
+F300V1-0167,2841351,C03,什么样,"MAC,IBM或UNIX",slot_filling,medium,A_to_B,0,1,B以并列列表进一步细化设备类型。,keep,accepted in easy_medium21 review,easy_medium21,日常对话,chatterbot,medium,hard_negative_or_boundary,,,0
+F300V1-0046,2751328,C01,什么是共产主义,"一个社会政治运动主张生产资料,并带来一个无阶级社会的阶级解决冲突的共同所有权。",slot_filling,strong,A_to_B,1,1,B以定义式回答填补A的“什么是X”槽位。,keep,accepted in easy_medium21 review,easy_medium21,日常对话,chatterbot-1k,medium,rule_positive,,,0
+F300V1-0046,2751328,C02,什么,一个社会政治运动,slot_filling,medium,A_to_B,0,1,B先给出类别层面的定义起点。,keep,accepted in easy_medium21 review,easy_medium21,日常对话,chatterbot-1k,medium,rule_positive,,,0
+F300V1-0046,2751328,C03,共产主义,无阶级社会,semantic_substitution,weak,A_to_B,0,1,B把“共产主义”定义中的结果性特征压缩到“无阶级社会”。,keep,accepted in easy_medium21 review,easy_medium21,日常对话,chatterbot-1k,medium,rule_positive,,,0
+F300V1-0033,2723890,C01,何计通耗,可附信,slot_filling,strong,A_to_B,1,1,B以具体通信方法回答A的“何计通耗”提问。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,唐传奇,medium,rule_positive,,,0
+F300V1-0033,2723890,C02,通耗,附信,slot_filling,medium,A_to_B,0,1,B把抽象的通耗之计落实为附信之法。,revise,“通耗/附信”更像对 A 中通信方法槽位的具体落实，不宜标为 semantic_substitution；核心栏由 C01 承担。,easy_medium21,文本对话,唐传奇,medium,rule_positive,,,0
+F300V1-0033,2723890,C03,仙人路绝,若遇雁府上人,pragmatic_function,medium,A_to_B,0,1,B先设定能够通信的条件，再给出方法。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,唐传奇,medium,rule_positive,,,0
+F300V1-0250,2705383,C01,定没这事,怕不做出来,contrast,strong,A_to_B,1,1,A否认事件发生，B反向坚持其可能发生。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,水浒传,medium,potential_false_negative,,,0
+F300V1-0250,2705383,C02,这事,做出来,coreference_or_demonstrative,medium,A_to_B,1,1,B沿着A否认的同一事件位继续断言其可能发生。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,水浒传,medium,potential_false_negative,,,0
+F300V1-0250,2705383,C03,莫要造次,他在东京兀自去李师师家去,pragmatic_function,medium,A_to_B,0,1,B通过补充事证反驳A的安抚和劝止。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,水浒传,medium,potential_false_negative,,,0
+F300V1-0053,2735845,C01,何以不下意,会不能用。,slot_filling,strong,A_to_B,1,1,B以原因性短答回应A的“何以”提问。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,世说新语,medium,rule_positive,,,0
+F300V1-0053,2735845,C02,何以,不能用,slot_filling,medium,A_to_B,1,1,B把A的原因槽位具体填为“不能用”。,keep,accepted in easy_medium21 review,easy_medium21,文本对话,世说新语,medium,rule_positive,,,0
+F300V1-0219,2735511,C01,卖去,卖之,lexical_reproduction,strong,A_to_B,1,1,B直接复现A中被建议的处理动作“卖去”。,keep,accepted in hard19 review,hard19,文本对话,世说新语,hard,potential_false_negative,,,0
+F300V1-0219,2735511,C02,或语令卖去,宁可不安己而移于他人哉？,repair,strong,A_to_B,1,1,B对“卖去”的建议提出伦理性纠偏，指出不能把祸患转移给他人。,keep,可保留为 repair；B 不只是反对“卖去”，而是对该处理方案作伦理性纠偏。,hard19,文本对话,世说新语,hard,potential_false_negative,,,0
+F300V1-0219,2735511,C03,卖去,移于他人,semantic_substitution,medium,A_to_B,0,1,B把“卖去”明确改写为“把后果移于他人”，用于解释其为何反对该建议。,keep,“卖去→移于他人”有明确替换位，可保留为辅助 semantic_substitution。,hard19,文本对话,世说新语,hard,potential_false_negative,,,0
+F300V1-0154,2736359,C01,拜,拜,lexical_reproduction,strong,mutual,1,1,B落实了A中建议的“拜”这一动作。,keep,accepted in hard19 review,hard19,文本对话,世说新语,hard,hard_negative_or_boundary,,,0
+F300V1-0154,2736359,C02,遥拜,便拜,semantic_substitution,weak,A_to_B,0,1,B把A建议的“遥拜”改写为抵达后的实际拜见动作。,revise,“遥拜→便拜”可以保留为动作落实/动作改写的辅助栏，但它不是主链，强度降为 weak。,hard19,文本对话,世说新语,hard,hard_negative_or_boundary,,,0
+F300V1-0106,2737971,C01,他,他,coreference_or_demonstrative,strong,mutual,1,1,A/B都围绕同一人物“他”继续展开。,keep,accepted in hard19 review,hard19,影视对白,subtitle-useless,hard,rule_negative_random,,,0
+F300V1-0106,2737971,C02,他回到队上了,不敢相信,pragmatic_function,medium,A_to_B,1,1,B对A给出的命题作出惊讶性回应，而不是提供新的平行内容。,keep,命题到情态反应的映射较抽象，但 B 明确对 A 的命题作出惊讶性回应，可保留为 pragmatic_function。,hard19,影视对白,subtitle-useless,hard,rule_negative_random,,,0
+F300V1-0013,2998903,C01,胜于,胜于,lexical_reproduction,strong,mutual,1,1,A/B共享同一比较构式中心“胜于”。,keep,accepted in hard19 review,hard19,日常对话,chatterbot,hard,rule_positive,,,0
+F300V1-0013,2998903,C02,优美胜于丑陋.,明了胜于晦涩.,syntactic_parallelism,strong,A_to_B,1,1,两轮都采用“X 胜于 Y”的稳定比较框架，是该样本的主链。,keep,accepted in hard19 review,hard19,日常对话,chatterbot,hard,rule_positive,,,0
+F300V1-0043,2651422,C01,一旦,就,syntactic_parallelism,strong,A_to_B,1,1,A的条件前件由B以“就”引出结果后件，形成典型跨句条件结构配对。,keep,“一旦…就…”跨话轮配对明确，可保留为 core syntactic_parallelism。,hard19,多模态语料,local-audio-demo,hard,rule_positive,,,0
+F300V1-0043,2651422,C02,你一旦告诉我它是兔子,我就没法吃了,pragmatic_function,strong,A_to_B,1,1,B补足了A提出的条件句后果，是该样本的核心跨句承接。,keep,A 提供条件前件，B 补出结果后件，构成条件到结果的核心语用承接，可保留。,hard19,多模态语料,local-audio-demo,hard,rule_positive,,,0
+F300V1-0008,2723050,C01,我,你,coreference_or_demonstrative,strong,A_to_B,0,1,A中的自称“我”在B中被转成对该说话人的“你”。,keep,accepted in hard19 review,hard19,文本对话,骆驼祥子,hard,rule_positive,,,0
+F300V1-0008,2723050,C02,赁出一辆，我自己拉一辆，凑合了！,那还不是一样？,contrast,strong,A_to_B,1,1,B直接否定A提出方案的改善效果，是该样本的主链。,keep,accepted in hard19 review,hard19,文本对话,骆驼祥子,hard,rule_positive,,,0
+F300V1-0081,2719051,C01,少平,他,coreference_or_demonstrative,strong,A_to_B,1,1,B中的“他”稳定回指A中的“少平”。,keep,accepted in hard19 review,hard19,文本对话,平凡的世界,hard,rule_positive,,,0
+F300V1-0081,2719051,C02,要交给你。,让他进来一块吃饭嘛！,pragmatic_function,medium,A_to_B,1,1,B围绕A中的交接场景给出新的行动安排，形成对前句事件的语用性回应。,keep,交接场景到邀请行动的承接虽然依赖语境，但 B 的行动安排明确围绕 A 中“少平”事件展开，可保留。,hard19,文本对话,平凡的世界,hard,rule_positive,,,0
+F300V1-0224,2724233,C01,先生,小生,coreference_or_demonstrative,strong,A_to_B,1,1,A对B的称呼“先生”在B中转换为自称“小生”。,keep,accepted in hard19 review,hard19,文本对话,清平山堂话本,hard,potential_false_negative,,,0
+F300V1-0224,2724233,C02,琴中之意，妾已备知。,死也甘心。,pragmatic_function,strong,A_to_B,1,1,B以强烈情感回应A对琴中情意的判断，是该样本的主链。,keep,情意判断到强烈情感回应跨度较大，但这是该 pair 的主要语用承接，可保留为 core。,hard19,文本对话,清平山堂话本,hard,potential_false_negative,,,0
+F300V1-0159,2735303,C01,你摘馈我些叶儿。,要做甚麽？,pragmatic_function,strong,A_to_B,1,1,B不是回答A，而是追问A提出行动的用途，是典型语用性承接。,keep,该 pair 只有追问链，但 B 明确追问 A 所提出行动的用途，可作为单栏 core 保留。,hard19,文本对话,朴通事,hard,hard_negative_or_boundary,,,0
+F300V1-0214,2785425,C01,真.破车迷,还是孔帝不行,pragmatic_function,weak,A_to_B,1,1,B用继续抱怨球队人与决策的方式，语用上承接A的讽刺性标签。,revise,该样本高度依赖论坛语境，只能弱保留为“标签→继续抱怨内容”的语用承接；因该 pair 只有一栏，仍保留为 core。,hard19,网络回帖,贴吧回帖,hard,potential_false_negative,keep,accepted in targeted spot review,1
+F300V1-0117,2723842,C01,浑忘却。,斯言,coreference_or_demonstrative,weak,A_to_B,1,1,B用“斯言”指向A中被忘却的那番话语内容。,keep,“浑忘却→斯言”虽简略，但 B 的“斯言”可回指 A 所涉话语内容，弱保留为 core。,hard19,文本对话,唐传奇,hard,rule_negative_random,,,0
+F300V1-0111,2785026,C01,某些球迷,破车迷,semantic_substitution,strong,A_to_B,1,1,B用更具体也更带立场色彩的“破车迷”压缩概括A中的群体。,keep,“某些球迷→破车迷”可保留为论坛语境中的群体标签替换，但不再扩展整句评价辅助栏。,hard19,网络回帖,贴吧回帖,hard,rule_negative_random,keep,accepted in targeted spot review,1
+F300V1-0097,2668887,C01,哈哈哈,好笑,semantic_substitution,medium,A_to_B,0,1,B把A的笑声行为转写为显性的“好笑”评价位。,revise,“哈哈哈→好笑”可保留为笑声行为到显性评价位的辅助替换，但主链应由 C02 的追问式回应承担。,hard19,日常对话,qingyun-11w,hard,rule_negative_random,,,0
+F300V1-0097,2668887,C02,哈哈哈~丝车~,有什么好笑的,pragmatic_function,strong,A_to_B,1,1,B将A的笑声与调侃话语转化为追问式回应。,keep,accepted in hard19 review,hard19,日常对话,qingyun-11w,hard,rule_negative_random,,,0
+F300V1-0017,2651506,C01,像果腐那样新鲜的果腐,不是,repair,strong,A_to_B,1,1,B用极简否定直接纠正A的整体判断，是该样本的唯一稳定主链。,keep,accepted in hard19 review,hard19,多模态语料,local-audio-demo,hard,rule_positive,,,0
+F300V1-0150,2735985,C01,井丹高洁,未若长卿慢世。,contrast,strong,A_to_B,1,1,两轮都采用“人物 + 品评”的紧凑框架，B在同框架下反向比较。,revise,该样本主链不是严格 analogy，而是人物品评结构中的比较/评价对照；用 contrast 比 syntactic_parallelism 或 analogy 更稳。,hard19,文本对话,世说新语,hard,rule_negative_random,,,0
+F300V1-0128,2733691,C01,今之乐犹古之乐也,可得闻与？,pragmatic_function,strong,A_to_B,1,1,B把A关于“今之乐/古之乐”的论断转成进一步听闻的请求。,keep,单栏追问承接可保留；B 把 A 关于“今之乐/古之乐”的论断转为进一步请求说明。,hard19,文本对话,孟子,hard,rule_negative_random,,,0
+F300V1-0092,2723587,C01,之,某,coreference_or_demonstrative,strong,A_to_B,1,1,B用“某”填出A中“之”所指的人物或对象。,keep,“之→某”可保留为跨句指称位，B 显化 A 所深忆之对象。,hard19,文本对话,唐传奇,hard,rule_negative_random,,,0
+F300V1-0092,2723587,C02,深忆之。,即某是也。,pragmatic_function,strong,A_to_B,1,1,B给出A所深忆之人的识别性回应，是该样本的核心问答式承接。,keep,A 的陈述性前提由 B 转成识别性回应，可保留为 pragmatic_function。,hard19,文本对话,唐传奇,hard,rule_negative_random,,,0
+F300V1-0205,2730840,C01,皇极,此,coreference_or_demonstrative,strong,A_to_B,1,1,B中的“此”直接回指A单独提出的术语“皇极”。,keep,accepted in hard19 review,hard19,文本对话,朱子语类,hard,hard_negative_or_boundary,,,0
+F300V1-0205,2730840,C02,皇极,人君为治之心法,pragmatic_function,strong,A_to_B,1,1,B对A给出的术语做出定义式说明，是该样本的主链。,keep,单词提示到定义解释的关系较强，可保留为 core pragmatic_function。,hard19,文本对话,朱子语类,hard,hard_negative_or_boundary,,,0
+F300V1-0220,2733787,C01,此非距心之所得为也,今有受人之牛羊而为之牧之者,analogy,strong,A_to_B,1,1,B先搭建一个“受托照料牛羊”的责任结构，用来映射A中的判断难题。,keep,A 命题与 B 设喻之间的主类比链成立，可保留为 core analogy。,hard19,文本对话,孟子,hard,potential_false_negative,keep,accepted in targeted spot review,1
+F300V1-0220,2733787,C02,非距心之所得为也,则反诸其人乎？抑亦立而视其死与？,analogy,strong,A_to_B,1,1,B把A的判断转移到“应否放任牛羊死去”的责任追问上，以设喻推进论证。,keep,B 将 A 的判断难题转化为“是否放任牛羊死去”的责任追问，可保留为 core analogy，但不再额外保留 C03 行动者位辅助栏。,hard19,文本对话,孟子,hard,potential_false_negative,keep,accepted in targeted spot review,1

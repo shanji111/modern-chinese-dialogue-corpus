@@ -1,0 +1,4 @@
+interface:
+  display_name: "Dialogue Syntax Experiment"
+  short_description: "Run reproducible dialogue-syntax experiments"
+  default_prompt: "Use $dialogue-syntax-experiment to continue the staged experiment safely and update its registry."

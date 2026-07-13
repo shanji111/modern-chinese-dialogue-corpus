@@ -1,0 +1,1551 @@
+{
+  "row_count": 286,
+  "overall": {
+    "precision": 0.8733333333333333,
+    "recall": 0.5745614035087719,
+    "f1": 0.693121693121693,
+    "tp": 131,
+    "fp": 19,
+    "fn": 97,
+    "tn": 39,
+    "support": 228,
+    "total": 286
+  },
+  "by_sample_stratum": [
+    {
+      "sample_stratum": "rule_positive",
+      "precision": 0.8426966292134831,
+      "recall": 1,
+      "f1": 0.9146341463414633,
+      "tp": 75,
+      "fp": 14,
+      "fn": 0,
+      "tn": 0,
+      "support": 75,
+      "total": 89
+    },
+    {
+      "sample_stratum": "rule_negative_random",
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 39,
+      "tn": 18,
+      "support": 39,
+      "total": 57
+    },
+    {
+      "sample_stratum": "hard_negative_or_boundary",
+      "precision": 0.918918918918919,
+      "recall": 0.7391304347826086,
+      "f1": 0.8192771084337348,
+      "tp": 34,
+      "fp": 3,
+      "fn": 12,
+      "tn": 7,
+      "support": 46,
+      "total": 56
+    },
+    {
+      "sample_stratum": "potential_false_negative",
+      "precision": 0,
+      "recall": 0,
+      "f1": 0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 42,
+      "tn": 13,
+      "support": 42,
+      "total": 55
+    },
+    {
+      "sample_stratum": "analogy_or_parallel_candidate",
+      "precision": 0.9166666666666666,
+      "recall": 0.8461538461538461,
+      "f1": 0.8799999999999999,
+      "tp": 22,
+      "fp": 2,
+      "fn": 4,
+      "tn": 1,
+      "support": 26,
+      "total": 29
+    }
+  ],
+  "by_source": [
+    {
+      "source": "文本对话",
+      "precision": 0.9156626506024096,
+      "recall": 0.5170068027210885,
+      "f1": 0.6608695652173914,
+      "tp": 76,
+      "fp": 7,
+      "fn": 71,
+      "tn": 14,
+      "support": 147,
+      "total": 168
+    },
+    {
+      "source": "日常对话",
+      "precision": 0.8928571428571429,
+      "recall": 0.6756756756756757,
+      "f1": 0.7692307692307693,
+      "tp": 25,
+      "fp": 3,
+      "fn": 12,
+      "tn": 12,
+      "support": 37,
+      "total": 52
+    },
+    {
+      "source": "影视对白",
+      "precision": 0.8333333333333334,
+      "recall": 0.45454545454545453,
+      "f1": 0.5882352941176471,
+      "tp": 5,
+      "fp": 1,
+      "fn": 6,
+      "tn": 1,
+      "support": 11,
+      "total": 13
+    },
+    {
+      "source": "访谈语料",
+      "precision": 0.7272727272727273,
+      "recall": 0.8421052631578947,
+      "f1": 0.7804878048780488,
+      "tp": 16,
+      "fp": 6,
+      "fn": 3,
+      "tn": 6,
+      "support": 19,
+      "total": 31
+    },
+    {
+      "source": "网络回帖",
+      "precision": 0.75,
+      "recall": 0.5454545454545454,
+      "f1": 0.631578947368421,
+      "tp": 6,
+      "fp": 2,
+      "fn": 5,
+      "tn": 5,
+      "support": 11,
+      "total": 18
+    },
+    {
+      "source": "多模态语料",
+      "precision": 1,
+      "recall": 1,
+      "f1": 1,
+      "tp": 3,
+      "fp": 0,
+      "fn": 0,
+      "tn": 1,
+      "support": 3,
+      "total": 4
+    }
+  ],
+  "false_positive_count": 19,
+  "false_negative_count": 97,
+  "false_positives": [
+    {
+      "annotation_id": "F300V1-0004",
+      "pair_id": "2691301",
+      "source": "文本对话",
+      "dataset_name": "红楼梦",
+      "sample_stratum": "rule_positive",
+      "rule_summary": "question_response"
+    },
+    {
+      "annotation_id": "F300V1-0011",
+      "pair_id": "2734742",
+      "source": "文本对话",
+      "dataset_name": "老乞大",
+      "sample_stratum": "rule_positive",
+      "rule_summary": "question_response"
+    },
+    {
+      "annotation_id": "F300V1-0022",
+      "pair_id": "2856607",
+      "source": "网络回帖",
+      "dataset_name": "tieba-305w",
+      "sample_stratum": "rule_positive",
+      "rule_summary": "question_response"
+    },
+    {
+      "annotation_id": "F300V1-0029",
+      "pair_id": "2718511",
+      "source": "文本对话",
+      "dataset_name": "平凡的世界",
+      "sample_stratum": "rule_positive",
+      "rule_summary": "question_response"
+    },
+    {
+      "annotation_id": "F300V1-0035",
+      "pair_id": "2694005",
+      "source": "访谈语料",
+      "dataset_name": "china_interview",
+      "sample_stratum": "rule_positive",
+      "rule_summary": "question_response"
+    },
+    {
+      "annotation_id": "F300V1-0041",
+      "pair_id": "2696642",
+      "source": "访谈语料",
+      "dataset_name": "mfa_press",
+      "sample_stratum": "rule_positive",
+      "rule_summary": "reproduction | parallelism"
+    },
+    {
+      "annotation_id": "F300V1-0062",
+      "pair_id": "2972719",
+      "source": "日常对话",
+      "dataset_name": "douban-multiturn-100w",
+      "sample_stratum": "rule_positive",
+      "rule_summary": "question_response"
+    },
+    {
+      "annotation_id": "F300V1-0064",
+      "pair_id": "3092790",
+      "source": "日常对话",
+      "dataset_name": "qingyun-11w",
+      "sample_stratum": "rule_positive",
+      "rule_summary": "question_response"
+    },
+    {
+      "annotation_id": "F300V1-0066",
+      "pair_id": "2772066",
+      "source": "网络回帖",
+      "dataset_name": "贴吧回帖",
+      "sample_stratum": "rule_positive",
+      "rule_summary": "question_response"
+    },
+    {
+      "annotation_id": "F300V1-0070",
+      "pair_id": "2694182",
+      "source": "访谈语料",
+      "dataset_name": "china_live",
+      "sample_stratum": "rule_positive",
+      "rule_summary": "question_response"
+    },
+    {
+      "annotation_id": "F300V1-0071",
+      "pair_id": "2724417",
+      "source": "文本对话",
+      "dataset_name": "清平山堂话本",
+      "sample_stratum": "rule_positive",
+      "rule_summary": "question_response"
+    },
+    {
+      "annotation_id": "F300V1-0078",
+      "pair_id": "2735357",
+      "source": "文本对话",
+      "dataset_name": "朴通事",
+      "sample_stratum": "rule_positive",
+      "rule_summary": "question_response"
+    },
+    {
+      "annotation_id": "F300V1-0086",
+      "pair_id": "2722636",
+      "source": "文本对话",
+      "dataset_name": "骆驼祥子",
+      "sample_stratum": "rule_positive",
+      "rule_summary": "contrast"
+    },
+    {
+      "annotation_id": "F300V1-0090",
+      "pair_id": "2811086",
+      "source": "日常对话",
+      "dataset_name": "qingyun-11w",
+      "sample_stratum": "rule_positive",
+      "rule_summary": "question_response"
+    },
+    {
+      "annotation_id": "F300V1-0156",
+      "pair_id": "2694179",
+      "source": "访谈语料",
+      "dataset_name": "china_live",
+      "sample_stratum": "hard_negative_or_boundary",
+      "rule_summary": "reproduction | parallelism | question_response"
+    },
+    {
+      "annotation_id": "F300V1-0179",
+      "pair_id": "2695234",
+      "source": "访谈语料",
+      "dataset_name": "mfa_press",
+      "sample_stratum": "hard_negative_or_boundary",
+      "rule_summary": "reproduction | parallelism | question_response"
+    },
+    {
+      "annotation_id": "F300V1-0201",
+      "pair_id": "2713474",
+      "source": "影视对白",
+      "dataset_name": "subtitle-useless",
+      "sample_stratum": "hard_negative_or_boundary",
+      "rule_summary": "question_response"
+    },
+    {
+      "annotation_id": "F300V1-0278",
+      "pair_id": "2735114",
+      "source": "文本对话",
+      "dataset_name": "朴通事",
+      "sample_stratum": "analogy_or_parallel_candidate",
+      "rule_summary": "reproduction | selective_reuse/repair | contrast | question_response"
+    },
+    {
+      "annotation_id": "F300V1-0294",
+      "pair_id": "2694223",
+      "source": "访谈语料",
+      "dataset_name": "china_live",
+      "sample_stratum": "analogy_or_parallel_candidate",
+      "rule_summary": "reproduction | parallelism | question_response"
+    }
+  ],
+  "false_negatives": [
+    {
+      "annotation_id": "F300V1-0091",
+      "pair_id": "2720099",
+      "source": "文本对话",
+      "dataset_name": "平凡的世界",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0092",
+      "pair_id": "2723587",
+      "source": "文本对话",
+      "dataset_name": "唐传奇",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0096",
+      "pair_id": "2734147",
+      "source": "文本对话",
+      "dataset_name": "论语",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0097",
+      "pair_id": "2668887",
+      "source": "日常对话",
+      "dataset_name": "qingyun-11w",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0098",
+      "pair_id": "2722905",
+      "source": "文本对话",
+      "dataset_name": "骆驼祥子",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0099",
+      "pair_id": "2693890",
+      "source": "访谈语料",
+      "dataset_name": "china_interview",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0102",
+      "pair_id": "2736378",
+      "source": "文本对话",
+      "dataset_name": "世说新语",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "slot_filling",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0103",
+      "pair_id": "2708852",
+      "source": "文本对话",
+      "dataset_name": "西游记",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0104",
+      "pair_id": "2733996",
+      "source": "文本对话",
+      "dataset_name": "孟子",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0105",
+      "pair_id": "2735155",
+      "source": "文本对话",
+      "dataset_name": "朴通事",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0106",
+      "pair_id": "2737971",
+      "source": "影视对白",
+      "dataset_name": "subtitle-useless",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0107",
+      "pair_id": "2677701",
+      "source": "文本对话",
+      "dataset_name": "雷雨",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0109",
+      "pair_id": "2724626",
+      "source": "文本对话",
+      "dataset_name": "清平山堂话本",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0110",
+      "pair_id": "2993802",
+      "source": "日常对话",
+      "dataset_name": "chatterbot",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "slot_filling",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0111",
+      "pair_id": "2785026",
+      "source": "网络回帖",
+      "dataset_name": "贴吧回帖",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0112",
+      "pair_id": "2700790",
+      "source": "文本对话",
+      "dataset_name": "水浒传",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0113",
+      "pair_id": "2734346",
+      "source": "文本对话",
+      "dataset_name": "老乞大",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "analogy"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0114",
+      "pair_id": "3072133",
+      "source": "日常对话",
+      "dataset_name": "douban-multiturn-100w",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0116",
+      "pair_id": "2719304",
+      "source": "文本对话",
+      "dataset_name": "平凡的世界",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0117",
+      "pair_id": "2723842",
+      "source": "文本对话",
+      "dataset_name": "唐传奇",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0118",
+      "pair_id": "2748488",
+      "source": "日常对话",
+      "dataset_name": "青云语料",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0119",
+      "pair_id": "2685269",
+      "source": "文本对话",
+      "dataset_name": "红楼梦",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0120",
+      "pair_id": "2734171",
+      "source": "文本对话",
+      "dataset_name": "论语",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0122",
+      "pair_id": "2722757",
+      "source": "文本对话",
+      "dataset_name": "骆驼祥子",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0124",
+      "pair_id": "2728306",
+      "source": "文本对话",
+      "dataset_name": "朱子语类",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0127",
+      "pair_id": "2715076",
+      "source": "文本对话",
+      "dataset_name": "西游记",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "analogy"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0128",
+      "pair_id": "2733691",
+      "source": "文本对话",
+      "dataset_name": "孟子",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "slot_filling",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0129",
+      "pair_id": "2735082",
+      "source": "文本对话",
+      "dataset_name": "朴通事",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0131",
+      "pair_id": "2678934",
+      "source": "文本对话",
+      "dataset_name": "雷雨",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0133",
+      "pair_id": "2724163",
+      "source": "文本对话",
+      "dataset_name": "清平山堂话本",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0136",
+      "pair_id": "2700536",
+      "source": "文本对话",
+      "dataset_name": "水浒传",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "slot_filling",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0137",
+      "pair_id": "2734311",
+      "source": "文本对话",
+      "dataset_name": "老乞大",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "slot_filling",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0139",
+      "pair_id": "2751387",
+      "source": "日常对话",
+      "dataset_name": "chatterbot-1k",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0141",
+      "pair_id": "2723494",
+      "source": "文本对话",
+      "dataset_name": "唐传奇",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0143",
+      "pair_id": "2686440",
+      "source": "文本对话",
+      "dataset_name": "红楼梦",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0144",
+      "pair_id": "2734246",
+      "source": "文本对话",
+      "dataset_name": "论语",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "slot_filling",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0148",
+      "pair_id": "2730625",
+      "source": "文本对话",
+      "dataset_name": "朱子语类",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0149",
+      "pair_id": "2915123",
+      "source": "网络回帖",
+      "dataset_name": "tieba-305w",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0150",
+      "pair_id": "2735985",
+      "source": "文本对话",
+      "dataset_name": "世说新语",
+      "sample_stratum": "rule_negative_random",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer",
+        "analogy"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0153",
+      "pair_id": "2971567",
+      "source": "影视对白",
+      "dataset_name": "subtitle-useless",
+      "sample_stratum": "hard_negative_or_boundary",
+      "risk_type": [
+        "semantic_selection",
+        "slot_filling",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0154",
+      "pair_id": "2736359",
+      "source": "文本对话",
+      "dataset_name": "世说新语",
+      "sample_stratum": "hard_negative_or_boundary",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0159",
+      "pair_id": "2735303",
+      "source": "文本对话",
+      "dataset_name": "朴通事",
+      "sample_stratum": "hard_negative_or_boundary",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0161",
+      "pair_id": "2705340",
+      "source": "文本对话",
+      "dataset_name": "水浒传",
+      "sample_stratum": "hard_negative_or_boundary",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0163",
+      "pair_id": "2751288",
+      "source": "日常对话",
+      "dataset_name": "chatterbot-1k",
+      "sample_stratum": "hard_negative_or_boundary",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0164",
+      "pair_id": "2724401",
+      "source": "文本对话",
+      "dataset_name": "清平山堂话本",
+      "sample_stratum": "hard_negative_or_boundary",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0168",
+      "pair_id": "2688208",
+      "source": "文本对话",
+      "dataset_name": "红楼梦",
+      "sample_stratum": "hard_negative_or_boundary",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0182",
+      "pair_id": "2722912",
+      "source": "文本对话",
+      "dataset_name": "骆驼祥子",
+      "sample_stratum": "hard_negative_or_boundary",
+      "risk_type": [
+        "semantic_selection",
+        "slot_filling",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0185",
+      "pair_id": "2734249",
+      "source": "文本对话",
+      "dataset_name": "论语",
+      "sample_stratum": "hard_negative_or_boundary",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0205",
+      "pair_id": "2730840",
+      "source": "文本对话",
+      "dataset_name": "朱子语类",
+      "sample_stratum": "hard_negative_or_boundary",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0206",
+      "pair_id": "2722902",
+      "source": "文本对话",
+      "dataset_name": "骆驼祥子",
+      "sample_stratum": "hard_negative_or_boundary",
+      "risk_type": [
+        "semantic_selection",
+        "slot_filling",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0207",
+      "pair_id": "2718476",
+      "source": "文本对话",
+      "dataset_name": "平凡的世界",
+      "sample_stratum": "hard_negative_or_boundary",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0211",
+      "pair_id": "2743169",
+      "source": "影视对白",
+      "dataset_name": "subtitle-useless",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0212",
+      "pair_id": "2693639",
+      "source": "日常对话",
+      "dataset_name": "青云语料",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0214",
+      "pair_id": "2785425",
+      "source": "网络回帖",
+      "dataset_name": "贴吧回帖",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0215",
+      "pair_id": "2694027",
+      "source": "访谈语料",
+      "dataset_name": "china_interview",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0216",
+      "pair_id": "2951012",
+      "source": "日常对话",
+      "dataset_name": "douban-multiturn-100w",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0217",
+      "pair_id": "2734305",
+      "source": "文本对话",
+      "dataset_name": "老乞大",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0219",
+      "pair_id": "2735511",
+      "source": "文本对话",
+      "dataset_name": "世说新语",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0220",
+      "pair_id": "2733787",
+      "source": "文本对话",
+      "dataset_name": "孟子",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "analogy"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0223",
+      "pair_id": "2734218",
+      "source": "文本对话",
+      "dataset_name": "论语",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0224",
+      "pair_id": "2724233",
+      "source": "文本对话",
+      "dataset_name": "清平山堂话本",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0226",
+      "pair_id": "2703501",
+      "source": "文本对话",
+      "dataset_name": "水浒传",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0227",
+      "pair_id": "2678316",
+      "source": "文本对话",
+      "dataset_name": "雷雨",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0228",
+      "pair_id": "2723437",
+      "source": "文本对话",
+      "dataset_name": "唐传奇",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "slot_filling",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0229",
+      "pair_id": "2734922",
+      "source": "文本对话",
+      "dataset_name": "朴通事",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0230",
+      "pair_id": "2722009",
+      "source": "文本对话",
+      "dataset_name": "平凡的世界",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0231",
+      "pair_id": "2714006",
+      "source": "文本对话",
+      "dataset_name": "西游记",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0232",
+      "pair_id": "2722565",
+      "source": "文本对话",
+      "dataset_name": "骆驼祥子",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0234",
+      "pair_id": "2753660",
+      "source": "网络回帖",
+      "dataset_name": "tieba-305w",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0235",
+      "pair_id": "3041751",
+      "source": "影视对白",
+      "dataset_name": "subtitle-useless",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0237",
+      "pair_id": "2728842",
+      "source": "文本对话",
+      "dataset_name": "朱子语类",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0238",
+      "pair_id": "2754833",
+      "source": "网络回帖",
+      "dataset_name": "贴吧回帖",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer",
+        "analogy"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0239",
+      "pair_id": "2693906",
+      "source": "访谈语料",
+      "dataset_name": "china_interview",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0244",
+      "pair_id": "2734050",
+      "source": "文本对话",
+      "dataset_name": "孟子",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0245",
+      "pair_id": "2691938",
+      "source": "文本对话",
+      "dataset_name": "红楼梦",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0246",
+      "pair_id": "3066973",
+      "source": "日常对话",
+      "dataset_name": "chatterbot",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0247",
+      "pair_id": "2734109",
+      "source": "文本对话",
+      "dataset_name": "论语",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0250",
+      "pair_id": "2705383",
+      "source": "文本对话",
+      "dataset_name": "水浒传",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0251",
+      "pair_id": "2677873",
+      "source": "文本对话",
+      "dataset_name": "雷雨",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0252",
+      "pair_id": "2723327",
+      "source": "文本对话",
+      "dataset_name": "唐传奇",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0253",
+      "pair_id": "2735118",
+      "source": "文本对话",
+      "dataset_name": "朴通事",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0254",
+      "pair_id": "2718266",
+      "source": "文本对话",
+      "dataset_name": "平凡的世界",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0255",
+      "pair_id": "2708589",
+      "source": "文本对话",
+      "dataset_name": "西游记",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "slot_filling",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0256",
+      "pair_id": "2723031",
+      "source": "文本对话",
+      "dataset_name": "骆驼祥子",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0259",
+      "pair_id": "2757085",
+      "source": "影视对白",
+      "dataset_name": "subtitle-useless",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0260",
+      "pair_id": "2725898",
+      "source": "日常对话",
+      "dataset_name": "青云语料",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0261",
+      "pair_id": "2733378",
+      "source": "文本对话",
+      "dataset_name": "朱子语类",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "slot_filling",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0263",
+      "pair_id": "2889358",
+      "source": "日常对话",
+      "dataset_name": "douban-multiturn-100w",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0265",
+      "pair_id": "2736207",
+      "source": "文本对话",
+      "dataset_name": "世说新语",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0266",
+      "pair_id": "2733965",
+      "source": "文本对话",
+      "dataset_name": "孟子",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0268",
+      "pair_id": "2734137",
+      "source": "文本对话",
+      "dataset_name": "论语",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0269",
+      "pair_id": "2724646",
+      "source": "文本对话",
+      "dataset_name": "清平山堂话本",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0270",
+      "pair_id": "2750639",
+      "source": "日常对话",
+      "dataset_name": "qingyun-11w",
+      "sample_stratum": "potential_false_negative",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0279",
+      "pair_id": "2765359",
+      "source": "影视对白",
+      "dataset_name": "subtitle-useless",
+      "sample_stratum": "analogy_or_parallel_candidate",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer",
+        "analogy"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0282",
+      "pair_id": "2724173",
+      "source": "文本对话",
+      "dataset_name": "清平山堂话本",
+      "sample_stratum": "analogy_or_parallel_candidate",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0285",
+      "pair_id": "2735911",
+      "source": "文本对话",
+      "dataset_name": "世说新语",
+      "sample_stratum": "analogy_or_parallel_candidate",
+      "risk_type": [
+        "semantic_selection",
+        "short_answer"
+      ],
+      "note": ""
+    },
+    {
+      "annotation_id": "F300V1-0293",
+      "pair_id": "2679316",
+      "source": "文本对话",
+      "dataset_name": "雷雨",
+      "sample_stratum": "analogy_or_parallel_candidate",
+      "risk_type": [
+        "semantic_selection",
+        "demonstrative_or_reference"
+      ],
+      "note": ""
+    }
+  ],
+  "question_response_false_positive_count": 17,
+  "question_response_false_positives": [
+    "F300V1-0004",
+    "F300V1-0011",
+    "F300V1-0022",
+    "F300V1-0029",
+    "F300V1-0035",
+    "F300V1-0062",
+    "F300V1-0064",
+    "F300V1-0066",
+    "F300V1-0070",
+    "F300V1-0071",
+    "F300V1-0078",
+    "F300V1-0090",
+    "F300V1-0156",
+    "F300V1-0179",
+    "F300V1-0201",
+    "F300V1-0278",
+    "F300V1-0294"
+  ],
+  "false_negative_type_counts": {
+    "semantic_selection": 97,
+    "demonstrative_or_reference": 62,
+    "short_answer": 68,
+    "slot_filling": 12,
+    "analogy": 6
+  },
+  "conclusion": "规则 precision 较高，但 recall 不足，主要漏掉隐性承接类型。"
+}

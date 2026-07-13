@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "project": "dialogue-syntax-bert",
+  "updated_at": "2026-07-13",
+  "current_phase": "phase_0_reproducibility_stabilization",
+  "production_database": {
+    "path": "D:\\现代汉语对话语料库\\corpus.db",
+    "access": "sqlite_uri_mode_ro_only",
+    "last_observed_mtime": "2026-05-30T20:42:55.072170",
+    "last_observed_counts": {
+      "corpus_entries": 147626,
+      "dialogue_turns": 594554,
+      "dialogue_pairs": 447054
+    }
+  },
+  "local_model": {
+    "path": "D:\\hf_models\\hfl_chinese_macbert_base",
+    "role": "offline_pair_classifier_and_candidate_shadow_scorer",
+    "weights_tracked_in_git": false
+  },
+  "reproducibility_snapshot": {
+    "version": "frozen_v1",
+    "root": "experiments/dialogue_syntax_bert/reproducibility/frozen_v1",
+    "manifest": "experiments/dialogue_syntax_bert/reproducibility/frozen_v1/MANIFEST.sha256.json",
+    "source_artifact_set": "formal_300_v1"
+  },
+  "pair_gold": {
+    "rows": 300,
+    "labels": {
+      "yes": 228,
+      "no": 58,
+      "uncertain": 14
+    },
+    "binary_rows": 286,
+    "splits": {
+      "train": 200,
+      "dev": 43,
+      "test": 43
+    },
+    "test_role": "historical_inspected_test_not_confirmatory_holdout"
+  },
+  "historical_metrics": {
+    "rule_test_macro_f1": 0.6416666666666666,
+    "rule_test_balanced_accuracy": 0.7532679738562091,
+    "macbert_multiseed_test_macro_f1_mean": 0.7453407342338084,
+    "macbert_multiseed_test_macro_f1_std": 0.047292812285261804,
+    "macbert_multiseed_test_balanced_accuracy_mean": 0.8029411764705883,
+    "recommended_hybrid": "rule_priority_with_bert_recall",
+    "recommended_hybrid_test_macro_f1": 0.7794871794871794,
+    "recommended_hybrid_test_balanced_accuracy": 0.815359477124183
+  },
+  "column_gold": {
+    "positive_pairs": 50,
+    "all_rows": 151,
+    "active_rows": 135,
+    "bert_used_to_create_gold": false
+  },
+  "column_historical_metrics": {
+    "rule_v1_exact_f1": 0.2079207920792079,
+    "rule_v1_relaxed_f1": 0.48514851485148514,
+    "candidate_pool_relaxed_f1": 0.4975609756097561,
+    "candidate_pool_core_recall": 0.31313131313131315,
+    "best_frozen_bert_filter": "rule_pool_no_filter"
+  },
+  "gates": {
+    "phase_0_reproducibility": "in_progress",
+    "pair_external_validation": "not_started",
+    "column_expansion": "not_started",
+    "website_offline_wrapper": "blocked_by_pair_external_validation",
+    "website_batch_shadow": "blocked_by_offline_wrapper",
+    "website_admin_display": "blocked_by_batch_shadow_review",
+    "website_user_visible_influence": "blocked_by_confirmatory_evidence_and_explicit_authorization"
+  }
+}

@@ -1,0 +1,138 @@
+{
+  "baseline": "majority_yes",
+  "trained_model": false,
+  "runs_bert": false,
+  "train_majority_class": "yes",
+  "train_distribution": {
+    "yes": 160,
+    "no": 40
+  },
+  "prediction_rule": "predict yes for every row",
+  "metrics": {
+    "train": {
+      "confusion_matrix": {
+        "tp": 160,
+        "fp": 40,
+        "fn": 0,
+        "tn": 0
+      },
+      "support": {
+        "yes": 160,
+        "no": 40,
+        "total": 200
+      },
+      "accuracy": 0.8,
+      "positive_class": {
+        "precision": 0.8,
+        "recall": 1,
+        "f1": 0.888888888888889
+      },
+      "no_class": {
+        "precision": 0,
+        "recall": 0,
+        "f1": 0
+      },
+      "macro": {
+        "precision": 0.4,
+        "recall": 0.5,
+        "f1": 0.4444444444444445
+      },
+      "weighted_f1": 0.7111111111111111,
+      "balanced_accuracy": 0.5
+    },
+    "dev": {
+      "confusion_matrix": {
+        "tp": 34,
+        "fp": 9,
+        "fn": 0,
+        "tn": 0
+      },
+      "support": {
+        "yes": 34,
+        "no": 9,
+        "total": 43
+      },
+      "accuracy": 0.7906976744186046,
+      "positive_class": {
+        "precision": 0.7906976744186046,
+        "recall": 1,
+        "f1": 0.8831168831168831
+      },
+      "no_class": {
+        "precision": 0,
+        "recall": 0,
+        "f1": 0
+      },
+      "macro": {
+        "precision": 0.3953488372093023,
+        "recall": 0.5,
+        "f1": 0.44155844155844154
+      },
+      "weighted_f1": 0.6982784657203261,
+      "balanced_accuracy": 0.5
+    },
+    "test": {
+      "confusion_matrix": {
+        "tp": 34,
+        "fp": 9,
+        "fn": 0,
+        "tn": 0
+      },
+      "support": {
+        "yes": 34,
+        "no": 9,
+        "total": 43
+      },
+      "accuracy": 0.7906976744186046,
+      "positive_class": {
+        "precision": 0.7906976744186046,
+        "recall": 1,
+        "f1": 0.8831168831168831
+      },
+      "no_class": {
+        "precision": 0,
+        "recall": 0,
+        "f1": 0
+      },
+      "macro": {
+        "precision": 0.3953488372093023,
+        "recall": 0.5,
+        "f1": 0.44155844155844154
+      },
+      "weighted_f1": 0.6982784657203261,
+      "balanced_accuracy": 0.5
+    },
+    "full": {
+      "confusion_matrix": {
+        "tp": 228,
+        "fp": 58,
+        "fn": 0,
+        "tn": 0
+      },
+      "support": {
+        "yes": 228,
+        "no": 58,
+        "total": 286
+      },
+      "accuracy": 0.7972027972027972,
+      "positive_class": {
+        "precision": 0.7972027972027972,
+        "recall": 1,
+        "f1": 0.88715953307393
+      },
+      "no_class": {
+        "precision": 0,
+        "recall": 0,
+        "f1": 0
+      },
+      "macro": {
+        "precision": 0.3986013986013986,
+        "recall": 0.5,
+        "f1": 0.443579766536965
+      },
+      "weighted_f1": 0.7072460613316646,
+      "balanced_accuracy": 0.5
+    }
+  },
+  "note": "Majority baseline is intentionally simple and exposes class-imbalance effects."
+}
