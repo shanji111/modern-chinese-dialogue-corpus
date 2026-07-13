@@ -106,6 +106,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--overlap-rate", type=float, default=0.30)
     parser.add_argument("--max-text-chars", type=int, default=260)
     parser.add_argument("--max-per-dataset", type=int, default=80)
+    parser.add_argument(
+        "--exclude-source-contains",
+        action="append",
+        default=[],
+        help="Exclude rows whose source contains any supplied substring; repeatable.",
+    )
+    parser.add_argument(
+        "--selection-version",
+        default="external_validation_v1",
+        help="Version label written to the manifest.",
+    )
     parser.add_argument("--seed", type=int, default=20260713)
     return parser.parse_args()
 
@@ -313,6 +324,9 @@ def main() -> int:
     for sqlite_row in conn.execute(query, (args.max_text_chars, args.max_text_chars)):
         scanned += 1
         row = dict(sqlite_row)
+        source_text = str(row.get("source") or "")
+        if any(pattern and pattern in source_text for pattern in args.exclude_source_contains):
+            continue
         pair_id = int(row["pair_id"])
         pair_hash = normalized_pair_hash(row["turn_a"], row["turn_b"])
         group_key = conversation_group_key(row["dataset_name"], row["conversation_key"])
@@ -388,14 +402,24 @@ def main() -> int:
         for column in ANNOTATION_COLUMNS:
             row[column] = ""
 
+    audit_subset_filename = (
+        "development_ai_audit_subset.csv"
+        if "ai_exploratory" in args.selection_version
+        else "development_overlap_annotator_b_blind.csv"
+    )
+    holdout_audit_subset_filename = (
+        "external_holdout_ai_audit_subset.csv"
+        if "ai_exploratory" in args.selection_version
+        else "external_holdout_overlap_annotator_b_blind.csv"
+    )
     public_files = {
         "development_annotation_blind.csv": (development, BLIND_COLUMNS),
-        "development_overlap_annotator_b_blind.csv": (
+        audit_subset_filename: (
             [row for row in development if str(row["annotation_id"]) in development_overlap_ids],
             BLIND_COLUMNS,
         ),
         "external_holdout_annotation_blind.csv": (holdout, BLIND_COLUMNS),
-        "external_holdout_overlap_annotator_b_blind.csv": (
+        holdout_audit_subset_filename: (
             [row for row in holdout if str(row["annotation_id"]) in holdout_overlap_ids],
             BLIND_COLUMNS,
         ),
@@ -425,7 +449,7 @@ def main() -> int:
     }
     manifest = {
         "schema_version": 1,
-        "selection_version": "external_validation_v1",
+        "selection_version": args.selection_version,
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "sampling_seed": args.seed,
         "database": {
@@ -452,6 +476,7 @@ def main() -> int:
             "dataset_counts": dict(sorted(dataset_counts.items())),
             "max_per_dataset": args.max_per_dataset,
             "max_per_conversation_group": 1,
+            "excluded_source_substrings": list(args.exclude_source_contains),
         },
         "partitions": {
             "target_holdout_size": args.holdout_size,
@@ -468,13 +493,24 @@ def main() -> int:
             "overlap_rate_requested": args.overlap_rate,
         },
         "public_files": public_hashes,
+        "audit_subset_files": {
+            "development": audit_subset_filename,
+            "external_holdout": holdout_audit_subset_filename,
+            "purpose": (
+                "AI second-pass audit subset; not an independent human overlap"
+                if "ai_exploratory" in args.selection_version
+                else "independent annotator overlap handoff"
+            ),
+        },
         "private_master": {
             "path": str(args.private_output_dir / "master_rule_key_private.csv"),
             "sha256": file_sha256(args.private_output_dir / "master_rule_key_private.csv"),
             "must_not_be_shown_to_annotators": True,
         },
         "labels_present": False,
-        "holdout_labels_sealed": True,
+        "exploratory_only": "ai_exploratory" in args.selection_version,
+        "ai_labels_are_confirmatory": False,
+        "holdout_labels_sealed": "ai_exploratory" not in args.selection_version,
     }
     write_json_new(args.output_dir / "selection_manifest.json", manifest)
     print(

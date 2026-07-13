@@ -1,0 +1,172 @@
+{
+  "schema_version": 1,
+  "selection_version": "external_validation_v2_ai_exploratory",
+  "created_at_utc": "2026-07-13T13:04:31.597454+00:00",
+  "sampling_seed": 20260713,
+  "database": {
+    "path_recorded_for_provenance": "D:\\现代汉语对话语料库\\corpus.db",
+    "opened_read_only": true,
+    "size_bytes": 749699072,
+    "mtime": "2026-05-30T12:42:55.072170+00:00",
+    "dialogue_pairs": 447054
+  },
+  "exclusions": {
+    "existing_gold_rows": 300,
+    "existing_pair_ids": 300,
+    "existing_pair_hashes": 300,
+    "existing_conversation_groups": 294,
+    "candidate_rows_excluded_by_existing_gold_or_group": 1083
+  },
+  "sampling": {
+    "rows_scanned": 445780,
+    "sample_size": 800,
+    "stratum_targets": {
+      "rule_positive": 240,
+      "rule_negative_random": 160,
+      "hard_negative_or_boundary": 160,
+      "potential_false_negative": 160,
+      "analogy_or_parallel_candidate": 80
+    },
+    "stratum_counts": {
+      "hard_negative_or_boundary": 160,
+      "rule_negative_random": 160,
+      "rule_positive": 240,
+      "potential_false_negative": 160,
+      "analogy_or_parallel_candidate": 80
+    },
+    "candidate_counts": {
+      "rule_negative_random": 194112,
+      "hard_negative_or_boundary": 170000,
+      "potential_false_negative": 178288,
+      "rule_positive": 241476,
+      "analogy_or_parallel_candidate": 118634
+    },
+    "source_counts": {
+      "日常对话": 183,
+      "文本对话": 518,
+      "影视对白": 40,
+      "访谈语料": 59
+    },
+    "dataset_counts": {
+      "chatterbot": 30,
+      "chatterbot-1k": 39,
+      "china_interview": 15,
+      "china_live": 13,
+      "douban-multiturn-100w": 39,
+      "mfa_press": 31,
+      "qingyun-11w": 39,
+      "subtitle-useless": 40,
+      "世说新语": 38,
+      "唐传奇": 37,
+      "孟子": 38,
+      "平凡的世界": 39,
+      "朱子语类": 41,
+      "朴通事": 37,
+      "水浒传": 39,
+      "清平山堂话本": 36,
+      "红楼梦": 40,
+      "老乞大": 25,
+      "西游记": 40,
+      "论语": 35,
+      "雷雨": 38,
+      "青云语料": 36,
+      "骆驼祥子": 35
+    },
+    "max_per_dataset": 80,
+    "max_per_conversation_group": 1,
+    "excluded_source_substrings": [
+      "网络"
+    ]
+  },
+  "partitions": {
+    "target_holdout_size": 200,
+    "counts": {
+      "external_holdout": 200,
+      "development": 600
+    },
+    "dataset_disjoint": true,
+    "datasets": {
+      "development": [
+        "china_live",
+        "douban-multiturn-100w",
+        "mfa_press",
+        "qingyun-11w",
+        "世说新语",
+        "唐传奇",
+        "孟子",
+        "平凡的世界",
+        "朱子语类",
+        "朴通事",
+        "水浒传",
+        "老乞大",
+        "西游记",
+        "论语",
+        "雷雨",
+        "青云语料",
+        "骆驼祥子"
+      ],
+      "external_holdout": [
+        "chatterbot",
+        "chatterbot-1k",
+        "china_interview",
+        "subtitle-useless",
+        "清平山堂话本",
+        "红楼梦"
+      ]
+    },
+    "source_counts": {
+      "development": {
+        "文本对话": 442,
+        "访谈语料": 44,
+        "日常对话": 114
+      },
+      "external_holdout": {
+        "日常对话": 69,
+        "影视对白": 40,
+        "文本对话": 76,
+        "访谈语料": 15
+      }
+    },
+    "external_holdout_covers_all_selected_sources": true,
+    "development_double_annotation_overlap": 180,
+    "external_holdout_double_annotation_overlap": 60,
+    "total_double_annotation_overlap": 240,
+    "overlap_rate_requested": 0.3
+  },
+  "public_files": {
+    "development_annotation_blind.csv": {
+      "sha256": "b47cbcc8179317f0d3d5fb423bf273dfe060fba55e034d4569c5866637091ec9",
+      "size_bytes": 140217
+    },
+    "development_ai_audit_subset.csv": {
+      "sha256": "b88a67bc9e8df56334617a59190f77271e1bdbc320bdd9ce9093c7bc73dda29b",
+      "size_bytes": 40839
+    },
+    "external_holdout_annotation_blind.csv": {
+      "sha256": "275319d98e74fb7d37d56adb8d456a30bb3252274d8b8c61ac0303e6905413ae",
+      "size_bytes": 43470
+    },
+    "external_holdout_ai_audit_subset.csv": {
+      "sha256": "e8965b953fc21e5bf48ce43e52d5283f1f71a2a942dcbf81a33b62dd23ecc571",
+      "size_bytes": 12759
+    },
+    "selection_key.csv": {
+      "sha256": "8067d98ea28a67aba4eba30b58fc2b93360525d8f21efca4c1a447cca2fd1890",
+      "size_bytes": 150862
+    }
+  },
+  "private_master": {
+    "path": "experiments\\dialogue_syntax_bert\\artifacts\\external_validation_v2_ai_exploratory_private\\master_rule_key_private.csv",
+    "sha256": "fa90b1c622a51869f947ad6b1102a8e17a92c768cbcec37660ad4be398b1c431",
+    "must_not_be_shown_to_annotators": true
+  },
+  "audit_subset_files": {
+    "development": "development_ai_audit_subset.csv",
+    "external_holdout": "external_holdout_ai_audit_subset.csv",
+    "purpose": "AI second-pass audit subset; not an independent human overlap"
+  },
+  "labels_present": false,
+  "exploratory_only": true,
+  "ai_labels_are_confirmatory": false,
+  "holdout_labels_sealed": false
+}

@@ -132,9 +132,17 @@ def main() -> int:
     )
 
     external = registry.get("external_validation_selection")
+    ai_route = registry.get("ai_exploration")
+    if ai_route:
+        for field in ("protocol", "prompt_path", "validator"):
+            path = root / ai_route[field]
+            record(f"ai_route_artifact:{field}", path.is_file(), str(path))
+        record("ai_route_not_gold", ai_route.get("labels_are_gold") is False, ai_route.get("labels_are_gold"))
+        record("ai_route_not_confirmatory", ai_route.get("confirmatory_use_authorized") is False, ai_route.get("confirmatory_use_authorized"))
     if external:
         external_root = root / external["root"]
         external_manifest = json.loads((root / external["manifest"]).read_text(encoding="utf-8"))
+        record("external_selection_version", external_manifest.get("selection_version") == external["version"], external_manifest.get("selection_version"))
         for filename, expected in external_manifest["public_files"].items():
             path = external_root / filename
             passed = path.is_file() and path.stat().st_size == expected["size_bytes"] and sha256(path) == expected["sha256"]
@@ -156,6 +164,14 @@ def main() -> int:
         all_sources = {row["source"] for row in selection}
         holdout_sources = {row["source"] for row in selection if row["confirmatory_partition"] == "external_holdout"}
         record("external_holdout_source_coverage", holdout_sources == all_sources, sorted(all_sources - holdout_sources))
+        excluded_source_substrings = external.get("excluded_source_substrings", [])
+        excluded_hits = [row["source"] for row in selection if any(pattern and pattern in row["source"] for pattern in excluded_source_substrings)]
+        record("external_excluded_source_substrings", not excluded_hits, excluded_hits[:10])
+        record(
+            "external_manifest_excluded_source_substrings",
+            set(external_manifest.get("sampling", {}).get("excluded_source_substrings", [])) >= set(excluded_source_substrings),
+            external_manifest.get("sampling", {}).get("excluded_source_substrings", []),
+        )
 
         old_pair_ids = {row["pair_id"] for row in pair_gold}
         old_pair_hashes = {normalized_pair_hash_for_check(row["turn_a"], row["turn_b"]) for row in pair_gold}
@@ -176,9 +192,16 @@ def main() -> int:
             record(f"external_labels_blank:{name}", labels_blank, len(rows))
         key_ids = {row["annotation_id"] for row in selection}
         record("external_primary_packets_match_key", primary_ids["development"] | primary_ids["external_holdout"] == key_ids, "")
+        audit_files = external.get(
+            "audit_subset_files",
+            {
+                "development": "development_overlap_annotator_b_blind.csv",
+                "external_holdout": "external_holdout_overlap_annotator_b_blind.csv",
+            },
+        )
         for name, filename, expected_count in (
-            ("development", "development_overlap_annotator_b_blind.csv", external["development_overlap_rows"]),
-            ("external_holdout", "external_holdout_overlap_annotator_b_blind.csv", external["holdout_overlap_rows"]),
+            ("development", audit_files["development"], external["development_overlap_rows"]),
+            ("external_holdout", audit_files["external_holdout"], external["holdout_overlap_rows"]),
         ):
             rows = read_csv(external_root / filename)
             ids = {row["annotation_id"] for row in rows}
@@ -186,6 +209,24 @@ def main() -> int:
             record(f"external_overlap_count:{name}", len(rows) == expected_count, len(rows))
             record(f"external_overlap_subset:{name}", ids <= primary_ids[name], sorted(ids - primary_ids[name])[:10])
             record(f"external_overlap_labels_blank:{name}", labels_blank, len(rows))
+
+    network = registry.get("network_async_stress")
+    if network:
+        network_root = root / network["root"]
+        network_manifest = json.loads((root / network["manifest"]).read_text(encoding="utf-8"))
+        record("network_stress_exploratory_only", network_manifest.get("exploratory_only") is True, network_manifest.get("exploratory_only"))
+        record("network_stress_not_confirmatory", network_manifest.get("not_a_confirmatory_holdout") is True, network_manifest.get("not_a_confirmatory_holdout"))
+        packet_path = network_root / network_manifest["public_file"]["path"]
+        packet_hash = network_manifest["public_file"]["sha256"]
+        record("network_stress_packet_hash", packet_path.is_file() and sha256(packet_path) == packet_hash, packet_hash)
+        stress_rows = read_csv(packet_path)
+        record("network_stress_row_count", len(stress_rows) == network["rows"], len(stress_rows))
+        record("network_stress_source_profile", all("网络" in row.get("source", "") for row in stress_rows), sorted({row.get("source", "") for row in stress_rows}))
+        record(
+            "network_stress_labels_blank",
+            all(not row.get(field, "").strip() for row in stress_rows for field in external["annotation_fields"]),
+            len(stress_rows),
+        )
 
     if not args.skip_git:
         untracked = subprocess.run(

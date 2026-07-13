@@ -15,14 +15,16 @@ description: Run, audit, freeze, and advance the modern-Chinese dialogue-syntax 
 ## Route the task
 
 - For freezing, hashing, reproduction, or state recovery, read `references/artifact-policy.md` and run the bundled state checker.
-- For sampling, annotation packets, agreement, adjudication, or external holdout work, read `references/annotation-protocol.md`.
+- For sampling, confirmatory human annotation packets, agreement, adjudication, or external holdout work, read `references/annotation-protocol.md`.
+- For AI-assisted exploratory annotation, read `references/ai-exploration-protocol.md` and validate every run with `scripts/validate_ai_exploration_annotations.py`.
 - For column generation or website work, read `references/stage-gates.md` and stop if the prerequisite gate is not passed.
 
 ## Execute safely
 
 - Create new versioned outputs; never overwrite frozen gold or completed human annotation.
 - Keep `pair_id`, `normalized_pair_hash`, and `conversation_group_key` disjoint across splits.
-- Tune only on training/development data. Keep confirmatory holdouts sealed.
+- Tune only on training/development data. Keep any confirmatory holdout sealed; an AI exploratory holdout is descriptive and must not be used for tuning.
+- Preserve model, prompt, run, confidence, and review-status provenance on every AI row. AI drafts are never gold and never count as independent-human agreement.
 - Preserve rules as the interpretable path. Use BERT for pair scoring or candidate keep/filter unless a later approved experiment changes the scope.
 - Do not edit website routes, ranking, deployment, migrations, or production data during offline stages.
 
@@ -39,6 +41,13 @@ For a new double-annotation batch, run the agreement script before adjudication:
 ```powershell
 python -B .\.agents\skills\dialogue-syntax-experiment\scripts\score_annotation_agreement.py `
   --annotator-a <a.csv> --annotator-b <b.csv> --output-dir <report-dir>
+```
+
+For an AI exploratory batch, run the provenance/schema validator instead:
+
+```powershell
+python -B .\.agents\skills\dialogue-syntax-experiment\scripts\validate_ai_exploration_annotations.py `
+  --packet <packet.csv> --annotations <ai_annotations.csv> --report <report.json>
 ```
 
 Update both state files with the exact version, hashes, metrics, limitations, and next gate. Report failures as failures; do not silently relax checks or bless changed hashes.

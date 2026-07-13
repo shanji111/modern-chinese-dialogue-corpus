@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "stress_test_version": "network_async_stress_v1",
+  "source_selection": "65 network rows removed from external_validation_v1 primary selection",
+  "count": 65,
+  "profile": "asynchronous_or_threaded_network_reply",
+  "exploratory_only": true,
+  "not_a_confirmatory_holdout": true,
+  "labels_present": false,
+  "source_counts": {
+    "网络回帖": 65
+  },
+  "public_file": {
+    "path": "network_async_stress_v1_ai_packet.csv",
+    "size_bytes": 22190,
+    "sha256": "fe26252e478b5acf231365fcd81835540e6a8346915d78845c8bd067b18094a9"
+  },
+  "private_key": {
+    "path": "experiments\\dialogue_syntax_bert\\artifacts\\network_async_stress_v1_private\\network_async_stress_v1_private_key.csv",
+    "size_bytes": 23116,
+    "sha256": "c22fccaccd5285f81aab9da66df2b5c8d647dad736e2773394a753c22e288a56",
+    "must_not_be_shown_to_annotators": true
+  },
+  "ai_columns": [
+    "ai_model",
+    "ai_prompt_version",
+    "ai_run_id",
+    "ai_confidence",
+    "ai_review_status"
+  ]
+}

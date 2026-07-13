@@ -2,7 +2,7 @@
   "schema_version": 1,
   "project": "dialogue-syntax-bert",
   "updated_at": "2026-07-13",
-  "current_phase": "phase_1_external_validation_annotation",
+  "current_phase": "phase_1_ai_exploratory_annotation",
   "production_database": {
     "path": "D:\\现代汉语对话语料库\\corpus.db",
     "access": "sqlite_uri_mode_ro_only",
@@ -63,10 +63,10 @@
     "best_frozen_bert_filter": "rule_pool_no_filter"
   },
   "external_validation_selection": {
-    "version": "external_validation_v1",
-    "status": "selection_frozen_unlabeled",
-    "root": "experiments/dialogue_syntax_bert/reproducibility/external_validation_v1_selection",
-    "manifest": "experiments/dialogue_syntax_bert/reproducibility/external_validation_v1_selection/selection_manifest.json",
+    "version": "external_validation_v2_ai_exploratory",
+    "status": "selection_frozen_ai_exploratory_unlabeled",
+    "root": "experiments/dialogue_syntax_bert/reproducibility/external_validation_v2_ai_exploratory",
+    "manifest": "experiments/dialogue_syntax_bert/reproducibility/external_validation_v2_ai_exploratory/selection_manifest.json",
     "sample_size": 800,
     "partition_counts": {
       "development": 600,
@@ -95,13 +95,41 @@
       "uncertainty_reason"
     ],
     "dataset_disjoint_partitions": true,
-    "external_holdout_covers_all_five_selected_sources": true,
+    "external_holdout_covers_all_selected_sources": true,
+    "excluded_source_substrings": ["网络"],
+    "audit_subset_files": {
+      "development": "development_ai_audit_subset.csv",
+      "external_holdout": "external_holdout_ai_audit_subset.csv",
+      "purpose": "AI second-pass audit subset; not an independent human overlap"
+    },
     "labels_present": false,
-    "external_holdout_labels_sealed": true
+    "exploratory_only": true,
+    "ai_labels_are_confirmatory": false,
+    "external_holdout_labels_sealed": false
+  },
+  "network_async_stress": {
+    "version": "network_async_stress_v1",
+    "status": "frozen_ai_exploratory_unlabeled",
+    "root": "experiments/dialogue_syntax_bert/reproducibility/network_async_stress_v1",
+    "manifest": "experiments/dialogue_syntax_bert/reproducibility/network_async_stress_v1/network_async_stress_v1_manifest.json",
+    "rows": 65,
+    "profile": "asynchronous_or_threaded_network_reply",
+    "exploratory_only": true,
+    "not_confirmatory": true,
+    "labels_present": false
+  },
+  "ai_exploration": {
+    "protocol": ".agents/skills/dialogue-syntax-experiment/references/ai-exploration-protocol.md",
+    "prompt_version": "ai_exploration_prompt_v1",
+    "prompt_path": "experiments/dialogue_syntax_bert/ai_exploration_prompt_v1.md",
+    "validator": ".agents/skills/dialogue-syntax-experiment/scripts/validate_ai_exploration_annotations.py",
+    "labels_are_gold": false,
+    "independent_human_agreement_available": false,
+    "confirmatory_use_authorized": false
   },
   "gates": {
     "phase_0_reproducibility": "passed_at_commit_438bf95",
-    "pair_external_validation": "selection_frozen_waiting_for_independent_human_annotation",
+    "pair_external_validation": "ai_exploratory_route_active; no_confirmatory_claim",
     "column_expansion": "not_started",
     "website_offline_wrapper": "blocked_by_pair_external_validation",
     "website_batch_shadow": "blocked_by_offline_wrapper",

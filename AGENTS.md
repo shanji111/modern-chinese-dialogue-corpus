@@ -18,7 +18,8 @@
 - Split by `conversation_group_key`; verify `pair_id`, `normalized_pair_hash`, and `conversation_group_key` are disjoint.
 - Select thresholds and strategies on development data only. Do not use the frozen test set or future external holdout to tune prompts, rules, thresholds, or model choices.
 - Treat the existing 43-row test set as historical evidence because it has been inspected repeatedly. Use a new locked external holdout for the next confirmatory claim.
-- Never describe AI-assisted review as independent human double annotation. Record annotator provenance and calculate agreement before adjudication.
+- Never describe AI-assisted review as independent human double annotation. AI-assisted labels must be named `ai_draft`/`ai_second_pass`, retain model/prompt/run/confidence provenance, and cannot be used as gold or confirmatory truth.
+- Keep asynchronous network replies in a separate stress-test profile; do not pool their metrics with continuous-dialogue syntax metrics.
 - BERT may score sentence pairs or rule-generated candidates. It must not directly create final spans or modify gold at the current stage.
 
 ## Artifact policy

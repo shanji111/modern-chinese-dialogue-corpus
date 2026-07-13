@@ -7,7 +7,7 @@ Updated: 2026-07-13
 - Working branch: `codex/dialogue-syntax-stabilize`
 - Parent experiment branch: `experiment/dialogue-syntax-bert` at `e930c03`
 - Phase 0 commit: `438bf95` (`Stabilize dialogue syntax experiment state`)
-- Current stage: Phase 1, external-validation annotation handoff
+- Current stage: Phase 1, AI-assisted exploratory annotation
 - Production website integration: not started
 - Production database mutation: prohibited
 
@@ -33,20 +33,28 @@ Phase 0 is complete:
 3. the project Skill is valid;
 4. the reproducibility checker passed all historical-state checks.
 
-## Frozen external-validation selection
+The earlier `external_validation_v1_selection` remains frozen for provenance but is superseded for execution because it mixed network replies into the primary packet. Do not distribute it as the current packet.
 
-- Total: 800 new pairs.
-- Development annotation packet: 600 pairs.
-- Dataset-disjoint external holdout: 200 pairs.
-- Independent second-annotator overlap: 180 development pairs and 60 holdout pairs.
+## Frozen external-validation selections
+
+- Primary non-network packet: 800 new pairs.
+- Development packet: 600 pairs.
+- Dataset-disjoint exploratory holdout: 200 pairs.
+- AI second-pass audit subsets: 180 development pairs and 60 holdout pairs; these are not independent human annotations.
 - Strata: 240 rule positive, 160 random rule negative, 160 hard/boundary, 160 potential false negative, 80 analogy/parallel candidates.
-- The external holdout covers daily, text, film/television, interview, and network sources.
+- The primary packet covers daily dialogue, textual dialogue, film/television dialogue, and interview sources. Network replies are excluded.
 - All existing 300 gold pairs, their normalized hashes, and 294 existing conversation groups were excluded.
-- No human labels are present yet. The holdout remains sealed.
+- No labels are present yet. AI outputs must remain exploratory drafts with model, prompt, run, confidence, and review-status provenance.
+
+## Separate network stress profile
+
+- `network_async_stress_v1` contains 65 network-reply rows removed from the superseded v1 primary selection.
+- It is an asynchronous/threaded interaction stress test, not a continuous-dialogue syntax holdout.
+- Report its coverage and error slices separately; never pool its metrics with the primary packet.
 
 ## Required next action
 
-Send the development primary packet to annotator A and the development overlap packet to a genuinely independent annotator B. Neither annotator may see `selection_key.csv`, the private rule key, model outputs, or the other annotator's labels. Run development agreement scoring before adjudication. Filled external-holdout files must remain with a separate custodian and outside Codex until the model, threshold, calibration, and hybrid logic are frozen.
+Run a versioned AI exploratory batch on the development packet using the written AI protocol. Validate the output with `validate_ai_exploration_annotations.py`, then use the 180-row AI audit subset for second-pass disagreement and uncertainty slicing. Do not call this agreement, do not tune on the exploratory holdout, and do not treat AI labels as gold. A genuinely independent human or separately authorized adjudication remains a prerequisite for any confirmatory claim.
 
 ## Integration rule
 
