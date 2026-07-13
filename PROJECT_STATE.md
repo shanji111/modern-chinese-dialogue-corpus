@@ -46,7 +46,7 @@ Phase 0 is complete:
 
 ## Required next action
 
-Send the primary blind packets to annotator A and the overlap packets to a genuinely independent annotator B. Neither annotator may see `selection_key.csv`, the private rule key, model outputs, or the other annotator's labels. Run agreement scoring before adjudication. Do not train or tune on the external holdout.
+Send the development primary packet to annotator A and the development overlap packet to a genuinely independent annotator B. Neither annotator may see `selection_key.csv`, the private rule key, model outputs, or the other annotator's labels. Run development agreement scoring before adjudication. Filled external-holdout files must remain with a separate custodian and outside Codex until the model, threshold, calibration, and hybrid logic are frozen.
 
 ## Integration rule
 

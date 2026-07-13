@@ -9,9 +9,12 @@ Fill:
 - `development_annotation_blind.csv` (600 rows)
 - `external_holdout_annotation_blind.csv` (200 rows)
 
-Return them as new files named:
+Return the development file now as:
 
 - `development_annotator_a_filled.csv`
+
+The holdout may be annotated now only if a separate custodian can keep the filled file outside this repository and outside Codex until the model, threshold, calibration, and hybrid logic are frozen. Name the sealed file:
+
 - `external_holdout_annotator_a_filled.csv`
 
 ## Independent annotator B
@@ -21,9 +24,12 @@ Fill independently:
 - `development_overlap_annotator_b_blind.csv` (180 rows)
 - `external_holdout_overlap_annotator_b_blind.csv` (60 rows)
 
-Return them as new files named:
+Return the development-overlap file now as:
 
 - `development_overlap_annotator_b_filled.csv`
+
+Keep the filled holdout-overlap file with the same custodian and do not upload it yet. Name it:
+
 - `external_holdout_overlap_annotator_b_filled.csv`
 
 ## Allowed values
@@ -42,4 +48,6 @@ Return them as new files named:
 
 ## After both returns
 
-Run agreement scoring before adjudication. Preserve both raw filled files unchanged. Write adjudicated labels to a new versioned file; never overwrite either annotator's file.
+Run agreement scoring on the development files before development adjudication. Preserve both raw filled files unchanged. Write adjudicated development labels to a new versioned file; never overwrite either annotator's file.
+
+Freeze all rule changes, model weights, threshold, probability calibration, and hybrid logic before bringing either filled external-holdout file into the repository or Codex. Then score holdout agreement, adjudicate without changing the model, and run the confirmatory evaluation once.
