@@ -4,7 +4,9 @@ import argparse
 import csv
 import hashlib
 import json
+import re
 import subprocess
+import unicodedata
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -16,6 +18,15 @@ def sha256(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def normalized_pair_hash_for_check(text_a: str, text_b: str) -> str:
+    def normalize(value: str) -> str:
+        normalized = unicodedata.normalize("NFKC", value or "").lower()
+        return re.sub(r"\s+", " ", normalized).strip()
+
+    payload = normalize(text_a) + "\n<PAIR>\n" + normalize(text_b)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def read_csv(path: Path) -> list[dict[str, str]]:
@@ -119,6 +130,62 @@ def main() -> int:
         close_enough(nested(selected, "test", "balanced_accuracy"), historical["recommended_hybrid_test_balanced_accuracy"]),
         nested(selected, "test", "balanced_accuracy"),
     )
+
+    external = registry.get("external_validation_selection")
+    if external:
+        external_root = root / external["root"]
+        external_manifest = json.loads((root / external["manifest"]).read_text(encoding="utf-8"))
+        for filename, expected in external_manifest["public_files"].items():
+            path = external_root / filename
+            passed = path.is_file() and path.stat().st_size == expected["size_bytes"] and sha256(path) == expected["sha256"]
+            record(f"external_sha256:{filename}", passed, expected["sha256"])
+
+        selection = read_csv(external_root / "selection_key.csv")
+        record("external_selection_rows", len(selection) == external["sample_size"], len(selection))
+        for field in ("annotation_id", "pair_id", "normalized_pair_hash", "conversation_group_key"):
+            values = [row[field] for row in selection]
+            record(f"external_unique:{field}", len(values) == len(set(values)), len(set(values)))
+        strata = Counter(row["sample_stratum"] for row in selection)
+        partitions = Counter(row["confirmatory_partition"] for row in selection)
+        record("external_stratum_counts", dict(strata) == external["stratum_counts"], dict(strata))
+        record("external_partition_counts", dict(partitions) == external["partition_counts"], dict(partitions))
+
+        development_datasets = {row["dataset_name"] for row in selection if row["confirmatory_partition"] == "development"}
+        holdout_datasets = {row["dataset_name"] for row in selection if row["confirmatory_partition"] == "external_holdout"}
+        record("external_dataset_disjoint", not (development_datasets & holdout_datasets), sorted(development_datasets & holdout_datasets))
+        all_sources = {row["source"] for row in selection}
+        holdout_sources = {row["source"] for row in selection if row["confirmatory_partition"] == "external_holdout"}
+        record("external_holdout_source_coverage", holdout_sources == all_sources, sorted(all_sources - holdout_sources))
+
+        old_pair_ids = {row["pair_id"] for row in pair_gold}
+        old_pair_hashes = {normalized_pair_hash_for_check(row["turn_a"], row["turn_b"]) for row in pair_gold}
+        old_binary_groups = {row["conversation_group_key"] for row in binary}
+        record("external_excludes_old_pair_ids", not ({row["pair_id"] for row in selection} & old_pair_ids), "")
+        record("external_excludes_old_pair_hashes", not ({row["normalized_pair_hash"] for row in selection} & old_pair_hashes), "")
+        record("external_excludes_old_binary_groups", not ({row["conversation_group_key"] for row in selection} & old_binary_groups), "")
+
+        primary_files = {
+            "development": external_root / "development_annotation_blind.csv",
+            "external_holdout": external_root / "external_holdout_annotation_blind.csv",
+        }
+        primary_ids: dict[str, set[str]] = {}
+        for name, path in primary_files.items():
+            rows = read_csv(path)
+            primary_ids[name] = {row["annotation_id"] for row in rows}
+            labels_blank = all(not row.get(field, "").strip() for row in rows for field in external["annotation_fields"])
+            record(f"external_labels_blank:{name}", labels_blank, len(rows))
+        key_ids = {row["annotation_id"] for row in selection}
+        record("external_primary_packets_match_key", primary_ids["development"] | primary_ids["external_holdout"] == key_ids, "")
+        for name, filename, expected_count in (
+            ("development", "development_overlap_annotator_b_blind.csv", external["development_overlap_rows"]),
+            ("external_holdout", "external_holdout_overlap_annotator_b_blind.csv", external["holdout_overlap_rows"]),
+        ):
+            rows = read_csv(external_root / filename)
+            ids = {row["annotation_id"] for row in rows}
+            labels_blank = all(not row.get(field, "").strip() for row in rows for field in external["annotation_fields"])
+            record(f"external_overlap_count:{name}", len(rows) == expected_count, len(rows))
+            record(f"external_overlap_subset:{name}", ids <= primary_ids[name], sorted(ids - primary_ids[name])[:10])
+            record(f"external_overlap_labels_blank:{name}", labels_blank, len(rows))
 
     if not args.skip_git:
         untracked = subprocess.run(

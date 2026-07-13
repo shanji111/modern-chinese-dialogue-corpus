@@ -2,7 +2,7 @@
   "schema_version": 1,
   "project": "dialogue-syntax-bert",
   "updated_at": "2026-07-13",
-  "current_phase": "phase_0_reproducibility_stabilization",
+  "current_phase": "phase_1_external_validation_annotation",
   "production_database": {
     "path": "D:\\现代汉语对话语料库\\corpus.db",
     "access": "sqlite_uri_mode_ro_only",
@@ -62,9 +62,46 @@
     "candidate_pool_core_recall": 0.31313131313131315,
     "best_frozen_bert_filter": "rule_pool_no_filter"
   },
+  "external_validation_selection": {
+    "version": "external_validation_v1",
+    "status": "selection_frozen_unlabeled",
+    "root": "experiments/dialogue_syntax_bert/reproducibility/external_validation_v1_selection",
+    "manifest": "experiments/dialogue_syntax_bert/reproducibility/external_validation_v1_selection/selection_manifest.json",
+    "sample_size": 800,
+    "partition_counts": {
+      "development": 600,
+      "external_holdout": 200
+    },
+    "stratum_counts": {
+      "rule_positive": 240,
+      "rule_negative_random": 160,
+      "hard_negative_or_boundary": 160,
+      "potential_false_negative": 160,
+      "analogy_or_parallel_candidate": 80
+    },
+    "development_overlap_rows": 180,
+    "holdout_overlap_rows": 60,
+    "annotation_fields": [
+      "resonance_present",
+      "label_reproduction",
+      "label_parallelism",
+      "label_selective_reuse",
+      "label_repair",
+      "label_contrast",
+      "label_analogy_candidate",
+      "evidence_span_a",
+      "evidence_span_b",
+      "annotator_note",
+      "uncertainty_reason"
+    ],
+    "dataset_disjoint_partitions": true,
+    "external_holdout_covers_all_five_selected_sources": true,
+    "labels_present": false,
+    "external_holdout_labels_sealed": true
+  },
   "gates": {
-    "phase_0_reproducibility": "in_progress",
-    "pair_external_validation": "not_started",
+    "phase_0_reproducibility": "passed_at_commit_438bf95",
+    "pair_external_validation": "selection_frozen_waiting_for_independent_human_annotation",
     "column_expansion": "not_started",
     "website_offline_wrapper": "blocked_by_pair_external_validation",
     "website_batch_shadow": "blocked_by_offline_wrapper",

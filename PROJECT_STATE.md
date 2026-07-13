@@ -6,7 +6,8 @@ Updated: 2026-07-13
 
 - Working branch: `codex/dialogue-syntax-stabilize`
 - Parent experiment branch: `experiment/dialogue-syntax-bert` at `e930c03`
-- Current stage: Phase 0, reproducibility stabilization
+- Phase 0 commit: `438bf95` (`Stabilize dialogue syntax experiment state`)
+- Current stage: Phase 1, external-validation annotation handoff
 - Production website integration: not started
 - Production database mutation: prohibited
 
@@ -23,18 +24,29 @@ Updated: 2026-07-13
 
 These are development-history results, not final external-validation claims.
 
-## Active gate
+## Phase 0 result
 
-Phase 0 is complete only when:
+Phase 0 is complete:
 
-1. all experiment scripts required to reproduce the work are tracked;
-2. the compact frozen snapshot and SHA-256 manifest are tracked;
-3. the project-state checker passes;
-4. a clean external-validation protocol and blind annotation tooling exist.
+1. the 31 previously untracked experiment scripts are versioned;
+2. 54 compact frozen artifacts are versioned with SHA-256 hashes;
+3. the project Skill is valid;
+4. the reproducibility checker passed all historical-state checks.
 
-## Next scientific stage
+## Frozen external-validation selection
 
-Create a new source- and dataset-grouped sample that excludes every existing gold pair and conversation group. Freeze the sample before annotation. Use two genuinely independent human annotations for a documented subset, calculate agreement before adjudication, and keep the external holdout sealed until all model and threshold choices are frozen.
+- Total: 800 new pairs.
+- Development annotation packet: 600 pairs.
+- Dataset-disjoint external holdout: 200 pairs.
+- Independent second-annotator overlap: 180 development pairs and 60 holdout pairs.
+- Strata: 240 rule positive, 160 random rule negative, 160 hard/boundary, 160 potential false negative, 80 analogy/parallel candidates.
+- The external holdout covers daily, text, film/television, interview, and network sources.
+- All existing 300 gold pairs, their normalized hashes, and 294 existing conversation groups were excluded.
+- No human labels are present yet. The holdout remains sealed.
+
+## Required next action
+
+Send the primary blind packets to annotator A and the overlap packets to a genuinely independent annotator B. Neither annotator may see `selection_key.csv`, the private rule key, model outputs, or the other annotator's labels. Run agreement scoring before adjudication. Do not train or tune on the external holdout.
 
 ## Integration rule
 
