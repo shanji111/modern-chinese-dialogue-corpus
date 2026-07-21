@@ -217,7 +217,7 @@
 
     /* ========== Diagraph Helpers / API URLs ========== */
     function escapeHtml(value) {
-        return (value || "")
+        return String(value === null || value === undefined ? "" : value)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -257,12 +257,122 @@
     }
 
     /* ========== Diagraph Rendering ========== */
+    const mechanismNames = {
+        reproduction: "重现",
+        parallelism: "平行",
+        selective_reuse: "选择",
+        repair: "修正",
+        contrast: "对比",
+        analogy_candidate: "类比",
+    };
+
+    function columnRangeMembers(columnText, columns) {
+        const parts = String(columnText || "").split("-");
+        const start = columns.indexOf(parts[0]);
+        const end = columns.indexOf(parts[parts.length - 1]);
+        if (start < 0) {
+            return [];
+        }
+        return columns.slice(start, Math.max(start, end) + 1);
+    }
+
+    function buildColumnEvidence(data) {
+        const evidence = new Map();
+        (data.affordances || []).forEach((item) => {
+            columnRangeMembers(item.column, data.columns || []).forEach((column) => {
+                if (!evidence.has(column)) {
+                    evidence.set(column, new Set());
+                }
+                (item.mechanism_keys || []).forEach((key) => evidence.get(column).add(key));
+            });
+        });
+        return evidence;
+    }
+
+    function primaryMechanism(keys) {
+        const ordered = ["reproduction", "parallelism", "selective_reuse", "repair", "contrast", "analogy_candidate"];
+        return ordered.find((key) => keys && keys.has(key)) || "";
+    }
+
+    function renderBertCalibration(data) {
+        const calibration = data.bert_calibration || {};
+        const summary = data.mechanism_summary || [];
+        if (!calibration.available) {
+            return `
+                <section class="diagraph-calibration is-unavailable">
+                    <div>
+                        <div class="diagraph-calibration-title">BERT 辅助校准 <span>旧分类不变</span></div>
+                        <p>当前环境未载入探索模型，纵栏对齐和关系分类继续完全按原规则生成。</p>
+                    </div>
+                    <span class="diagraph-calibration-state">规则模式</span>
+                </section>
+            `;
+        }
+        const cards = summary.map((item) => {
+            const probability = item.bert_probability === null || item.bert_probability === undefined
+                ? 0
+                : Number(item.bert_probability);
+            const percent = Math.round(probability * 100);
+            const stateLabels = {
+                joint: "规则 + BERT",
+                rule: "规则证据",
+                bert_review: "BERT 建议 · 待复核",
+                none: "未触发",
+            };
+            return `
+                <div class="diagraph-mechanism-card state-${escapeHtml(item.support_state || "none")}">
+                    <div class="diagraph-mechanism-head">
+                        <strong>${escapeHtml(item.label || mechanismNames[item.key] || item.key)}</strong>
+                        <span>${escapeHtml(stateLabels[item.support_state] || "未触发")}</span>
+                    </div>
+                    <div class="diagraph-confidence-track" aria-label="BERT 置信度 ${percent}%">
+                        <i style="width:${Math.max(0, Math.min(100, percent))}%"></i>
+                    </div>
+                    <div class="diagraph-mechanism-meta">
+                        <span>BERT ${percent}%</span>
+                        <span>规则证据 ${escapeHtml(item.rule_support || 0)}</span>
+                    </div>
+                </div>
+            `;
+        }).join("");
+        return `
+            <section class="diagraph-calibration">
+                <div class="diagraph-calibration-header">
+                    <div>
+                        <div class="diagraph-calibration-title">BERT 辅助校准 <span>旧分类不变</span></div>
+                        <p>共鸣仍是检索总类；模型只给重现、平行、选择、修正、对比、类比六种旧机制置信度，不自动改判。</p>
+                    </div>
+                    <span class="diagraph-calibration-state">探索模型</span>
+                </div>
+                <div class="diagraph-mechanism-grid">${cards}</div>
+            </section>
+        `;
+    }
+
     function renderDiagraphGrid(data) {
-        const headers = data.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("");
+        const columnEvidence = buildColumnEvidence(data);
+        const headers = data.columns.map((column) => {
+            const keys = columnEvidence.get(column);
+            const mechanism = primaryMechanism(keys);
+            const relationLabel = mechanism ? mechanismNames[mechanism] : "";
+            return `
+                <th class="${mechanism ? `has-relation mechanism-${mechanism}` : ""}">
+                    <span>${escapeHtml(column)}</span>
+                    ${relationLabel ? `<small>${escapeHtml(relationLabel)}</small>` : ""}
+                </th>
+            `;
+        }).join("");
         const rows = (data.grid || []).map((row) => {
             const cells = data.columns.map((column) => {
                 const value = (row.cells || {})[column] || "";
-                return `<td class="${value ? "filled" : ""}">${escapeHtml(value)}</td>`;
+                const keys = columnEvidence.get(column);
+                const mechanism = primaryMechanism(keys);
+                const classes = [
+                    value ? "filled" : "",
+                    mechanism ? "has-relation" : "",
+                    mechanism ? `mechanism-${mechanism}` : "",
+                ].filter(Boolean).join(" ");
+                return `<td class="${classes}">${value ? `<span>${escapeHtml(value)}</span>` : ""}</td>`;
             }).join("");
             return `
                 <tr>
@@ -274,7 +384,13 @@
         }).join("");
         return `
             <section class="diagraph-block">
-                <div class="diagraph-block-title">跨句图谱表</div>
+                <div class="diagraph-block-heading">
+                    <div>
+                        <div class="diagraph-block-title">跨话轮纵栏图谱</div>
+                        <p>同一纵栏表示程序识别到的复现、映射或回应位置；彩色轨道对应下方关系证据。</p>
+                    </div>
+                    <span>${escapeHtml((data.grid || []).length)} 话轮 · ${escapeHtml((data.columns || []).length)} 纵栏</span>
+                </div>
                 <div class="diagraph-table-scroll">
                     <table class="diagraph-grid-table">
                         <thead>
@@ -293,34 +409,38 @@
 
     function renderAffordances(data) {
         const items = data.affordances || [];
-        const rows = items.length ? items.map((item) => `
-            <tr>
-                <td>${escapeHtml(item.column || "")}</td>
-                <td>${escapeHtml(item.mapping || "")}</td>
-                <td>${escapeHtml(item.relation || "")}</td>
-                <td>${escapeHtml(item.description || "")}</td>
-            </tr>
-        `).join("") : `
-            <tr>
-                <td colspan="4">当前窗口未识别出可归纳的结构关系，可结合上下文人工校订。</td>
-            </tr>
-        `;
+        const cards = items.length ? items.map((item) => {
+            const mechanisms = (item.mechanism_keys || []).map((key) => mechanismNames[key] || key);
+            const mappings = String(item.mapping || "").split("：").filter(Boolean);
+            const mappingHtml = mappings.length > 1
+                ? mappings.map((value) => `<span>${escapeHtml(value)}</span>`).join("<b>→</b>")
+                : `<span>${escapeHtml(item.mapping || "未提取")}</span>`;
+            const evidenceLabel = item.evidence_state === "joint" ? "规则 + BERT 联合支持" : "规则证据";
+            return `
+                <article class="diagraph-relation-card evidence-${escapeHtml(item.evidence_state || "rule")}">
+                    <div class="diagraph-relation-topline">
+                        <span class="diagraph-column-badge">纵栏 ${escapeHtml(item.column || "")}</span>
+                        <span class="diagraph-relation-badge">${escapeHtml(item.relation || "待归类")}</span>
+                        <span class="diagraph-evidence-badge">${escapeHtml(evidenceLabel)}</span>
+                    </div>
+                    <div class="diagraph-mapping-flow">${mappingHtml}</div>
+                    <p>${escapeHtml(item.description || "")}</p>
+                    <div class="diagraph-mechanism-tags">
+                        ${mechanisms.map((label) => `<span>${escapeHtml(label)}</span>`).join("")}
+                    </div>
+                </article>
+            `;
+        }).join("") : `<div class="diagraph-empty-evidence">当前窗口未识别出可归纳的结构关系，可结合上下文人工校订。</div>`;
         return `
             <section class="diagraph-block">
-                <div class="diagraph-block-title">结构可供性表</div>
-                <div class="diagraph-table-scroll">
-                    <table class="diagraph-affordance-table">
-                        <thead>
-                            <tr>
-                                <th>纵栏</th>
-                                <th>映射</th>
-                                <th>关系</th>
-                                <th>描述</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rows}</tbody>
-                    </table>
+                <div class="diagraph-block-heading">
+                    <div>
+                        <div class="diagraph-block-title">纵栏关系说明</div>
+                        <p>保留旧版关系名称，并将“纵栏—映射—关系—说明”改成更易读的证据卡。</p>
+                    </div>
+                    <span>${escapeHtml(items.length)} 条关系</span>
                 </div>
+                <div class="diagraph-relation-list">${cards}</div>
             </section>
         `;
     }
@@ -328,6 +448,7 @@
     function renderDiagraphPayload(data) {
         return `
             <div class="diagraph-notice">${escapeHtml(data.notice || "")}</div>
+            ${renderBertCalibration(data)}
             ${renderDiagraphGrid(data)}
             ${renderAffordances(data)}
         `;
@@ -352,6 +473,21 @@
         lines.push(["纵栏", "映射", "关系", "描述"].join("\t"));
         (data.affordances || []).forEach((item) => {
             lines.push([item.column || "", item.mapping || "", item.relation || "", item.description || ""].join("\t"));
+        });
+        lines.push("");
+        lines.push("BERT 辅助校准（旧分类不变）");
+        lines.push((data.bert_calibration || {}).notice || "BERT 未启用，图谱仍按旧规则生成。");
+        lines.push(["机制", "概率", "阈值", "模型建议", "规则证据数"].join("\t"));
+        const summaryByKey = new Map((data.mechanism_summary || []).map((item) => [item.key, item]));
+        ((data.bert_calibration || {}).labels || []).forEach((item) => {
+            const summaryItem = summaryByKey.get(item.key) || {};
+            lines.push([
+                item.label || item.key || "",
+                item.probability === undefined ? "" : item.probability,
+                item.threshold === undefined ? "" : item.threshold,
+                item.suggested ? "是" : "否",
+                summaryItem.rule_support || 0,
+            ].join("\t"));
         });
         return lines.join("\n");
     }

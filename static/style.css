@@ -1899,8 +1899,14 @@ a:hover {
 .resonance-scroll-panel {
     max-height: 70vh;
     overflow-y: auto;
+    overflow-x: hidden;
     padding-right: 4px;
     scroll-behavior: smooth;
+}
+
+.resonance-scroll-panel:has(.diagraph-panel:not([hidden])) {
+    max-height: none;
+    overflow-y: visible;
 }
 
 .resonance-list {
@@ -1910,6 +1916,7 @@ a:hover {
 }
 
 .resonance-result {
+    min-width: 0;
     background: #fff;
     border: 1px solid #d6dce8;
     padding: 12px;
@@ -1966,6 +1973,7 @@ a:hover {
 }
 
 .result-action-links {
+    min-width: 0;
     display: flex;
     flex-wrap: wrap;
     align-items: flex-start;
@@ -2000,10 +2008,13 @@ a:hover {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .diagraph-panel-shell.is-open {
     flex-basis: 100%;
+    width: 100%;
 }
 
 .diagraph-toggle-button {
@@ -2023,11 +2034,15 @@ a:hover {
 
 .diagraph-panel {
     margin-top: 10px;
-    border: 1px solid #d6dce8;
-    background: #fbfdff;
-    padding: 12px;
+    border: 1px solid #dbe5f1;
+    border-radius: 16px;
+    background: linear-gradient(180deg, #f8fbff 0, #f5f8fc 100%);
+    box-shadow: 0 18px 50px rgba(30, 64, 108, 0.09);
+    padding: 16px;
     width: 100%;
     box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
 }
 
 .diagraph-toolbar {
@@ -2098,8 +2113,9 @@ a:hover {
 }
 
 .diagraph-loading {
-    border: 1px solid #d6dce8;
-    background: #f6f9ff;
+    border: 1px solid #d8e4f3;
+    border-radius: 10px;
+    background: #f4f8ff;
     color: #334155;
 }
 
@@ -2114,46 +2130,82 @@ a:hover {
     display: flex;
     flex-direction: column;
     gap: 14px;
+    min-width: 0;
 }
 
 .diagraph-notice {
-    border: 1px solid #d7e0ec;
-    background: #f8fafc;
-    color: #4b5563;
-    padding: 10px 12px;
+    border-left: 3px solid #7594c5;
+    background: #eef4fb;
+    color: #42536b;
+    padding: 10px 13px;
+    border-radius: 0 9px 9px 0;
     line-height: 1.7;
+    font-size: 14px;
 }
 
 .diagraph-block {
-    border: 1px solid #d6dce8;
+    border: 1px solid #dde6f0;
+    border-radius: 13px;
     background: #fff;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(35, 59, 93, 0.045);
 }
 
 .diagraph-block-title {
-    padding: 9px 12px;
-    border-bottom: 1px solid #d6dce8;
-    background: #eef3fa;
-    color: #243247;
+    color: #1d2b3f;
     font-weight: 700;
+    font-size: 17px;
+}
+
+.diagraph-block-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 14px 16px;
+    border-bottom: 1px solid #e4ebf3;
+    background: linear-gradient(90deg, #f7faff, #fff);
+}
+
+.diagraph-block-heading p {
+    margin: 4px 0 0;
+    color: #65738a;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.diagraph-block-heading > span {
+    flex: 0 0 auto;
+    border: 1px solid #d9e4f2;
+    border-radius: 999px;
+    background: #fff;
+    color: #536780;
+    padding: 4px 9px;
+    font-size: 12px;
 }
 
 .diagraph-table-scroll {
+    width: 100%;
+    max-width: 100%;
     overflow-x: auto;
+    overscroll-behavior-x: contain;
 }
 
 .diagraph-grid-table,
 .diagraph-affordance-table {
     width: 100%;
     min-width: 720px;
-    border-collapse: collapse;
-    table-layout: fixed;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: auto;
 }
 
 .diagraph-grid-table th,
 .diagraph-grid-table td,
 .diagraph-affordance-table th,
 .diagraph-affordance-table td {
-    border: 1px solid #444;
+    border-right: 1px solid #e5ebf2;
+    border-bottom: 1px solid #e5ebf2;
     padding: 8px 9px;
     vertical-align: middle;
     background: #fff;
@@ -2161,7 +2213,10 @@ a:hover {
 
 .diagraph-grid-table thead th,
 .diagraph-affordance-table thead th {
-    background: #f8fafc;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    background: #f3f7fc;
     color: #243247;
     font-weight: 700;
     text-align: center;
@@ -2180,15 +2235,119 @@ a:hover {
 }
 
 .diagraph-grid-table td {
-    min-width: 72px;
+    position: relative;
+    min-width: 82px;
+    height: 54px;
     text-align: center;
     word-break: break-word;
     line-height: 1.7;
+    border-right: 1px solid #edf1f6;
+    border-bottom: 1px solid #edf1f6;
+    padding: 8px 9px;
+    background: #fff;
 }
 
 .diagraph-grid-table td.filled {
     color: #1f2937;
     font-weight: 600;
+}
+
+.diagraph-grid-table tbody tr:nth-child(even) td:not(.has-relation),
+.diagraph-grid-table tbody tr:nth-child(even) th {
+    background: #fafcff;
+}
+
+.diagraph-grid-table tbody th {
+    border-right: 1px solid #e5ebf2;
+    border-bottom: 1px solid #e5ebf2;
+    padding: 8px 9px;
+    background: #fff;
+    color: #526077;
+}
+
+.diagraph-grid-table thead th {
+    min-width: 82px;
+    border-right: 1px solid #e2e9f1;
+    border-bottom: 1px solid #dce5ef;
+    padding: 9px 8px;
+}
+
+.diagraph-grid-table thead th > span {
+    display: block;
+    font-size: 12px;
+    letter-spacing: 0.06em;
+}
+
+.diagraph-grid-table thead th > small {
+    display: inline-block;
+    margin-top: 3px;
+    color: var(--mechanism-color, #607089);
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.diagraph-grid-table td.has-relation {
+    background: var(--mechanism-soft, #f6f8fb);
+}
+
+.diagraph-grid-table td.has-relation::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    transform: translateX(-50%);
+    background: var(--mechanism-line, #c9d5e4);
+}
+
+.diagraph-grid-table td.filled span {
+    position: relative;
+    z-index: 1;
+    display: inline-block;
+    min-width: 22px;
+    padding: 4px 8px;
+    border: 1px solid var(--mechanism-line, #d5dde8);
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 3px 10px rgba(31, 52, 78, 0.08);
+}
+
+.mechanism-reproduction {
+    --mechanism-color: #2563a8;
+    --mechanism-line: #91b9dc;
+    --mechanism-soft: #f0f7fd;
+}
+
+.mechanism-parallelism {
+    --mechanism-color: #6d4fb3;
+    --mechanism-line: #b9a4df;
+    --mechanism-soft: #f6f2fc;
+}
+
+.mechanism-selective_reuse {
+    --mechanism-color: #17806e;
+    --mechanism-line: #8bcabc;
+    --mechanism-soft: #eff9f6;
+}
+
+.mechanism-repair {
+    --mechanism-color: #b15f14;
+    --mechanism-line: #e1b27e;
+    --mechanism-soft: #fdf6ed;
+}
+
+.mechanism-contrast {
+    --mechanism-color: #b03c52;
+    --mechanism-line: #dfa0ad;
+    --mechanism-soft: #fdf2f4;
+}
+
+.mechanism-analogy_candidate {
+    --mechanism-color: #526276;
+    --mechanism-line: #b3bfcc;
+    --mechanism-soft: #f3f6f8;
 }
 
 .diagraph-affordance-table th:nth-child(1),
@@ -2211,6 +2370,207 @@ a:hover {
 .diagraph-affordance-table td {
     line-height: 1.7;
     word-break: break-word;
+}
+
+.diagraph-calibration {
+    border: 1px solid #d9e5f2;
+    border-radius: 13px;
+    padding: 15px 16px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(35, 59, 93, 0.045);
+}
+
+.diagraph-calibration-header,
+.diagraph-calibration.is-unavailable {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.diagraph-calibration-title {
+    color: #1d2b3f;
+    font-size: 16px;
+    font-weight: 800;
+}
+
+.diagraph-calibration-title span {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #edf5ff;
+    color: #315f96;
+    font-size: 11px;
+    vertical-align: 2px;
+}
+
+.diagraph-calibration p {
+    margin: 5px 0 0;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.diagraph-calibration-state {
+    flex: 0 0 auto;
+    padding: 5px 9px;
+    border-radius: 999px;
+    background: #f0f4f9;
+    color: #52647b;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.diagraph-mechanism-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 9px;
+    margin-top: 13px;
+}
+
+.diagraph-mechanism-card {
+    border: 1px solid #e1e8f0;
+    border-radius: 10px;
+    padding: 10px;
+    background: #fafcff;
+}
+
+.diagraph-mechanism-card.state-joint {
+    border-color: #acd1c5;
+    background: #f2faf7;
+}
+
+.diagraph-mechanism-card.state-bert_review {
+    border-color: #e3c99e;
+    background: #fffaf1;
+}
+
+.diagraph-mechanism-head,
+.diagraph-mechanism-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.diagraph-mechanism-head strong {
+    color: #25354a;
+    font-size: 13px;
+}
+
+.diagraph-mechanism-head span,
+.diagraph-mechanism-meta {
+    color: #687990;
+    font-size: 10px;
+}
+
+.diagraph-confidence-track {
+    height: 4px;
+    margin: 9px 0 7px;
+    overflow: hidden;
+    border-radius: 99px;
+    background: #e6ebf2;
+}
+
+.diagraph-confidence-track i {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: #557ba8;
+}
+
+.diagraph-relation-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 13px;
+    background: #f8fafc;
+}
+
+.diagraph-relation-card {
+    min-width: 0;
+    border: 1px solid #e0e7ef;
+    border-left: 3px solid #7187a3;
+    border-radius: 10px;
+    padding: 11px 12px;
+    background: #fff;
+}
+
+.diagraph-relation-card.evidence-joint {
+    border-left-color: #2d8b72;
+}
+
+.diagraph-relation-topline,
+.diagraph-mechanism-tags {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.diagraph-column-badge,
+.diagraph-relation-badge,
+.diagraph-evidence-badge,
+.diagraph-mechanism-tags span {
+    padding: 3px 7px;
+    border-radius: 999px;
+    background: #eef3f9;
+    color: #455b74;
+    font-size: 10px;
+    font-weight: 700;
+}
+
+.diagraph-relation-badge {
+    background: #eaf2ff;
+    color: #285d99;
+}
+
+.diagraph-evidence-badge {
+    margin-left: auto;
+    background: #f1f7f4;
+    color: #35735f;
+}
+
+.diagraph-mapping-flow {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 11px 0 7px;
+}
+
+.diagraph-mapping-flow span {
+    min-width: 26px;
+    padding: 5px 8px;
+    border: 1px solid #dbe4ef;
+    border-radius: 7px;
+    background: #f9fbfe;
+    color: #25364d;
+    text-align: center;
+    font-weight: 700;
+}
+
+.diagraph-mapping-flow b {
+    color: #7b8ba0;
+}
+
+.diagraph-relation-card p {
+    margin: 0 0 9px;
+    color: #5a687c;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.diagraph-mechanism-tags span {
+    background: #f5f2fb;
+    color: #6a4ea2;
+}
+
+.diagraph-empty-evidence {
+    padding: 18px;
+    color: #66758a;
+    background: #f8fafc;
 }
 
 /* ========== Utilities / Responsive: Resonance and Diagraph ========== */
@@ -2301,5 +2661,29 @@ a:hover {
     .diagraph-action-button {
         flex: 1 1 calc(50% - 8px);
         justify-content: center;
+    }
+
+    .diagraph-panel {
+        padding: 10px;
+        border-radius: 12px;
+    }
+
+    .diagraph-block-heading,
+    .diagraph-calibration-header,
+    .diagraph-calibration.is-unavailable {
+        flex-direction: column;
+    }
+
+    .diagraph-mechanism-grid,
+    .diagraph-relation-list {
+        grid-template-columns: 1fr;
+    }
+
+    .diagraph-mechanism-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .diagraph-grid-table {
+        min-width: 620px;
     }
 }

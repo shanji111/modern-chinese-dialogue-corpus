@@ -18,6 +18,11 @@ from db_utils import compute_content_hash, utc_timestamp
 from services.audio_service import build_corpus_audio_url, get_corpus_audio_response
 from services.browse_service import build_browse_context, build_home_context
 from services.guide_service import build_guide_context
+from services.dialogue_syntax_bert_service import (
+    LABEL_KEYS as DIAGRAPH_BERT_LABEL_KEYS,
+    LABEL_NAMES as DIAGRAPH_BERT_LABEL_NAMES,
+    get_dialogue_syntax_calibration,
+)
 from services.submission_storage_service import (
     build_submission_download_response,
     delete_submission_upload,
@@ -43,7 +48,7 @@ TRANSCRIPTION_TEMP_DIR = Path(app.root_path) / ".transcription_tmp"
 TEXT_FILE_EXTENSIONS = {".txt"}
 RESONANCE_SEARCH_FLAG = os.getenv("ENABLE_RESONANCE_SEARCH", "1").strip().lower()
 RESONANCE_SEARCH_ENABLED = RESONANCE_SEARCH_FLAG not in {"0", "false", "no", "off"}
-DIAGRAPH_NOTICE = "本图谱由程序根据词汇重现、人称映射、否定标记、疑问词和句式框架自动生成，仅供初步分析参考，复杂共指、省略和语义关系建议人工校订。"
+DIAGRAPH_NOTICE = "旧版纵栏图谱和分类体系保持不变；规则负责生成对齐与关系，BERT 仅在可用时提供辅助置信度，不参与检索排序或自动改判。"
 DIAGRAPH_WINDOW_OPTIONS = {
     "pair": "当前 A/B 两轮",
     "context2": "前后 2 轮",
@@ -1057,10 +1062,12 @@ def build_diagraph_affordances(master_columns, column_labels, grid_rows):
         unique_values = {value for value in values if value}
         relation = ""
         description = ""
+        mechanism_keys = []
         include = False
         if token["kind"] == "pronoun":
             if row_count >= 2:
                 include = True
+                mechanism_keys = ["selective_reuse"]
                 if token["group"].startswith("third_person"):
                     relation = "共指候选"
                     description = "第三人称成分在不同话轮中持续出现，可作为共指候选。"
@@ -1069,24 +1076,29 @@ def build_diagraph_affordances(master_columns, column_labels, grid_rows):
                     description = "对话角色在相邻话轮之间发生我/你类转换。"
         elif token["kind"] == "question":
             include = True
+            mechanism_keys = ["selective_reuse"]
             relation = "疑问词"
             description = "该纵栏集中呈现疑问词或疑问语气标记。"
         elif token["kind"] == "negation":
             include = True
+            mechanism_keys = ["contrast"]
             relation = "否定"
             description = "该纵栏呈现否定性标记，可与相邻谓词形成否定回应。"
         elif token["kind"] == "repair":
             include = True
+            mechanism_keys = ["repair", "contrast"]
             relation = "转折/修正"
             description = "该纵栏呈现转折或修正标记。"
         elif token["kind"] == "frame":
             if row_count >= 2:
                 include = True
+                mechanism_keys = ["parallelism"]
                 relation = "句式复现"
                 description = "该纵栏体现固定句式框架的重复或呼应。"
         else:
             if row_count >= 2 or len(unique_values) >= 2:
                 include = True
+                mechanism_keys = ["reproduction"]
                 relation = "词汇重现"
                 description = "相同或高度接近的词汇在多个话轮中重复出现。"
         if not include:
@@ -1096,6 +1108,7 @@ def build_diagraph_affordances(master_columns, column_labels, grid_rows):
             "mapping": build_column_mapping(values),
             "relation": relation,
             "description": description,
+            "mechanism_keys": mechanism_keys,
         })
 
     for index, column in enumerate(master_columns[:-1]):
@@ -1122,6 +1135,7 @@ def build_diagraph_affordances(master_columns, column_labels, grid_rows):
             "mapping": mapping,
             "relation": "否定回应",
             "description": "后一话轮使用否定标记并与相邻词项组合，形成否定性回应或修正。",
+            "mechanism_keys": ["contrast", "repair"],
         })
 
     question_labels = []
@@ -1142,14 +1156,70 @@ def build_diagraph_affordances(master_columns, column_labels, grid_rows):
             ]),
             "relation": "疑问回应",
             "description": "前一话轮含疑问词或疑问标记，后一话轮构成相邻回应。",
+            "mechanism_keys": ["selective_reuse"],
         })
 
     return affordances
 
 
+def build_diagraph_mechanism_summary(affordances, bert_calibration):
+    rule_counts = {key: 0 for key in DIAGRAPH_BERT_LABEL_KEYS}
+    for item in affordances:
+        for key in item.get("mechanism_keys") or []:
+            if key in rule_counts:
+                rule_counts[key] += 1
+
+    bert_labels = {
+        item.get("key"): item
+        for item in (bert_calibration or {}).get("labels", [])
+        if item.get("key") in rule_counts
+    }
+    summary = []
+    for key in DIAGRAPH_BERT_LABEL_KEYS:
+        bert_item = bert_labels.get(key) or {}
+        rule_support = rule_counts[key]
+        bert_suggested = bool(bert_item.get("suggested"))
+        if rule_support and bert_suggested:
+            support_state = "joint"
+        elif rule_support:
+            support_state = "rule"
+        elif bert_suggested:
+            support_state = "bert_review"
+        else:
+            support_state = "none"
+        summary.append({
+            "key": key,
+            "label": DIAGRAPH_BERT_LABEL_NAMES[key],
+            "rule_support": rule_support,
+            "bert_probability": bert_item.get("probability"),
+            "bert_threshold": bert_item.get("threshold"),
+            "bert_suggested": bert_suggested,
+            "support_state": support_state,
+        })
+
+    for item in affordances:
+        supported = []
+        for key in item.get("mechanism_keys") or []:
+            bert_item = bert_labels.get(key)
+            if bert_item and bert_item.get("suggested"):
+                supported.append({
+                    "key": key,
+                    "label": DIAGRAPH_BERT_LABEL_NAMES[key],
+                    "probability": bert_item.get("probability"),
+                })
+        item["evidence_state"] = "joint" if supported else "rule"
+        item["bert_support"] = supported
+    return summary
+
+
 def build_diagraph_payload(pair, turns, window_mode):
     master_columns, column_labels, grid_rows = build_diagraph_grid(pair, turns)
     affordances = build_diagraph_affordances(master_columns, column_labels, grid_rows)
+    bert_calibration = get_dialogue_syntax_calibration(
+        pair.get("text_a") or "",
+        pair.get("text_b") or "",
+    )
+    mechanism_summary = build_diagraph_mechanism_summary(affordances, bert_calibration)
     return {
         "pair_id": pair["id"],
         "window_mode": window_mode,
@@ -1166,6 +1236,8 @@ def build_diagraph_payload(pair, turns, window_mode):
         "columns": column_labels,
         "grid": grid_rows,
         "affordances": affordances,
+        "mechanism_summary": mechanism_summary,
+        "bert_calibration": bert_calibration,
     }
 
 
@@ -1188,6 +1260,24 @@ def serialize_diagraph_csv(payload):
     writer.writerow(["纵栏", "映射", "关系", "描述"])
     for item in payload["affordances"]:
         writer.writerow([item["column"], item["mapping"], item["relation"], item["description"]])
+    calibration = payload.get("bert_calibration") or {}
+    writer.writerow([])
+    writer.writerow(["BERT 辅助校准（旧分类不变）"])
+    writer.writerow([calibration.get("notice") or "BERT 未启用，图谱仍按旧规则生成。"])
+    writer.writerow(["机制", "概率", "阈值", "模型建议", "规则证据数"])
+    summary_by_key = {
+        item.get("key"): item
+        for item in payload.get("mechanism_summary") or []
+    }
+    for item in calibration.get("labels") or []:
+        summary = summary_by_key.get(item.get("key")) or {}
+        writer.writerow([
+            item.get("label") or item.get("key") or "",
+            item.get("probability"),
+            item.get("threshold"),
+            "是" if item.get("suggested") else "否",
+            summary.get("rule_support", 0),
+        ])
     return output.getvalue()
 
 
