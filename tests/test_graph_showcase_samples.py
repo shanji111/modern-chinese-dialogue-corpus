@@ -52,7 +52,7 @@ class GraphShowcaseSampleTests(unittest.TestCase):
         )
         pair_id = 1
         for dataset in corpus_repository.GRAPH_SHOWCASE_DATASETS:
-            for is_compact in (True, False):
+            for is_compact in (True, True, False):
                 text_a = "我们今天去剧院吗" if is_compact else "请你把今天晚上关于剧院演出的具体安排、人物关系和后续计划完整解释一下"
                 text_b = "今天去剧院" if is_compact else "我会在认真考虑之后，把所有前因后果、人物关系和后续安排完整地解释给你听"
                 self.conn.execute(
@@ -103,7 +103,22 @@ class GraphShowcaseSampleTests(unittest.TestCase):
         data = self._query(showcase=False)
 
         self.assertFalse(data["showcase"])
-        self.assertEqual([item["pair_id"] for item in data["results"]], [6, 5, 4, 3, 2, 1])
+        self.assertEqual([item["pair_id"] for item in data["results"]], [9, 8, 7, 6, 5, 4])
+
+    def test_showcase_excludes_a_known_same_speaker_continuation(self):
+        self.conn.execute(
+            """
+            INSERT INTO dialogue_pairs VALUES
+            (99, 198, 199, 1, 'same-speaker', 1, 2, '甲', '甲',
+             '我们今天去剧院吗', '今天去剧院', '文本对话', '', '雷雨',
+             '[\"剧院\"]', '[]', 1, 0, 1, 0, 0)
+            """
+        )
+        self.conn.commit()
+
+        data = self._query(showcase=True)
+
+        self.assertNotIn(99, [item["pair_id"] for item in data["results"]])
 
     def test_empty_sample_request_enables_showcase_but_keyword_search_does_not(self):
         showcase_response = {"results": [], "has_next": False, "next_cursor": None, "turn_count": 0, "showcase": True}

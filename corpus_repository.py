@@ -3437,6 +3437,18 @@ def query_resonance_page(
     if showcase:
         showcase_markers = ", ".join(marker for _ in GRAPH_SHOWCASE_DATASETS)
         where_clauses.append(f"dataset_name IN ({showcase_markers})")
+        where_clauses.append(
+            "LENGTH(text_a) BETWEEN 4 AND 60 "
+            "AND LENGTH(text_b) BETWEEN 2 AND 90 "
+            "AND LENGTH(text_a) + LENGTH(text_b) <= 120"
+        )
+        # A repeated label normally means that a long turn was split into
+        # clauses.  It is useful corpus data, but not a clear A/B graph demo.
+        where_clauses.append(
+            "(TRIM(COALESCE(speaker_a, '')) = '' "
+            "OR TRIM(COALESCE(speaker_b, '')) = '' "
+            "OR TRIM(speaker_a) <> TRIM(speaker_b))"
+        )
         params.extend(GRAPH_SHOWCASE_DATASETS)
     where_sql = "WHERE " + " AND ".join(where_clauses)
     conn = get_readonly_db_connection()
@@ -3448,12 +3460,6 @@ def query_resonance_page(
             # The first page alternates the three selected works.  Shorter
             # A/B turns lead within each work because they make the vertical
             # column display materially easier to read in a live demo.
-            compact_turns = (
-                "CASE WHEN LENGTH(text_a) BETWEEN 4 AND 90 "
-                "AND LENGTH(text_b) BETWEEN 2 AND 130 "
-                "AND LENGTH(text_a) + LENGTH(text_b) <= 180 "
-                "THEN 1 ELSE 0 END"
-            )
             showcase_order = " ".join(
                 f"WHEN {marker} THEN {GRAPH_SHOWCASE_DATASET_ORDER[dataset]}"
                 for dataset in GRAPH_SHOWCASE_DATASETS
@@ -3466,7 +3472,7 @@ def query_resonance_page(
                        shared_terms, markers,
                        ROW_NUMBER() OVER (
                            PARTITION BY dataset_name
-                           ORDER BY {compact_turns} DESC, id DESC
+                           ORDER BY id DESC
                        ) AS showcase_row
                 FROM {PAIR_TABLE}
                 {where_sql}
