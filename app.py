@@ -33,6 +33,14 @@ from services.transcription_service import (
     is_transcribable_submission,
     transcribe_submission_media,
 )
+from services.visitor_stats_service import (
+    VISITOR_COOKIE_MAX_AGE,
+    VISITOR_COOKIE_NAME,
+    init_visitor_stats_table,
+    new_visitor_id,
+    normalize_visitor_id,
+    record_visitor_and_get_stats,
+)
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY") or "dev-only-temporary-secret-key"
@@ -2011,6 +2019,37 @@ def search_count():
     return jsonify({"ok": True, "total": int(total)})
 
 
+@app.route("/api/visitor-stats", methods=["POST"])
+def visitor_stats():
+    fetch_site = (request.headers.get("Sec-Fetch-Site") or "").strip().lower()
+    if fetch_site and fetch_site not in {"none", "same-origin", "same-site"}:
+        return jsonify({"ok": False, "error": "cross-site request rejected"}), 403
+
+    visitor_id = normalize_visitor_id(request.cookies.get(VISITOR_COOKIE_NAME))
+    if not visitor_id:
+        visitor_id = new_visitor_id()
+
+    try:
+        stats = record_visitor_and_get_stats(visitor_id, app.secret_key)
+    except Exception as exc:
+        print(f"[visitor-stats] update failed: {exc!r}", flush=True)
+        response = jsonify({"ok": False, "error": "访问统计暂时不可用"})
+        response.status_code = 503
+    else:
+        response = jsonify({"ok": True, **stats})
+        forwarded_proto = (request.headers.get("X-Forwarded-Proto") or "").split(",", 1)[0].strip()
+        response.set_cookie(
+            VISITOR_COOKIE_NAME,
+            visitor_id,
+            max_age=VISITOR_COOKIE_MAX_AGE,
+            secure=request.is_secure or forwarded_proto == "https",
+            httponly=True,
+            samesite="Lax",
+        )
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
+
+
 @app.route("/resonance")
 def resonance_search():
     if not RESONANCE_SEARCH_ENABLED:
@@ -2426,6 +2465,11 @@ try:
     init_submission_tables()
 except Exception as exc:
     print(f"[startup-db] submission table init skipped: {exc!r}", flush=True)
+
+try:
+    init_visitor_stats_table()
+except Exception as exc:
+    print(f"[startup-db] visitor statistics table init skipped: {exc!r}", flush=True)
 
 
 if __name__ == "__main__":

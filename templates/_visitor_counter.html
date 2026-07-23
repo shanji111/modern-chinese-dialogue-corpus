@@ -1,0 +1,18 @@
+<aside class="visitor-counter"
+       data-visitor-counter
+       data-endpoint="{{ url_for('visitor_stats') }}"
+       aria-label="网站访问人数"
+       aria-live="polite"
+       aria-busy="true"
+       title="在线人数按近期活跃浏览器估算；仅用匿名随机标识去重，不记录 IP 或设备信息">
+    <span class="visitor-counter-item visitor-counter-online">
+        <span class="visitor-counter-dot" aria-hidden="true"></span>
+        当前在线 <strong data-visitor-online>--</strong> 人
+    </span>
+    <span class="visitor-counter-divider" aria-hidden="true"></span>
+    <span class="visitor-counter-item">
+        累计访客 <strong data-visitor-total>--</strong> 人
+    </span>
+    <span class="visitor-counter-error" data-visitor-error hidden>访问统计暂不可用</span>
+</aside>
+<script src="{{ url_for('static', filename='visitor-counter.js') }}" defer></script>

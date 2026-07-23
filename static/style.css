@@ -17,6 +17,74 @@ a:hover {
     text-decoration: underline;
 }
 
+/* ========== Anonymous live visitor counter ========== */
+.visitor-counter {
+    position: fixed;
+    right: 18px;
+    bottom: 18px;
+    z-index: 100;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 38px;
+    box-sizing: border-box;
+    padding: 8px 13px;
+    border: 1px solid rgba(46, 99, 199, 0.16);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 7px 22px rgba(35, 48, 78, 0.12);
+    color: #657083;
+    font-size: 12px;
+    line-height: 1;
+    backdrop-filter: blur(8px);
+}
+
+.visitor-counter-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+.visitor-counter strong {
+    color: #2e63c7;
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
+}
+
+.visitor-counter-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #25a565;
+    box-shadow: 0 0 0 3px rgba(37, 165, 101, 0.13);
+}
+
+.visitor-counter-divider {
+    width: 1px;
+    height: 14px;
+    background: #d9dee8;
+}
+
+.visitor-counter-error {
+    color: #8a5b5b;
+    white-space: nowrap;
+}
+
+.visitor-counter-unavailable .visitor-counter-item,
+.visitor-counter-unavailable .visitor-counter-divider {
+    display: none;
+}
+
+@media (max-width: 640px) {
+    .visitor-counter {
+        right: 10px;
+        bottom: 10px;
+        max-width: calc(100vw - 20px);
+        padding: 8px 11px;
+    }
+}
+
 /* ========== 首页新版 ========== */
 /* ========== Home Page ========== */
 .new-home-page {

@@ -141,6 +141,18 @@ ENABLE_QUERY_TIMING=1
 
 生产环境可短期开启排查性能，长期建议关闭。
 
+### `VISITOR_ONLINE_WINDOW_SECONDS`
+
+用途：设置网站“当前在线”人数的活跃时间窗口，单位为秒。
+
+默认值：
+
+```text
+VISITOR_ONLINE_WINDOW_SECONDS=90
+```
+
+允许范围为 30–300 秒。访问统计每 30 秒刷新一次；累计访客按匿名浏览器标识去重，不记录 IP 或设备信息。
+
 ## 上传和对象存储
 
 ### `UPLOAD_FOLDER`
