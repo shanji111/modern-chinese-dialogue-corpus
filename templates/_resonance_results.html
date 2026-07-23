@@ -1,8 +1,9 @@
 {% for item in results %}
-<article class="resonance-result">
+<article class="resonance-result{% if item.presentation_showcase %} is-graph-showcase{% endif %}">
     <div class="resonance-result-meta">
         <span>#{{ start_no + loop.index0 }}</span>
         <b>{{ item.preset_label }}</b>
+        {% if item.presentation_showcase %}<span class="graph-showcase-badge">图谱优先样例</span>{% endif %}
         <span>{{ item.source or "来源未标注" }}</span>
         <span>{{ item.category or "类别未标注" }}</span>
         <span>{{ item.dataset_name or "数据集未标注" }}</span>

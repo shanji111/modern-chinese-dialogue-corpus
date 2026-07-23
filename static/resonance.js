@@ -101,10 +101,14 @@
         const count = data.count || 0;
         if (currentMode === "sample") {
             if (summary) {
-                summary.textContent = `样例模式：第 ${currentPage} 页，已显示 ${count} 条对话句法样例`;
+                summary.textContent = data.presentation_showcase
+                    ? `图谱优先样例：均衡选取《雷雨》《平凡的世界》《骆驼祥子》，已显示 ${count} 条`
+                    : `样例模式：第 ${currentPage} 页，已显示 ${count} 条对话句法样例`;
             }
             if (range) {
-                range.textContent = "样例模式";
+                range.textContent = data.presentation_showcase
+                    ? "图谱优先 · 输入检索词后使用全库结果"
+                    : "样例模式";
             }
             return;
         }

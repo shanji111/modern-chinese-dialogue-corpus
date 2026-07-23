@@ -2062,6 +2062,7 @@ def resonance_data():
     except ValueError:
         page_size = 20
     page_size = max(1, min(page_size, corpus_repository.MAX_RESONANCE_PAGE_SIZE))
+    presentation_showcase = bool(sample and not keyword and not source and not category)
     error_message = ""
     page_data = {"results": [], "has_next": False, "next_cursor": None, "turn_count": 0}
     if keyword and len(keyword) < 2 and not sample:
@@ -2078,6 +2079,7 @@ def resonance_data():
                 limit=page_size,
                 cursor=cursor,
                 include_turn_count=False,
+                showcase=presentation_showcase,
             )
             if page_data.get("missing_pairs"):
                 error_message = "共鸣索引尚未生成，请先运行 rebuild_dialogue_pairs。"
@@ -2104,6 +2106,7 @@ def resonance_data():
         result["audio_url"] = build_corpus_audio_url(result.get("audio_file"))
         result["dataset_name"] = result.get("dataset_name") or result.get("crawl_source") or ""
         result["fragment_label"] = f"{result.get('conversation_key') or '片段'} · {result.get('turn_a_index')}-{result.get('turn_b_index')}"
+        result["presentation_showcase"] = bool(page_data.get("showcase"))
         results.append(result)
 
     start_no = start if results else 0
@@ -2122,6 +2125,7 @@ def resonance_data():
         "count": len(results),
         "mode": "sample" if sample else "search",
         "page_size": page_size,
+        "presentation_showcase": bool(page_data.get("showcase")),
     })
 
 

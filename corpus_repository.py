@@ -111,6 +111,15 @@ MAX_RESONANCE_PAGE_SIZE = 50
 RESONANCE_CONTEXT_CHARS = 6000
 RESONANCE_SAMPLE_CANDIDATE_LIMIT = 100
 RESONANCE_FILTER_SOURCES = DISPLAY_SOURCE_ORDER
+# Default samples are a presentation layer, not a change to the corpus-wide
+# retrieval or the dialogue-syntax taxonomy.  These three sources have stable
+# speaker turns and enough examples for each currently supported preset.
+GRAPH_SHOWCASE_DATASETS = ("雷雨", "平凡的世界", "骆驼祥子")
+GRAPH_SHOWCASE_DATASET_ORDER = {
+    "雷雨": 0,
+    "平凡的世界": 1,
+    "骆驼祥子": 2,
+}
 RESONANCE_PRESET_ALIASES = {
     "lexical_echo": "reproduction",
     "pattern_reuse": "parallel",
@@ -3389,6 +3398,7 @@ def query_resonance_page(
     cursor=None,
     candidate_limit=DEFAULT_RESONANCE_CANDIDATE_LIMIT,
     include_turn_count=True,
+    showcase=False,
 ):
     preset = normalize_resonance_preset(preset)
     limit = clamp_resonance_page_size(limit)
@@ -3420,25 +3430,67 @@ def query_resonance_page(
         pattern = build_like_pattern(keyword)
         params.extend([pattern, pattern])
     add_display_source_filters(where_clauses, params, source, category)
+    # Showcase mode is deliberately available only to the blank sample view.
+    # It keeps normal keyword/source/category retrieval untouched and does not
+    # use BERT scores.  The source filter is paired with a round-robin window
+    # order below so the default page is balanced rather than all one work.
+    if showcase:
+        showcase_markers = ", ".join(marker for _ in GRAPH_SHOWCASE_DATASETS)
+        where_clauses.append(f"dataset_name IN ({showcase_markers})")
+        params.extend(GRAPH_SHOWCASE_DATASETS)
     where_sql = "WHERE " + " AND ".join(where_clauses)
     conn = get_readonly_db_connection()
     try:
         if not dialogue_pairs_has_rows(conn):
             return {"results": [], "has_next": False, "next_cursor": None, "turn_count": 0, "missing_pairs": True}
         fetch_limit = min(max(limit + 1, limit * 8 + 1), 200)
-        rows = conn.execute(
-            f"""
-            SELECT id, turn_a_id, turn_b_id, entry_id, conversation_key,
-                   turn_index_a, turn_index_b, speaker_a, speaker_b,
-                   text_a, text_b, source, category, dataset_name,
-                   shared_terms, markers
-            FROM {PAIR_TABLE}
-            {where_sql}
-            ORDER BY id DESC
-            LIMIT {marker}
-            """,
-            [*params, fetch_limit],
-        ).fetchall()
+        if showcase:
+            # The first page alternates the three selected works.  Shorter
+            # A/B turns lead within each work because they make the vertical
+            # column display materially easier to read in a live demo.
+            compact_turns = (
+                "CASE WHEN LENGTH(text_a) BETWEEN 4 AND 90 "
+                "AND LENGTH(text_b) BETWEEN 2 AND 130 "
+                "AND LENGTH(text_a) + LENGTH(text_b) <= 180 "
+                "THEN 1 ELSE 0 END"
+            )
+            showcase_order = " ".join(
+                f"WHEN {marker} THEN {GRAPH_SHOWCASE_DATASET_ORDER[dataset]}"
+                for dataset in GRAPH_SHOWCASE_DATASETS
+            )
+            rows = conn.execute(
+                f"""
+                SELECT id, turn_a_id, turn_b_id, entry_id, conversation_key,
+                       turn_index_a, turn_index_b, speaker_a, speaker_b,
+                       text_a, text_b, source, category, dataset_name,
+                       shared_terms, markers,
+                       ROW_NUMBER() OVER (
+                           PARTITION BY dataset_name
+                           ORDER BY {compact_turns} DESC, id DESC
+                       ) AS showcase_row
+                FROM {PAIR_TABLE}
+                {where_sql}
+                ORDER BY showcase_row ASC,
+                         CASE dataset_name {showcase_order} ELSE 99 END ASC,
+                         id DESC
+                LIMIT {marker}
+                """,
+                [*params, *GRAPH_SHOWCASE_DATASETS, fetch_limit],
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                f"""
+                SELECT id, turn_a_id, turn_b_id, entry_id, conversation_key,
+                       turn_index_a, turn_index_b, speaker_a, speaker_b,
+                       text_a, text_b, source, category, dataset_name,
+                       shared_terms, markers
+                FROM {PAIR_TABLE}
+                {where_sql}
+                ORDER BY id DESC
+                LIMIT {marker}
+                """,
+                [*params, fetch_limit],
+            ).fetchall()
         pair_rows = [row_to_dict(row) for row in rows]
         entry_cache = {}
         results = []
@@ -3496,13 +3548,16 @@ def query_resonance_page(
     finally:
         close_connection(conn)
 
-    has_next = len(pair_rows) > scanned_count or (len(pair_rows) == fetch_limit and last_scanned_id is not None)
+    has_next = (not showcase) and (
+        len(pair_rows) > scanned_count or (len(pair_rows) == fetch_limit and last_scanned_id is not None)
+    )
     return {
         "results": results,
         "has_next": has_next,
         "next_cursor": last_scanned_id if has_next else None,
         "turn_count": count_dialogue_turns() if include_turn_count else 0,
         "missing_pairs": False,
+        "showcase": bool(showcase),
     }
 
 
