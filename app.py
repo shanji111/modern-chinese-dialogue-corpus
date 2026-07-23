@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template, request, redirect, session, url_for
+from flask import Flask, g, jsonify, render_template, request, redirect, session, url_for
 import csv
 from functools import lru_cache
 from hmac import compare_digest
@@ -7,6 +7,7 @@ import json
 import os
 import math
 import re
+import secrets
 from pathlib import Path
 
 from markupsafe import Markup, escape
@@ -36,14 +37,29 @@ from services.transcription_service import (
 from services.visitor_stats_service import (
     VISITOR_COOKIE_MAX_AGE,
     VISITOR_COOKIE_NAME,
+    block_ip_address,
+    buffer_ip_activity,
+    get_admin_visitor_dashboard,
+    get_request_client_ip,
     init_visitor_stats_table,
+    is_ip_blocked,
     new_visitor_id,
+    normalize_ip_address,
     normalize_visitor_id,
+    parse_local_datetime,
     record_visitor_and_get_stats,
+    unblock_ip_address,
 )
 
 app = Flask(__name__)
 app.secret_key = os.getenv("SECRET_KEY") or "dev-only-temporary-secret-key"
+SESSION_COOKIE_SECURE_FLAG = os.getenv(
+    "SESSION_COOKIE_SECURE",
+    "1" if os.getenv("RENDER") else "0",
+).strip().lower()
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = SESSION_COOKIE_SECURE_FLAG not in {"0", "false", "no", "off"}
 
 FTS_TABLE = "corpus_entries_fts"
 MAX_RESULT_SIDE_CHARS = 70
@@ -190,6 +206,40 @@ def get_admin_next_url():
     return next_url
 
 
+def get_admin_csrf_token():
+    token = session.get("admin_csrf_token")
+    if not token:
+        token = secrets.token_urlsafe(32)
+        session["admin_csrf_token"] = token
+    return token
+
+
+def has_valid_admin_csrf_token():
+    expected = session.get("admin_csrf_token") or ""
+    received = request.form.get("csrf_token") or ""
+    return bool(expected and received and compare_digest(expected, received))
+
+
+@app.before_request
+def enforce_blocked_ip():
+    client_ip = get_request_client_ip(request.headers, request.remote_addr)
+    g.client_ip = client_ip
+    g.ip_was_blocked = False
+    if not client_ip:
+        return None
+    try:
+        blocked = is_ip_blocked(client_ip)
+    except Exception as exc:
+        print(f"[visitor-security] blocklist check skipped: {exc!r}", flush=True)
+        return None
+    if not blocked:
+        return None
+    if request.path.startswith("/admin") and session.get("admin_logged_in"):
+        return None
+    g.ip_was_blocked = True
+    return "Forbidden", 403
+
+
 @app.before_request
 def require_admin_login():
     if not request.path.startswith("/admin"):
@@ -200,6 +250,25 @@ def require_admin_login():
         return None
     next_url = request.full_path if request.query_string else request.path
     return redirect(url_for("admin_login", next=next_url))
+
+
+@app.after_request
+def record_request_ip_activity(response):
+    try:
+        buffer_ip_activity(
+            getattr(g, "client_ip", ""),
+            request.path,
+            request.method,
+            response.status_code,
+            blocked=bool(getattr(g, "ip_was_blocked", False)),
+        )
+    except Exception as exc:
+        print(f"[visitor-security] IP activity logging skipped: {exc!r}", flush=True)
+    if request.path.startswith("/admin"):
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Referrer-Policy"] = "same-origin"
+    return response
 
 
 def init_submission_tables():
@@ -1840,6 +1909,11 @@ def data_sources():
     return render_template("data_sources.html")
 
 
+@app.route("/privacy")
+def privacy():
+    return render_template("privacy.html")
+
+
 @app.route("/browse")
 def browse_dialogues():
     requested_view = request.args.get("view")
@@ -2269,6 +2343,88 @@ def admin_logout():
 @app.route("/admin")
 def admin():
     return render_template("admin.html")
+
+
+@app.route("/admin/visitors")
+def admin_visitors():
+    show_full_ip = request.args.get("show_ip") == "1"
+    selected_time = (request.args.get("at") or "").strip()
+    selected_epoch = None
+    query_error = ""
+    if selected_time:
+        try:
+            selected_epoch = parse_local_datetime(selected_time)
+        except (TypeError, ValueError):
+            query_error = "指定时间格式无效，请重新选择。"
+
+    dashboard = get_admin_visitor_dashboard(
+        show_full_ip=show_full_ip,
+        selected_epoch=selected_epoch,
+    )
+    return render_template(
+        "admin_visitors.html",
+        **dashboard,
+        selected_time=selected_time,
+        query_error=query_error,
+        message=(request.args.get("message") or "").strip(),
+        message_kind=(request.args.get("kind") or "success").strip(),
+        csrf_token=get_admin_csrf_token(),
+        current_admin_ip=getattr(g, "client_ip", ""),
+    )
+
+
+@app.route("/admin/visitors/block", methods=["POST"])
+def admin_block_visitor_ip():
+    if not has_valid_admin_csrf_token():
+        return "Bad Request", 400
+    ip_address = normalize_ip_address(request.form.get("ip_address"))
+    show_full_ip = request.form.get("show_ip") == "1"
+    if not ip_address:
+        return redirect(url_for(
+            "admin_visitors",
+            show_ip="1" if show_full_ip else "0",
+            kind="error",
+            message="IP 地址格式无效。",
+        ))
+    if ip_address == getattr(g, "client_ip", ""):
+        return redirect(url_for(
+            "admin_visitors",
+            show_ip="1" if show_full_ip else "0",
+            kind="error",
+            message="为避免管理员锁定自己，不能封禁当前登录 IP。",
+        ))
+
+    block_ip_address(
+        ip_address,
+        reason=(request.form.get("reason") or "").strip(),
+        blocked_by=session.get("admin_username") or "admin",
+    )
+    return redirect(url_for(
+        "admin_visitors",
+        show_ip="1" if show_full_ip else "0",
+        message=f"已封禁 IP：{ip_address}",
+    ))
+
+
+@app.route("/admin/visitors/unblock", methods=["POST"])
+def admin_unblock_visitor_ip():
+    if not has_valid_admin_csrf_token():
+        return "Bad Request", 400
+    ip_address = normalize_ip_address(request.form.get("ip_address"))
+    show_full_ip = request.form.get("show_ip") == "1"
+    if not ip_address:
+        return redirect(url_for(
+            "admin_visitors",
+            show_ip="1" if show_full_ip else "0",
+            kind="error",
+            message="IP 地址格式无效。",
+        ))
+    unblock_ip_address(ip_address)
+    return redirect(url_for(
+        "admin_visitors",
+        show_ip="1" if show_full_ip else "0",
+        message=f"已解除封禁：{ip_address}",
+    ))
 
 
 @app.route("/admin/upload-demo", methods=["POST"])

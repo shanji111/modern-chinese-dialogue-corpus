@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>访问统计与安全 - 汉语对话语料库</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="admin-page">
+    <main class="admin-container admin-wide-container visitor-admin-page">
+        <header class="visitor-admin-header">
+            <div>
+                <div class="admin-title">访问统计与安全</div>
+                <div class="admin-subtitle">
+                    5 分钟历史快照 · 匿名访客统计 · IP 安全维护
+                </div>
+            </div>
+            <nav class="admin-toolbar" aria-label="后台导航">
+                <a href="{{ url_for('admin') }}" class="back-home-link">返回后台</a>
+                <a href="{{ url_for('admin_submissions') }}" class="back-home-link">审核投稿</a>
+                <a href="{{ url_for('admin_logout') }}" class="back-home-link">退出登录</a>
+            </nav>
+        </header>
+
+        {% if message %}
+            <div class="admin-message admin-message-{{ 'error' if message_kind == 'error' else 'success' }}">
+                {{ message }}
+            </div>
+        {% endif %}
+
+        <section class="visitor-admin-stat-grid" aria-label="访问概况">
+            <article class="visitor-admin-stat-card">
+                <span>当前在线</span>
+                <strong>{{ online|format_count }}</strong>
+                <small>近 90 秒活跃</small>
+            </article>
+            <article class="visitor-admin-stat-card">
+                <span>累计访客</span>
+                <strong>{{ total|format_count }}</strong>
+                <small>匿名浏览器去重</small>
+            </article>
+            <article class="visitor-admin-stat-card">
+                <span>今日访客</span>
+                <strong>{{ today_visitors|format_count }}</strong>
+                <small>今日独立浏览器</small>
+            </article>
+            <article class="visitor-admin-stat-card">
+                <span>今日峰值</span>
+                <strong>{{ peak_today|format_count }}</strong>
+                <small>5 分钟快照峰值</small>
+            </article>
+        </section>
+
+        <section class="visitor-admin-panel">
+            <div class="visitor-admin-panel-heading">
+                <div>
+                    <h2>今日在线人数曲线</h2>
+                    <p>每 5 分钟一个点，页面活跃心跳会持续更新当前时间段。</p>
+                </div>
+                <span class="visitor-admin-updated">更新于 {{ updated_at_label }}（{{ timezone_name }}）</span>
+            </div>
+            <div class="visitor-admin-chart" data-visitor-chart data-chart-source="visitor-today-points">
+                <svg viewBox="0 0 960 280" role="img" aria-label="今日在线人数曲线"></svg>
+                <div class="visitor-admin-chart-empty" data-chart-empty hidden>今天还没有访问快照。</div>
+            </div>
+            <script id="visitor-today-points" type="application/json">{{ today_points|tojson }}</script>
+        </section>
+
+        <section class="visitor-admin-query-grid">
+            <article class="visitor-admin-panel">
+                <h2>指定时间查询</h2>
+                <p>查询结果按所选时间所在的 5 分钟快照显示。</p>
+                <form method="get" action="{{ url_for('admin_visitors') }}" class="visitor-time-query">
+                    <input type="datetime-local" name="at" value="{{ selected_time }}">
+                    <input type="hidden" name="show_ip" value="{{ '1' if show_full_ip else '0' }}">
+                    <button type="submit">查询</button>
+                </form>
+                {% if query_error %}
+                    <div class="visitor-query-error">{{ query_error }}</div>
+                {% endif %}
+                {% if selected_snapshot %}
+                    <dl class="visitor-snapshot-result">
+                        <div><dt>快照时间</dt><dd>{{ selected_snapshot.time_label }}</dd></div>
+                        <div><dt>在线人数</dt><dd>{{ selected_snapshot.online_visitors }}</dd></div>
+                        <div><dt>当日访客</dt><dd>{{ selected_snapshot.daily_visitors }}</dd></div>
+                        <div><dt>累计访客</dt><dd>{{ selected_snapshot.total_visitors }}</dd></div>
+                    </dl>
+                    {% if selected_snapshot.missing %}
+                        <p class="visitor-data-note">该时间段没有请求触发快照，按 0 人显示。</p>
+                    {% endif %}
+                {% endif %}
+            </article>
+
+            <article class="visitor-admin-panel">
+                <h2>今日小时峰值</h2>
+                <div class="visitor-compact-table-wrap">
+                    <table class="admin-table visitor-compact-table">
+                        <thead><tr><th>小时</th><th>峰值在线</th></tr></thead>
+                        <tbody>
+                            {% for item in hourly_peaks %}
+                                <tr><td>{{ item.hour }}</td><td>{{ item.peak }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <article class="visitor-admin-panel visitor-daily-panel">
+                <h2>近 14 日访客量</h2>
+                <div class="visitor-daily-bars">
+                    {% set max_daily = daily_visitors|map(attribute='visitors')|max if daily_visitors else 0 %}
+                    {% for item in daily_visitors %}
+                        <div class="visitor-daily-bar-row">
+                            <span>{{ item.label }}</span>
+                            <div class="visitor-daily-bar-track">
+                                <i style="width: {{ ((item.visitors / max_daily * 100) if max_daily else 0)|round(1) }}%"></i>
+                            </div>
+                            <strong>{{ item.visitors }}</strong>
+                        </div>
+                    {% endfor %}
+                </div>
+            </article>
+        </section>
+
+        <section class="visitor-admin-panel visitor-security-panel">
+            <div class="visitor-admin-panel-heading">
+                <div>
+                    <h2>IP 安全日志</h2>
+                    <p>
+                        最近 24 小时聚合记录；原始记录自动保留 {{ ip_retention_days }} 天。
+                        {% if not ip_logging_enabled %}当前环境已关闭 IP 记录。{% endif %}
+                    </p>
+                </div>
+                <div class="visitor-ip-visibility">
+                    {% if show_full_ip %}
+                        <span class="visitor-sensitive-badge">正在显示完整 IP</span>
+                        <a href="{{ url_for('admin_visitors', show_ip='0') }}" class="back-home-link">隐藏 IP</a>
+                    {% else %}
+                        <span>当前为脱敏模式</span>
+                        <a href="{{ url_for('admin_visitors', show_ip='1') }}" class="back-home-link">显示完整 IP</a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <form action="{{ url_for('admin_block_visitor_ip') }}" method="post" class="visitor-manual-block-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="show_ip" value="{{ '1' if show_full_ip else '0' }}">
+                <label>
+                    手动封禁 IP
+                    <input name="ip_address" type="text" required placeholder="例如：203.0.113.25">
+                </label>
+                <label>
+                    原因
+                    <input name="reason" type="text" maxlength="500" placeholder="例如：高频扫描后台登录">
+                </label>
+                <button type="submit" class="visitor-danger-button">封禁</button>
+            </form>
+
+            {% if not show_full_ip %}
+                <p class="visitor-data-note">
+                    脱敏模式不会把原始 IP 写入本页 HTML。需要从记录中直接封禁时，请先切换为“显示完整 IP”。
+                </p>
+            {% endif %}
+
+            <div class="visitor-table-scroll">
+                <table class="admin-table visitor-security-table">
+                    <thead>
+                        <tr>
+                            <th>IP</th>
+                            <th>最近访问</th>
+                            <th>24 小时请求</th>
+                            <th>被拦截</th>
+                            <th>最近请求</th>
+                            <th>状态</th>
+                            {% if show_full_ip %}<th>操作</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in recent_ip_activity %}
+                            <tr class="{{ 'visitor-row-blocked' if item.is_blocked else '' }}">
+                                <td><code>{{ item.display_ip }}</code></td>
+                                <td>{{ item.last_seen_label }}</td>
+                                <td>{{ item.request_count|format_count }}</td>
+                                <td>{{ item.blocked_count|format_count }}</td>
+                                <td>
+                                    <code>{{ item.last_method }}</code>
+                                    {{ item.last_path }}
+                                    <span class="visitor-http-status">{{ item.last_status }}</span>
+                                </td>
+                                <td>{{ '已封禁' if item.is_blocked else '正常' }}</td>
+                                {% if show_full_ip %}
+                                    <td>
+                                        {% if item.is_blocked %}
+                                            <form action="{{ url_for('admin_unblock_visitor_ip') }}" method="post">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                <input type="hidden" name="show_ip" value="1">
+                                                <input type="hidden" name="ip_address" value="{{ item.ip_address }}">
+                                                <button type="submit" class="visitor-inline-button">解封</button>
+                                            </form>
+                                        {% elif item.ip_address == current_admin_ip %}
+                                            <span class="visitor-current-ip">当前管理员</span>
+                                        {% else %}
+                                            <form action="{{ url_for('admin_block_visitor_ip') }}" method="post">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                                <input type="hidden" name="show_ip" value="1">
+                                                <input type="hidden" name="ip_address" value="{{ item.ip_address }}">
+                                                <input type="hidden" name="reason" value="管理员从近期访问记录手动封禁">
+                                                <button type="submit" class="visitor-inline-button visitor-danger-button">封禁</button>
+                                            </form>
+                                        {% endif %}
+                                    </td>
+                                {% endif %}
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="{{ 7 if show_full_ip else 6 }}" class="empty-cell">暂无 IP 安全日志。</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="visitor-admin-panel">
+            <h2>当前封禁列表</h2>
+            <div class="visitor-table-scroll">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>IP</th>
+                            <th>封禁时间</th>
+                            <th>操作人</th>
+                            <th>原因</th>
+                            {% if show_full_ip %}<th>操作</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in blocked_ips %}
+                            <tr>
+                                <td><code>{{ item.display_ip }}</code></td>
+                                <td>{{ item.blocked_at_label }}</td>
+                                <td>{{ item.blocked_by or '—' }}</td>
+                                <td>{{ item.reason or '未填写' }}</td>
+                                {% if show_full_ip %}
+                                    <td>
+                                        <form action="{{ url_for('admin_unblock_visitor_ip') }}" method="post">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                            <input type="hidden" name="show_ip" value="1">
+                                            <input type="hidden" name="ip_address" value="{{ item.ip_address }}">
+                                            <button type="submit" class="visitor-inline-button">解封</button>
+                                        </form>
+                                    </td>
+                                {% endif %}
+                            </tr>
+                        {% else %}
+                            <tr><td colspan="{{ 5 if show_full_ip else 4 }}" class="empty-cell">当前没有封禁 IP。</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <p class="visitor-admin-footnote">
+            IP 封禁在应用入口生效并返回 403；管理员不能封禁当前登录 IP。面对大规模 DDoS 或代理池攻击，
+            仍应结合 Render / Cloudflare 的边缘防护和速率限制。
+        </p>
+    </main>
+    <script src="{{ url_for('static', filename='admin-visitor-stats.js') }}" defer></script>
+</body>
+</html>

@@ -44,7 +44,7 @@
             errorElement.hidden = true;
             counter.classList.remove("visitor-counter-unavailable");
             counter.setAttribute("aria-busy", "false");
-            counter.title = `在线人数按近 ${data.window_seconds} 秒内活跃浏览器估算；仅用匿名随机标识去重，不记录 IP 或设备信息`;
+            counter.title = `在线人数按近 ${data.window_seconds} 秒内活跃浏览器估算；匿名标识用于访客去重，安全日志会按隐私说明短期记录 IP`;
         } catch (error) {
             errorElement.hidden = false;
             counter.classList.add("visitor-counter-unavailable");

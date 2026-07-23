@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>隐私与网站安全说明 - 汉语对话语料库</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="home-page new-home-page">
+    <main class="landing-container privacy-page">
+        <div class="home-topbar">
+            <nav class="home-action-links" aria-label="辅助导航">
+                <a href="{{ url_for('home') }}" class="home-action-link">返回首页</a>
+                <a href="{{ url_for('data_sources') }}" class="home-action-link">数据来源与许可</a>
+            </nav>
+        </div>
+
+        <div class="site-title privacy-page-title">隐私与网站安全说明</div>
+
+        <section class="privacy-card">
+            <h2>访问统计</h2>
+            <p>本站使用匿名随机浏览器标识统计当前在线人数、累计访客和每日访客。该标识仅以哈希形式保存在数据库中，不用于识别真实身份或跨网站跟踪。</p>
+        </section>
+
+        <section class="privacy-card">
+            <h2>安全日志</h2>
+            <p>为识别高频扫描、恶意请求和其他危害网站稳定性的行为，服务器会记录访问 IP、访问时间、请求方法、访问路径和响应状态，并按 5 分钟聚合。不会在该日志中保存请求正文、检索词、Cookie 内容或浏览器指纹。</p>
+        </section>
+
+        <section class="privacy-card">
+            <h2>保存期限与访问权限</h2>
+            <p>原始 IP 安全日志默认保存 30 天，到期自动删除；匿名访问趋势默认保存 365 天。安全日志仅对已登录管理员开放，后台默认脱敏显示 IP，只有在安全维护需要时才主动显示完整 IP。</p>
+        </section>
+
+        <section class="privacy-card">
+            <h2>IP 封禁</h2>
+            <p>对确认存在攻击、扫描、滥用或明显异常访问的 IP，管理员可以实施应用层封禁。封禁记录仅用于网站安全维护。如认为访问被误拦截，可联系网站负责人核查。</p>
+        </section>
+
+        <p class="data-notice">
+            本说明会随统计方式、安全措施或保存期限调整而更新。网站负责人将按照必要、适度和安全原则处理访问数据。
+        </p>
+    </main>
+    {% include "_visitor_counter.html" %}
+</body>
+</html>

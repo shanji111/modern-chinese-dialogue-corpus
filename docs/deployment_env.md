@@ -48,6 +48,16 @@ ADMIN_PASSWORD=replace-with-a-strong-password
 - 不要使用简单密码。
 - 不要提交到 Git 或文档示例之外的配置文件。
 
+### `SESSION_COOKIE_SECURE`
+
+用途：控制管理员会话 Cookie 是否只通过 HTTPS 发送。
+
+Render 环境默认开启；本地 HTTP 开发默认关闭。其他生产环境应明确设置：
+
+```text
+SESSION_COOKIE_SECURE=1
+```
+
 ## 数据库配置
 
 ### `DATABASE_BACKEND`
@@ -151,7 +161,65 @@ ENABLE_QUERY_TIMING=1
 VISITOR_ONLINE_WINDOW_SECONDS=90
 ```
 
-允许范围为 30–300 秒。访问统计每 30 秒刷新一次；累计访客按匿名浏览器标识去重，不记录 IP 或设备信息。
+允许范围为 30–300 秒。访问统计每 30 秒刷新一次；累计访客按匿名浏览器标识去重。IP 安全日志是否启用及其保存期限由下列独立变量控制。
+
+### `VISITOR_IP_LOGGING`
+
+用途：控制是否记录用于安全维护的 IP 聚合日志。
+
+默认值：
+
+```text
+VISITOR_IP_LOGGING=1
+```
+
+设为 `0`、`false`、`no` 或 `off` 可关闭。开启时记录 IP、时间、请求方法、路径和响应状态，不记录请求正文、检索词或浏览器指纹。
+
+### `VISITOR_IP_RETENTION_DAYS`
+
+用途：设置 IP 安全日志的自动保存天数。
+
+默认值：
+
+```text
+VISITOR_IP_RETENTION_DAYS=30
+```
+
+允许范围为 1–365 天。到期记录由访问统计服务自动清理；仍处于封禁状态的 IP 会保留在独立封禁表中，直至管理员解封。
+
+### `VISITOR_HISTORY_RETENTION_DAYS`
+
+用途：设置在线人数快照和每日匿名访客明细的保存天数。
+
+默认值：
+
+```text
+VISITOR_HISTORY_RETENTION_DAYS=365
+```
+
+允许范围为 7–1095 天。
+
+### `VISITOR_STATS_TIMEZONE`
+
+用途：设置后台访问曲线、每日访客和指定时间查询使用的时区。
+
+默认值：
+
+```text
+VISITOR_STATS_TIMEZONE=Asia/Shanghai
+```
+
+### `TRUST_X_FORWARDED_FOR`
+
+用途：在没有可信 `CF-Connecting-IP` 时，是否允许读取 `X-Forwarded-For` 的第一个地址。
+
+默认值为关闭：
+
+```text
+TRUST_X_FORWARDED_FOR=0
+```
+
+生产站点经 Cloudflare / Render 代理时优先使用带 `CF-Ray` 的 `CF-Connecting-IP`。只有确认上游代理会覆盖并清洗 `X-Forwarded-For` 时才应开启本变量，避免攻击者伪造 IP。
 
 ## 上传和对象存储
 
