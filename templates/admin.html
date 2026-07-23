@@ -2,70 +2,57 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>后台管理 - 汉语对话语料库</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body class="admin-page">
-    <div class="admin-container">
-        <div class="admin-title">后台管理</div>
-        <div class="admin-subtitle">用于语料录入、分类管理与数据维护</div>
-
-        <form action="{{ url_for('upload_demo') }}" method="post" class="admin-form">
-            <div class="form-row">
-                <label>标题</label>
-                <input type="text" name="title" placeholder="例如：影视对白示例2">
+    <main class="admin-container admin-dashboard-container">
+        <header class="admin-dashboard-header">
+            <div>
+                <div class="admin-title">后台管理</div>
+                <div class="admin-subtitle">请选择需要进行的管理操作</div>
             </div>
+            <a href="{{ url_for('admin_logout') }}" class="admin-dashboard-logout">退出登录</a>
+        </header>
 
-            <div class="form-row">
-                <label>语料类型</label>
-                <select name="source_type">
-                    <option value="">请选择</option>
-                    <option value="回帖语料">回帖语料</option>
-                    <option value="日常对话">日常对话</option>
-                    <option value="影视对白">影视对白</option>
-                    <option value="访谈语料">访谈语料</option>
-                    <option value="课堂互动">课堂互动</option>
-                    <option value="多模态语料">多模态语料</option>
-                </select>
-            </div>
+        <nav class="admin-dashboard-grid" aria-label="后台管理功能">
+            <a href="{{ url_for('admin_entry') }}" class="admin-dashboard-card admin-dashboard-card-entry">
+                <span class="admin-dashboard-index" aria-hidden="true">01</span>
+                <div>
+                    <h2>提交数据</h2>
+                    <p>录入新的语料条目，补充来源、年份、分类和正文信息。</p>
+                </div>
+                <span class="admin-dashboard-enter">进入功能 <span aria-hidden="true">→</span></span>
+            </a>
 
-            <div class="form-row">
-                <label>年份</label>
-                <input type="text" name="year" placeholder="例如：2024">
-            </div>
+            <a href="{{ url_for('admin_list') }}" class="admin-dashboard-card admin-dashboard-card-data">
+                <span class="admin-dashboard-index" aria-hidden="true">02</span>
+                <div>
+                    <h2>查看已有数据</h2>
+                    <p>浏览数据库中的语料条目，核对来源、年份与分类信息。</p>
+                </div>
+                <span class="admin-dashboard-enter">进入功能 <span aria-hidden="true">→</span></span>
+            </a>
 
-            <div class="form-row">
-                <label>分类</label>
-                <input type="text" name="category" placeholder="例如：对白 / 网络互动 / 教学互动">
-            </div>
+            <a href="{{ url_for('admin_submissions') }}" class="admin-dashboard-card admin-dashboard-card-review">
+                <span class="admin-dashboard-index" aria-hidden="true">03</span>
+                <div>
+                    <h2>审核投稿</h2>
+                    <p>查看用户提交的材料，执行内容审核、转写、通过或驳回处理。</p>
+                </div>
+                <span class="admin-dashboard-enter">进入功能 <span aria-hidden="true">→</span></span>
+            </a>
 
-            <div class="form-row">
-                <label>语料内容</label>
-                <textarea name="content" rows="7" placeholder="请输入完整语料内容"></textarea>
-            </div>
-
-            <div class="form-actions">
-                <button type="submit">提交入库</button>
-                <a href="{{ url_for('admin_list') }}" class="back-home-link">查看已有数据</a>
-                <a href="{{ url_for('admin_submissions') }}" class="back-home-link">审核投稿</a>
-                <a href="{{ url_for('admin_visitors') }}" class="back-home-link">访问统计与安全</a>
-                <a href="{{ url_for('admin_logout') }}" class="back-home-link">退出登录</a>
-            </div>
-        </form>
-
-        {% if success %}
-        <div class="upload-success-box">
-            <div class="success-title">提交成功</div>
-            <div class="success-line">{{ success_message }}</div>
-        </div>
-        {% endif %}
-
-        {% if error %}
-        <div class="upload-success-box" style="background:#fff6f6;border-color:#f0c7c7;">
-            <div class="success-title" style="color:#c43d3d;">提交失败</div>
-            <div class="success-line">{{ error }}</div>
-        </div>
-        {% endif %}
-    </div>
+            <a href="{{ url_for('admin_visitors') }}" class="admin-dashboard-card admin-dashboard-card-security">
+                <span class="admin-dashboard-index" aria-hidden="true">04</span>
+                <div>
+                    <h2>访问统计与安全</h2>
+                    <p>查看访客趋势与历史快照，并维护 IP 安全记录和封禁名单。</p>
+                </div>
+                <span class="admin-dashboard-enter">进入功能 <span aria-hidden="true">→</span></span>
+            </a>
+        </nav>
+    </main>
 </body>
 </html>

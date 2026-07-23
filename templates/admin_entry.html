@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>提交数据 - 汉语对话语料库</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="admin-page">
+    <div class="admin-container">
+        <div class="admin-title">提交数据</div>
+        <div class="admin-subtitle">录入新的语料条目，完善来源、年份、分类及正文内容。</div>
+
+        <nav class="admin-entry-nav" aria-label="后台导航">
+            <a href="{{ url_for('admin') }}" class="back-home-link">返回后台首页</a>
+            <a href="{{ url_for('admin_logout') }}" class="back-home-link">退出登录</a>
+        </nav>
+
+        <form action="{{ url_for('upload_demo') }}" method="post" class="admin-form">
+            <div class="form-row">
+                <label>标题</label>
+                <input type="text" name="title" placeholder="例如：影视对白示例2">
+            </div>
+
+            <div class="form-row">
+                <label>语料类型</label>
+                <select name="source_type">
+                    <option value="">请选择</option>
+                    <option value="回帖语料">回帖语料</option>
+                    <option value="日常对话">日常对话</option>
+                    <option value="影视对白">影视对白</option>
+                    <option value="访谈语料">访谈语料</option>
+                    <option value="课堂互动">课堂互动</option>
+                    <option value="多模态语料">多模态语料</option>
+                </select>
+            </div>
+
+            <div class="form-row">
+                <label>年份</label>
+                <input type="text" name="year" placeholder="例如：2024">
+            </div>
+
+            <div class="form-row">
+                <label>分类</label>
+                <input type="text" name="category" placeholder="例如：对白 / 网络互动 / 教学互动">
+            </div>
+
+            <div class="form-row">
+                <label>语料内容</label>
+                <textarea name="content" rows="7" placeholder="请输入完整语料内容"></textarea>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit">提交入库</button>
+            </div>
+        </form>
+
+        {% if success %}
+        <div class="upload-success-box">
+            <div class="success-title">提交成功</div>
+            <div class="success-line">{{ success_message }}</div>
+        </div>
+        {% endif %}
+
+        {% if error %}
+        <div class="upload-success-box error-box">
+            <div class="success-title">提交失败</div>
+            <div class="success-line">{{ error }}</div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

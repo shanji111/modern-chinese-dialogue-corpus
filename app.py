@@ -200,9 +200,9 @@ def handle_file_too_large(error):
 
 
 def get_admin_next_url():
-    next_url = request.args.get("next") or url_for("admin_submissions")
+    next_url = request.args.get("next") or url_for("admin")
     if not next_url.startswith("/admin") or next_url.startswith("/admin/login"):
-        return url_for("admin_submissions")
+        return url_for("admin")
     return next_url
 
 
@@ -2345,6 +2345,11 @@ def admin():
     return render_template("admin.html")
 
 
+@app.route("/admin/entry")
+def admin_entry():
+    return render_template("admin_entry.html")
+
+
 @app.route("/admin/visitors")
 def admin_visitors():
     show_full_ip = request.args.get("show_ip") == "1"
@@ -2437,7 +2442,7 @@ def upload_demo():
 
     if not title or not content or not source_type:
         return render_template(
-            "admin.html",
+            "admin_entry.html",
             error="请填写标题、内容和来源。"
         )
 
@@ -2450,7 +2455,7 @@ def upload_demo():
     clear_filter_option_cache()
 
     return render_template(
-        "admin.html",
+        "admin_entry.html",
         success=True,
         success_message="语料已成功录入。"
     )
