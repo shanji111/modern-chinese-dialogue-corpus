@@ -12,6 +12,7 @@
     const presetInput = document.querySelector("[data-preset-input]");
     const statusBar = document.querySelector("[data-status-bar]");
     const requestCache = new Map();
+    const showcaseMode = new URLSearchParams(window.location.search).get("showcase") === "literary-bert-reviewed";
 
     let busy = false;
     let slowTimer = null;
@@ -265,6 +266,267 @@
         contrast: "对比",
         analogy_candidate: "类比",
     };
+
+    /*
+     * Local group-meeting display only.  These ten rows are the first
+     * high-readability literary examples from the reviewed showcase.  Four
+     * BERT-disagreement rows also carry a non-blind display adjudication.
+     * They do not enter search ranking, the corpus database, or automatic
+     * relabelling.
+     */
+    const reviewedLiteraryShowcase = [
+        {
+            rank: 1,
+            primary: "reproduction",
+            auxiliary: [],
+            aiPrimary: "reproduction",
+            bertProbability: 0.746534,
+            threshold: 0.56,
+            supported: true,
+            reviewed: false,
+            decision: "展示定稿标签",
+            turnA: "你为什么早不告诉我？",
+            turnB: "我不是不告诉你；我跟你说过，叫你不要找我，因为我，我已经不是个好女人。",
+            evidenceA: ["早不告诉我"],
+            evidenceB: ["我不是不告诉你", "我跟你说过"],
+            note: "B复现“告诉”的核心表达，并围绕未告知作解释；BERT支持主类。",
+        },
+        {
+            rank: 2,
+            primary: "repair",
+            auxiliary: ["contrast"],
+            aiPrimary: "repair",
+            bertProbability: 0.089638,
+            threshold: 0.30,
+            supported: false,
+            reviewed: true,
+            decision: "保留主类",
+            turnA: "你是说让我象当年少平那样出去揽工吗？",
+            turnB: "不。我是说，你应该到乡上和县上走一走，看能不能再贷下款。",
+            evidenceA: ["出去揽工"],
+            evidenceB: ["不。我是说", "到乡上和县上走一走"],
+            note: "B先否定A对建议的理解，再明确重述真正建议；“对比”保留为辅助关系。",
+        },
+        {
+            rank: 3,
+            primary: "contrast",
+            auxiliary: [],
+            aiPrimary: "contrast",
+            bertProbability: 0.457182,
+            threshold: 0.38,
+            supported: true,
+            reviewed: false,
+            decision: "展示定稿标签",
+            turnA: "我跟你说，太太这两天的神气有点不大对的。",
+            turnB: "太太的神气不对有我的什么？",
+            evidenceA: ["太太这两天的神气有点不大对"],
+            evidenceB: ["太太的神气不对有我的什么"],
+            note: "B复指A的评价对象，并以反问拒绝承担关联，形成明显的立场对置；BERT支持主类。",
+        },
+        {
+            rank: 4,
+            primary: "repair",
+            auxiliary: ["parallelism"],
+            aiPrimary: "repair",
+            bertProbability: 0.105926,
+            threshold: 0.30,
+            supported: false,
+            reviewed: true,
+            decision: "保留主类",
+            turnA: "新歌还是老歌？",
+            turnB: "应该说现在的歌还是过去的歌。",
+            evidenceA: ["新歌还是老歌"],
+            evidenceB: ["现在的歌还是过去的歌"],
+            note: "B把“新／老歌”校准为“现在／过去的歌”，是术语与分类框架的重释；“平行”作辅助。",
+        },
+        {
+            rank: 5,
+            primary: "contrast",
+            auxiliary: [],
+            aiPrimary: "contrast",
+            bertProbability: 0.515538,
+            threshold: 0.38,
+            supported: true,
+            reviewed: false,
+            decision: "展示定稿标签",
+            turnA: "你当着人这样胡喊乱闹，你自己有病，偏偏要讳病忌医，不肯叫医生治，这不就是神经上的病态么？",
+            turnB: "哼，我假若是有病，也不是医生治得好的。",
+            evidenceA: ["你自己有病", "神经上的病态"],
+            evidenceB: ["假若是有病，也不是医生治得好的"],
+            note: "B接受假设性前提却拒绝A的治疗框架，形成让步后的反驳；BERT支持主类。",
+        },
+        {
+            rank: 6,
+            primary: "contrast",
+            auxiliary: ["analogy_candidate"],
+            aiPrimary: "analogy_candidate",
+            bertProbability: 0.503272,
+            threshold: 0.38,
+            supported: true,
+            reviewed: true,
+            decision: "人工修订主类",
+            turnA: "咦呀！革命还能管他情愿不情愿呢？蒋介石情愿到台湾去吗？",
+            turnB: "话可以这样说，但这几家人又不是蒋介石。",
+            evidenceA: ["蒋介石情愿到台湾去吗"],
+            evidenceB: ["这几家人又不是蒋介石"],
+            note: "类比发生在A的本话轮内部；B否定两类对象可比性。跨轮主关系由“类比候选”修订为“对比／反驳”，类比保留为辅助。",
+        },
+        {
+            rank: 7,
+            primary: "contrast",
+            auxiliary: [],
+            aiPrimary: "contrast",
+            bertProbability: 0.595942,
+            threshold: 0.38,
+            supported: true,
+            reviewed: false,
+            decision: "展示定稿标签",
+            turnA: "甭摆闲盘，你怎办吧？",
+            turnB: "我怎办？不是说过了，有他没我，有我没他！我不能都便宜了个臭拉车的！",
+            evidenceA: ["你怎办吧"],
+            evidenceB: ["我怎办？", "有他没我，有我没他"],
+            note: "B复现A的问题并给出排他性立场，关系焦点是立场冲突；BERT支持主类。",
+        },
+        {
+            rank: 8,
+            primary: "selective_reuse",
+            auxiliary: [],
+            aiPrimary: "selective_reuse",
+            bertProbability: 0.812460,
+            threshold: 0.70,
+            supported: true,
+            reviewed: false,
+            decision: "展示定稿标签",
+            turnA: "哦，合同！你看，这是他们三个人签字的合同。",
+            turnB: "什么？他们三个人签了字。他们怎么会不告诉我就签了字呢？他们就这样把我不理啦？",
+            evidenceA: ["他们三个人签字的合同"],
+            evidenceB: ["他们三个人签了字"],
+            note: "B选择性复用“他们三个人签字”这一关键信息，并展开追问与评价；BERT支持主类。",
+        },
+        {
+            rank: 9,
+            primary: "reproduction",
+            auxiliary: [],
+            aiPrimary: "reproduction",
+            bertProbability: 0.757045,
+            threshold: 0.56,
+            supported: true,
+            reviewed: false,
+            decision: "展示定稿标签",
+            turnA: "“没有。我住在学校。”",
+            turnB: "“住在学校？怎么？向前不是在运输公司有房子吗？你俩怎住在学校的办公室里？”",
+            evidenceA: ["住在学校"],
+            evidenceB: ["住在学校？", "住在学校的办公室里"],
+            note: "B直接复现“住在学校”并以此发起追问，形成清晰的跨轮重现；BERT支持主类。",
+        },
+        {
+            rank: 10,
+            primary: "contrast",
+            auxiliary: [],
+            aiPrimary: "contrast",
+            bertProbability: 0.287053,
+            threshold: 0.38,
+            supported: false,
+            reviewed: true,
+            decision: "保留主类",
+            turnA: "商量商量好不好？",
+            turnB: "有什幺可商量的？",
+            evidenceA: ["商量商量"],
+            evidenceB: ["有什幺可商量的"],
+            note: "B以反问否定A提出的协商可能性，构成提议／拒绝的立场对置。",
+        },
+    ];
+
+    function markEvidence(text, evidence) {
+        let rendered = escapeHtml(text);
+        (evidence || []).forEach((fragment) => {
+            const escapedFragment = escapeHtml(fragment);
+            if (escapedFragment) {
+                rendered = rendered.replace(escapedFragment, `<mark>${escapedFragment}</mark>`);
+            }
+        });
+        return rendered;
+    }
+
+    function renderMechanismPills(row) {
+        const primary = `
+            <span class="showcase-mechanism-pill primary mechanism-${escapeHtml(row.primary)}">
+                主关系：${escapeHtml(mechanismNames[row.primary])}
+            </span>`;
+        const auxiliary = (row.auxiliary || []).map((key) => `
+            <span class="showcase-mechanism-pill auxiliary mechanism-${escapeHtml(key)}">
+                辅助：${escapeHtml(mechanismNames[key])}
+            </span>`).join("");
+        return `${primary}${auxiliary}`;
+    }
+
+    function renderReviewedShowcaseCard(row) {
+        const percent = Math.round(row.bertProbability * 100);
+        const thresholdPercent = Math.round(row.threshold * 100);
+        const bertState = row.supported ? "支持最终主类" : "未达到最终主类阈值";
+        const change = row.aiPrimary !== row.primary
+            ? `<span class="showcase-change">原候选：${escapeHtml(mechanismNames[row.aiPrimary])} → 最终：${escapeHtml(mechanismNames[row.primary])}</span>`
+            : `<span class="showcase-change">原候选与最终展示主类一致</span>`;
+        return `
+            <article class="resonance-item showcase-result mechanism-${escapeHtml(row.primary)}">
+                <div class="showcase-result-header">
+                    <div>
+                        <span class="showcase-index">展示样例 ${escapeHtml(row.rank)}</span>
+                        <h2>文学对白 · ${row.reviewed ? "BERT 分歧复核" : "BERT 支持样例"}</h2>
+                    </div>
+                    <span class="showcase-decision ${row.aiPrimary !== row.primary ? "is-revised" : ""}">${escapeHtml(row.decision)}</span>
+                </div>
+                <div class="showcase-mechanism-row">${renderMechanismPills(row)}</div>
+                <div class="showcase-turns" aria-label="相邻话轮与证据对应">
+                    <section class="showcase-turn">
+                        <span class="showcase-speaker">A</span>
+                        <p>${markEvidence(row.turnA, row.evidenceA)}</p>
+                    </section>
+                    <div class="showcase-relation-arrow" aria-hidden="true">
+                        <i></i><span>${escapeHtml(mechanismNames[row.primary])}</span><i></i>
+                    </div>
+                    <section class="showcase-turn">
+                        <span class="showcase-speaker">B</span>
+                        <p>${markEvidence(row.turnB, row.evidenceB)}</p>
+                    </section>
+                </div>
+                <div class="showcase-audit-grid">
+                    <section class="showcase-audit-card showcase-bert-card">
+                        <div class="showcase-audit-title">离线 BERT（不参与改判）</div>
+                        <p><strong>${escapeHtml(bertState)}</strong> · 对最终主类的概率 ${percent}% · 阈值 ${thresholdPercent}%</p>
+                        <div class="showcase-confidence-track" aria-label="BERT 对最终主类概率 ${percent}%"><i style="width:${percent}%"></i></div>
+                    </section>
+                    <section class="showcase-audit-card showcase-review-card">
+                        <div class="showcase-audit-title">${row.reviewed ? "已完成的显示复核" : "展示标签与证据"}</div>
+                        <p>${change}</p>
+                        <p>${escapeHtml(row.note)}</p>
+                    </section>
+                </div>
+            </article>`;
+    }
+
+    function renderReviewedShowcase() {
+        currentMode = "showcase";
+        form.classList.add("is-local-showcase");
+        document.body.classList.add("is-local-showcase");
+        if (summary) {
+            summary.innerHTML = "<strong>本地展示样例</strong>：10 条文学对白的高可读性展示结果；旧六类不变，其中 4 条 BERT 分歧已按复核意见整理。";
+        }
+        if (range) {
+            range.textContent = "仅本地展示 · 不影响检索";
+        }
+        if (pagination) {
+            pagination.hidden = true;
+        }
+        list.innerHTML = `
+            <section class="local-showcase-notice">
+                <strong>展示口径</strong>
+                <span>并列呈现：旧六类的最终展示标签、离线 BERT 对最终主类的原始出力、证据对齐；其中 4 条分歧样例附非盲显示复核结论。它不写入语料库、不改变普通检索排序，也不作为自动改判。</span>
+                <a href="${escapeHtml(window.location.pathname)}">返回普通对话句法检索</a>
+            </section>
+            ${reviewedLiteraryShowcase.map(renderReviewedShowcaseCard).join("")}
+        `;
+    }
 
     function columnRangeMembers(columnText, columns) {
         const parts = String(columnText || "").split("-");
@@ -610,6 +872,10 @@
     }, true);
 
     /* ========== Initialization ========== */
+    if (showcaseMode) {
+        renderReviewedShowcase();
+        return;
+    }
     resetPaging();
     runPage({sample: form.dataset.autoSearch !== "1" || getKeyword().length < 2});
 })();
