@@ -12,8 +12,6 @@
     const presetInput = document.querySelector("[data-preset-input]");
     const statusBar = document.querySelector("[data-status-bar]");
     const requestCache = new Map();
-    const showcaseKey = new URLSearchParams(window.location.search).get("showcase");
-    const humanConsensusShowcaseMode = showcaseKey === "human-consensus-bert-audit";
 
     let busy = false;
     let slowTimer = null;
@@ -267,104 +265,6 @@
         contrast: "对比",
         analogy_candidate: "类比",
     };
-
-    function markEvidence(text, evidence) {
-        let rendered = escapeHtml(text);
-        (evidence || []).forEach((fragment) => {
-            const escapedFragment = escapeHtml(fragment);
-            if (escapedFragment) {
-                rendered = rendered.replace(escapedFragment, `<mark>${escapedFragment}</mark>`);
-            }
-        });
-        return rendered;
-    }
-
-    function getBertAudit(row) {
-        const ordered = ["reproduction", "parallelism", "selective_reuse", "repair", "contrast", "analogy_candidate"];
-        const labels = row.humanLabels || [];
-        const probabilities = row.bertProbabilities || [];
-        const thresholds = row.bertThresholds || [];
-        if (!probabilities.length || !thresholds.length) {
-            return {available: false, supported: [], predicted: [], exact: false};
-        }
-        const supported = labels.filter((key) => {
-            const index = ordered.indexOf(key);
-            return index >= 0 && Number(probabilities[index]) >= Number(thresholds[index]);
-        });
-        const predicted = ordered.filter((key, index) => Number(probabilities[index]) >= Number(thresholds[index]));
-        return {
-            available: true,
-            supported,
-            predicted,
-            exact: labels.length === predicted.length && labels.every((key) => predicted.includes(key)),
-        };
-    }
-
-    function renderConsensusTags(row) {
-        if (!(row.humanLabels || []).length) {
-            return '<span class="consensus-tag is-uncertain">人工共识：未作类别判定</span>';
-        }
-        return row.humanLabels.map((key) =>
-            `<span class="consensus-tag mechanism-${escapeHtml(key)}">人工共识：${escapeHtml(mechanismNames[key] || key)}</span>`
-        ).join("");
-    }
-
-    function renderHumanConsensusCard(row) {
-        const isUncertain = row.humanStatus === "uncertain";
-        const audit = getBertAudit(row);
-        const labels = row.humanLabels || [];
-        const supportPercent = audit.available && labels.length ? Math.round((audit.supported.length / labels.length) * 100) : 0;
-        const predictedLabels = audit.predicted.map((key) => mechanismNames[key] || key).join("、");
-        const bertText = !audit.available
-            ? `未评分：人工双标共识保留 uncertain。${escapeHtml(row.uncertaintyReason || "")}`
-            : `人工标签支持 ${audit.supported.length}/${labels.length}；模型触发：${escapeHtml(predictedLabels || "无")}${audit.exact ? "；六类集合与人工一致。" : "；模型差异不改变人工最终判定。"}`;
-        const humanText = isUncertain
-            ? `A/B 一致保留 uncertain：${escapeHtml(row.uncertaintyReason || row.humanNote)}`
-            : "A/B 对关系、六类标签、证据与说明完全一致。";
-        return `
-            <article class="resonance-result is-graph-showcase consensus-showcase-card">
-                <div class="resonance-result-meta">
-                    <b>人工共识案例 ${escapeHtml(row.rank)} · ${escapeHtml(row.annotationId)}</b>
-                    <span>${escapeHtml(row.dataset)} · ${escapeHtml(row.source)}</span>
-                    <span class="graph-showcase-badge ${isUncertain ? "is-uncertain" : ""}">${isUncertain ? "人工共识：uncertain" : "人工双标共识"}</span>
-                </div>
-                <div class="consensus-tags">${renderConsensusTags(row)}</div>
-                <div class="resonance-explanation">${isUncertain ? "待上下文核验：不强行入图" : "跨轮共鸣：已确认入图"}</div>
-                <div class="turn-pair" aria-label="相邻话轮与证据对应">
-                    <section><div class="turn-label">A · ${escapeHtml(row.speakerA)}</div><div class="turn-text">${markEvidence(row.turnA, row.evidenceA)}</div></section>
-                    <section><div class="turn-label">B · ${escapeHtml(row.speakerB)}</div><div class="turn-text">${markEvidence(row.turnB, row.evidenceB)}</div></section>
-                </div>
-                <div class="consensus-audit-grid">
-                    <section class="consensus-audit-card"><strong>人工双标共识</strong><p>${humanText}</p><p>${escapeHtml(row.humanNote || "")}</p></section>
-                    <section class="consensus-audit-card consensus-bert-card"><strong>离线 BERT 辅助核验（不改判）</strong><p>${bertText}</p>${audit.available ? `<div class="consensus-confidence" aria-label="BERT 对人工标签支持 ${supportPercent}%"><i style="width:${supportPercent}%"></i></div>` : ""}</section>
-                </div>
-            </article>`;
-    }
-
-    function renderHumanConsensusShowcase() {
-        const rows = Array.isArray(window.HUMAN_CONSENSUS_SHOWCASE_20260726)
-            ? window.HUMAN_CONSENSUS_SHOWCASE_20260726
-            : [];
-        currentMode = "showcase";
-        document.body.classList.add("is-human-consensus-showcase");
-        if (summary) {
-            summary.innerHTML = `<strong>人工双标共识展示</strong>：24 条文学对话；23 条已判定、1 条保留 uncertain；BERT 仅作辅助核验。`;
-        }
-        if (range) {
-            range.textContent = "人工双标共识 · BERT 辅助核验 · 不影响普通检索";
-        }
-        if (pagination) {
-            pagination.hidden = true;
-        }
-        list.innerHTML = `
-            <section class="human-consensus-notice">
-                <strong>展示说明</strong>
-                <span>本页保留旧六类分类，逐条呈现 A/B 人工双标一致的标签、证据与说明；离线 BERT 只显示辅助核验，不自动改判、不写回语料库，也不改变普通检索排序。</span>
-                <a href="${escapeHtml(window.location.pathname)}">返回普通对话句法检索</a>
-            </section>
-            ${rows.map(renderHumanConsensusCard).join("")}
-        `;
-    }
 
     function columnRangeMembers(columnText, columns) {
         const parts = String(columnText || "").split("-");
@@ -711,10 +611,6 @@
     }, true);
 
     /* ========== Initialization ========== */
-    if (humanConsensusShowcaseMode) {
-        renderHumanConsensusShowcase();
-        return;
-    }
     resetPaging();
     runPage({sample: form.dataset.autoSearch !== "1" || getKeyword().length < 2});
 })();
