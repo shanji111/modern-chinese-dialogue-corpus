@@ -8,6 +8,7 @@ import os
 import math
 import re
 import secrets
+import unicodedata
 from pathlib import Path
 
 from markupsafe import Markup, escape
@@ -72,7 +73,7 @@ TRANSCRIPTION_TEMP_DIR = Path(app.root_path) / ".transcription_tmp"
 TEXT_FILE_EXTENSIONS = {".txt"}
 RESONANCE_SEARCH_FLAG = os.getenv("ENABLE_RESONANCE_SEARCH", "1").strip().lower()
 RESONANCE_SEARCH_ENABLED = RESONANCE_SEARCH_FLAG not in {"0", "false", "no", "off"}
-DIAGRAPH_NOTICE = "旧版纵栏图谱和分类体系保持不变；规则负责生成对齐与关系，BERT 仅在可用时提供辅助置信度，不参与检索排序或自动改判。"
+DIAGRAPH_NOTICE = "规则提取纵栏与结构关系，BERT 用于评估六类关系的置信度并提供复核线索。"
 DIAGRAPH_WINDOW_OPTIONS = {
     "pair": "当前 A/B 两轮",
     "context2": "前后 2 轮",
@@ -911,9 +912,24 @@ def classify_diagraph_token(token_text):
         return {"text": token_text, "kind": "repair", "group": "repair"}
     if token_text in DIAGRAPH_FRAME_PHRASES:
         return {"text": token_text, "kind": "frame", "group": token_text}
-    if token_text in DIAGRAPH_PUNCTUATION:
+    if is_diagraph_punctuation(token_text):
         return {"text": token_text, "kind": "punctuation", "group": token_text}
     return {"text": token_text, "kind": "lexical", "group": token_text}
+
+
+def is_diagraph_punctuation(text):
+    text = str(text or "")
+    return bool(text) and all(
+        char in DIAGRAPH_PUNCTUATION or unicodedata.category(char).startswith("P")
+        for char in text
+    )
+
+
+def contains_diagraph_punctuation(text):
+    return any(
+        char in DIAGRAPH_PUNCTUATION or unicodedata.category(char).startswith("P")
+        for char in str(text or "")
+    )
 
 
 def maybe_split_negation_token(token_text):
@@ -938,16 +954,17 @@ def flush_diagraph_buffer(buffer, tokens):
 
 def tokenize_diagraph_text(text, anchor_terms):
     text = corpus_repository.normalize_turn_text(text or "")
+    lexicon_terms = {
+        *anchor_terms,
+        *DIAGRAPH_PERSON_GROUPS.keys(),
+        *DIAGRAPH_NEGATION_MARKERS,
+        *DIAGRAPH_QUESTION_MARKERS,
+        *DIAGRAPH_REPAIR_MARKERS,
+        *DIAGRAPH_FRAME_PHRASES,
+        *DIAGRAPH_LITERAL_CHUNKS,
+    }
     lexicon = sorted(
-        {
-            *anchor_terms,
-            *DIAGRAPH_PERSON_GROUPS.keys(),
-            *DIAGRAPH_NEGATION_MARKERS,
-            *DIAGRAPH_QUESTION_MARKERS,
-            *DIAGRAPH_REPAIR_MARKERS,
-            *DIAGRAPH_FRAME_PHRASES,
-            *DIAGRAPH_LITERAL_CHUNKS,
-        },
+        (term for term in lexicon_terms if not contains_diagraph_punctuation(term)),
         key=len,
         reverse=True,
     )
@@ -970,9 +987,8 @@ def tokenize_diagraph_text(text, anchor_terms):
             tokens.extend(maybe_split_negation_token(matched))
             index += len(matched)
             continue
-        if char in DIAGRAPH_PUNCTUATION:
+        if is_diagraph_punctuation(char):
             flush_diagraph_buffer(buffer, tokens)
-            tokens.append(classify_diagraph_token(char))
             index += 1
             continue
         if re.match(r"[A-Za-z0-9_]", char):
@@ -990,6 +1006,8 @@ def tokenize_diagraph_text(text, anchor_terms):
 
 
 def diagraph_tokens_match(left_token, right_token):
+    if left_token["kind"] == "punctuation" or right_token["kind"] == "punctuation":
+        return False
     if left_token["text"] == right_token["text"]:
         return True
     if left_token["kind"] == "pronoun" and right_token["kind"] == "pronoun":
@@ -1134,6 +1152,8 @@ def build_diagraph_affordances(master_columns, column_labels, grid_rows):
         column_row_positions.append(row_positions)
         token = column["token"]
         if not values:
+            continue
+        if token["kind"] == "punctuation":
             continue
         row_count = column_row_counts[index]
         unique_values = {value for value in values if value}
@@ -1339,8 +1359,8 @@ def serialize_diagraph_csv(payload):
         writer.writerow([item["column"], item["mapping"], item["relation"], item["description"]])
     calibration = payload.get("bert_calibration") or {}
     writer.writerow([])
-    writer.writerow(["BERT 辅助校准（旧分类不变）"])
-    writer.writerow([calibration.get("notice") or "BERT 未启用，图谱仍按旧规则生成。"])
+    writer.writerow(["BERT 关系置信度（模型辅助判别）"])
+    writer.writerow([calibration.get("notice") or "当前未返回模型分数，图谱仅显示规则证据。"])
     writer.writerow(["机制", "概率", "阈值", "模型建议", "规则证据数"])
     summary_by_key = {
         item.get("key"): item

@@ -103,14 +103,10 @@
         const count = data.count || 0;
         if (currentMode === "sample") {
             if (summary) {
-                summary.textContent = data.presentation_showcase
-                    ? `图谱优先样例：均衡选取《雷雨》《平凡的世界》《骆驼祥子》，已显示 ${count} 条`
-                    : `样例模式：第 ${currentPage} 页，已显示 ${count} 条对话句法样例`;
+                summary.textContent = `分析流程：规则提取结构关系，BERT 用于评估六类关系置信度；当前显示 ${count} 条`;
             }
             if (range) {
-                range.textContent = data.presentation_showcase
-                    ? "图谱优先 · 输入检索词后使用全库结果"
-                    : "样例模式";
+                range.textContent = "模型辅助分析";
             }
             return;
         }
@@ -405,10 +401,10 @@
             return `
                 <section class="diagraph-calibration is-unavailable">
                     <div>
-                        <div class="diagraph-calibration-title">BERT 辅助校准 <span>旧分类不变</span></div>
-                        <p>当前环境未载入探索模型，纵栏对齐和关系分类继续完全按原规则生成。</p>
+                        <div class="diagraph-calibration-title">BERT 模型作用 <span>关系置信度评估</span></div>
+                        <p>模型对相邻话轮进行语义编码，输出重现、平行、选择、修正、对比和类比六类关系的置信度，为图谱提供一致性校验和人工复核线索。</p>
                     </div>
-                    <span class="diagraph-calibration-state">规则模式</span>
+                    <span class="diagraph-calibration-state">模型辅助分析</span>
                 </section>
             `;
         }
@@ -418,10 +414,10 @@
                 : Number(item.bert_probability);
             const percent = Math.round(probability * 100);
             const stateLabels = {
-                joint: "规则 + BERT",
-                rule: "规则证据",
-                bert_review: "BERT 建议 · 待复核",
-                none: "未触发",
+                joint: "规则与模型一致",
+                rule: "规则识别",
+                bert_review: "模型提示复核",
+                none: "未识别",
             };
             return `
                 <div class="diagraph-mechanism-card state-${escapeHtml(item.support_state || "none")}">
@@ -429,12 +425,12 @@
                         <strong>${escapeHtml(item.label || mechanismNames[item.key] || item.key)}</strong>
                         <span>${escapeHtml(stateLabels[item.support_state] || "未触发")}</span>
                     </div>
-                    <div class="diagraph-confidence-track" aria-label="BERT 置信度 ${percent}%">
+                    <div class="diagraph-confidence-track" aria-label="模型置信度 ${percent}%">
                         <i style="width:${Math.max(0, Math.min(100, percent))}%"></i>
                     </div>
                     <div class="diagraph-mechanism-meta">
-                        <span>BERT ${percent}%</span>
-                        <span>规则证据 ${escapeHtml(item.rule_support || 0)}</span>
+                        <span>模型置信度 ${percent}%</span>
+                        <span>规则证据 ${escapeHtml(item.rule_support || 0)} 条</span>
                     </div>
                 </div>
             `;
@@ -443,10 +439,10 @@
             <section class="diagraph-calibration">
                 <div class="diagraph-calibration-header">
                     <div>
-                        <div class="diagraph-calibration-title">BERT 辅助校准 <span>旧分类不变</span></div>
-                        <p>共鸣仍是检索总类；模型只给重现、平行、选择、修正、对比、类比六种旧机制置信度，不自动改判。</p>
+                        <div class="diagraph-calibration-title">BERT 模型判别 <span>关系置信度评估</span></div>
+                        <p>模型对相邻话轮进行语义编码，评估重现、平行、选择、修正、对比和类比六类关系的置信度，并与规则证据交叉校验。</p>
                     </div>
-                    <span class="diagraph-calibration-state">探索模型</span>
+                    <span class="diagraph-calibration-state">模型辅助分析</span>
                 </div>
                 <div class="diagraph-mechanism-grid">${cards}</div>
             </section>
@@ -551,7 +547,6 @@
 
     function renderDiagraphPayload(data) {
         return `
-            <div class="diagraph-notice">${escapeHtml(data.notice || "")}</div>
             ${renderBertCalibration(data)}
             ${renderDiagraphGrid(data)}
             ${renderAffordances(data)}
@@ -562,7 +557,9 @@
     function serializeDiagraphText(data) {
         const lines = [];
         lines.push("跨句图谱");
-        lines.push(data.notice || "");
+        if (data.notice) {
+            lines.push(data.notice);
+        }
         lines.push("");
         lines.push(["行号", "说话人", ...(data.columns || [])].join("\t"));
         (data.grid || []).forEach((row) => {
@@ -579,8 +576,8 @@
             lines.push([item.column || "", item.mapping || "", item.relation || "", item.description || ""].join("\t"));
         });
         lines.push("");
-        lines.push("BERT 辅助校准（旧分类不变）");
-        lines.push((data.bert_calibration || {}).notice || "BERT 未启用，图谱仍按旧规则生成。");
+        lines.push("BERT 关系置信度（模型辅助判别）");
+        lines.push((data.bert_calibration || {}).notice || "当前未返回模型分数，图谱仅显示规则证据。");
         lines.push(["机制", "概率", "阈值", "模型建议", "规则证据数"].join("\t"));
         const summaryByKey = new Map((data.mechanism_summary || []).map((item) => [item.key, item]));
         ((data.bert_calibration || {}).labels || []).forEach((item) => {

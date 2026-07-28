@@ -2755,11 +2755,6 @@ a:hover {
     padding: 12px;
 }
 
-.resonance-result.is-graph-showcase {
-    border-color: #b9cbef;
-    box-shadow: 0 8px 20px rgba(40, 82, 150, 0.08);
-}
-
 .resonance-result-meta {
     display: flex;
     flex-wrap: wrap;
@@ -2771,15 +2766,6 @@ a:hover {
 
 .resonance-result-meta b {
     color: #193b70;
-}
-
-.graph-showcase-badge {
-    color: #234f92;
-    background: #eaf2ff;
-    border: 1px solid #c9dcfb;
-    border-radius: 999px;
-    font-weight: 700;
-    padding: 1px 7px;
 }
 
 .resonance-explanation {
@@ -2978,16 +2964,6 @@ a:hover {
     flex-direction: column;
     gap: 14px;
     min-width: 0;
-}
-
-.diagraph-notice {
-    border-left: 3px solid #7594c5;
-    background: #eef4fb;
-    color: #42536b;
-    padding: 10px 13px;
-    border-radius: 0 9px 9px 0;
-    line-height: 1.7;
-    font-size: 14px;
 }
 
 .diagraph-block {

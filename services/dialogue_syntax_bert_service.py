@@ -132,7 +132,7 @@ def _unavailable_payload(reason: str, enabled: bool) -> dict[str, object]:
         "taxonomy_changed": False,
         "labels": [],
         "reason": reason,
-        "notice": "图谱继续按旧规则生成；BERT 不参与检索排序或自动改判。",
+        "notice": "BERT 用于关系置信度评估；当前未返回模型分数，图谱仅显示规则证据。",
     }
 
 
@@ -177,8 +177,8 @@ def get_dialogue_syntax_calibration(text_a: str, text_b: str) -> dict[str, objec
         "threshold_source": "development_only_f0_5",
         "labels": labels,
         "notice": (
-            "BERT 仅为旧分类提供探索性置信度；规则与模型一致时显示联合支持，"
-            "不一致时仍保留规则结果并提示人工复核。"
+            "BERT 对六类关系分别给出置信度，并与规则证据交叉校验；"
+            "一致时标为联合支持，分歧时提示人工复核。"
         ),
     }
 
