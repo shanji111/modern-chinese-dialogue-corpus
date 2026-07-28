@@ -47,6 +47,7 @@
             <a href="{{ url_for('home') }}" class="tab-item">普通查询</a>
             <a href="{{ url_for('search', advanced='1') }}" class="tab-item">高级检索</a>
             <a href="{{ url_for('resonance_search') }}" class="tab-item active">对话句法检索</a>
+            <a href="?showcase=human-consensus-bert-audit" class="tab-item local-showcase-link">展示案例：人工共识 + BERT 辅助核验</a>
         </div>
     </form>
 
@@ -64,6 +65,7 @@
 
     <div class="pagination resonance-pagination" data-pagination></div>
 
+    <script src="{{ url_for('static', filename='human_consensus_showcase_20260726.js') }}"></script>
     <script src="{{ url_for('static', filename='resonance.js') }}"></script>
 
     {% include "_visitor_counter.html" %}
