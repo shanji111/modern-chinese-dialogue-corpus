@@ -63,15 +63,15 @@ STATIC_SOURCE_STATS = {
     },
     ANCIENT_CHINESE_SOURCE: {
         "source": ANCIENT_CHINESE_SOURCE,
-        "entry_count": 34744,
-        "dialogue_count": 34744,
+        "entry_count": 32244,
+        "dialogue_count": 32244,
         "turn_count": 77999,
     },
     "文本对话": {
         "source": "文本对话",
-        "entry_count": 38718,
-        "dialogue_count": 38718,
-        "turn_count": 88888,
+        "entry_count": 36037,
+        "dialogue_count": 36037,
+        "turn_count": 89245,
     },
     "网络回帖": {
         "source": "网络回帖",
@@ -160,16 +160,16 @@ STATIC_SOURCE_DATASETS = {
 }
 
 STATIC_TEXT_CATEGORY_COUNTS = {
-    "论辩语录": 8943,
+    "论辩语录": 6443,
     "短篇叙事对白": 1738,
     "历史汉语会话教材": 157,
     "古典章回小说对白": 23906,
-    "戏剧对白": 377,
+    "戏剧对白": 196,
     "现当代小说对白": 3597,
 }
 
 STATIC_TEXT_DATASET_COUNTS = {
-    "朱子语类": 8336,
+    "朱子语类": 5836,
     "孟子": 410,
     "论语": 197,
     "唐传奇": 718,
@@ -180,7 +180,7 @@ STATIC_TEXT_DATASET_COUNTS = {
     "水浒传": 6925,
     "红楼梦": 10883,
     "西游记": 6098,
-    "雷雨": 377,
+    "雷雨": 196,
     "平凡的世界": 3256,
     "骆驼祥子": 341,
 }
