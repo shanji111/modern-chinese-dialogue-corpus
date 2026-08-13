@@ -221,6 +221,49 @@ TRUST_X_FORWARDED_FOR=0
 
 生产站点经 Cloudflare / Render 代理时优先使用带 `CF-Ray` 的 `CF-Connecting-IP`。只有确认上游代理会覆盖并清洗 `X-Forwarded-For` 时才应开启本变量，避免攻击者伪造 IP。
 
+## 反爬与自动化滥用防护
+
+应用层防护默认开启。它按 IP 和匿名访客 Cookie 的哈希值同时计数，对检索、共鸣接口、上下文、导出、音频和后台登录分别限流；同时拒绝跨站数据请求、已知脚本客户端直接访问数据路由、超过配置上限的深分页，并设置短期蜜罐。管理员登录会话和可信 IP 不受此限制。
+
+### 总开关与可信地址
+
+```text
+ANTI_SCRAPING_ENABLED=1
+ANTI_SCRAPE_TRUSTED_IPS=203.0.113.10,2001:db8::10
+```
+
+`ANTI_SCRAPE_TRUSTED_IPS` 只应用于确实受控的内部出口地址，不应加入动态住宅 IP 或大范围网段。
+
+### 默认阈值
+
+| 变量 | 默认值 | 含义 |
+| --- | ---: | --- |
+| `ANTI_SCRAPE_GENERAL_REQUESTS` | 240 | 普通请求每分钟上限 |
+| `ANTI_SCRAPE_SEARCH_REQUESTS` | 40 | `/search`、`/browse` 和搜索计数每分钟上限 |
+| `ANTI_SCRAPE_RESONANCE_REQUESTS` | 24 | 共鸣检索每分钟上限 |
+| `ANTI_SCRAPE_CONTEXT_REQUESTS` | 36 | 上下文和图谱接口每分钟上限 |
+| `ANTI_SCRAPE_EXPORT_REQUESTS` | 6 | 图谱导出每 10 分钟上限 |
+| `ANTI_SCRAPE_AUDIO_REQUESTS` | 30 | 音频请求每分钟上限 |
+| `ANTI_SCRAPE_LOGIN_REQUESTS` | 10 | 后台登录每 15 分钟上限 |
+| `ANTI_SCRAPE_MAX_SEARCH_PAGE` | 100 | 公开检索允许访问的最深页码；设为 `0` 可取消页码限制 |
+| `ANTI_SCRAPE_HONEYPOT_PENALTY_SECONDS` | 86400 | 命中蜜罐后的临时限制时长 |
+
+每组还可用同名的 `*_PENALTY_SECONDS` 变量调整触发后的限制时长，具体名称见 `services/anti_scraping_service.py`。响应会携带 `RateLimit-Limit`、`RateLimit-Remaining`、`RateLimit-Reset`；触发频率限制时返回 HTTP 429 和 `Retry-After`。
+
+这些计数保存在单个 Gunicorn 进程内，适合作为应用最后一道防线，不是分布式 WAF 的替代品。若增加多个 worker 或多个 Render 实例，每个进程会各自计数；此时必须把主要限流放到 CDN/WAF，或将应用计数迁移到 Redis 等共享存储。
+
+### 上线前的边缘防护
+
+正式域名建议代理到 Cloudflare 或同类 CDN/WAF，并完成以下配置：
+
+1. 开启 Bot Fight Mode（付费方案可用更细的 Bot Management 分数）。
+2. 对 `/search*`、`/browse*`、`/api/resonance*`、`/resonance/data*`、`/resonance/context*` 和 `/api/diagraph*` 分组设置速率规则，先使用 Managed Challenge，再对持续违规流量封禁。
+3. 计数条件优先组合 IP、会话 Cookie 和可用的 JA3/JA4 指纹；不要只依赖可伪造的 User-Agent。
+4. 排除经过验证的正常搜索引擎，并观察至少一天的正常流量分布后再收紧阈值。
+5. 确认访问者无法绕过 CDN 直接请求 Render 原站；否则边缘规则可被直接绕过。
+
+`robots.txt` 仅用于向守规矩的爬虫声明禁止抓取数据入口，不能替代上述服务端控制。
+
 ## 上传和对象存储
 
 ### `UPLOAD_FOLDER`

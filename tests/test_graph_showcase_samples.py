@@ -125,12 +125,18 @@ class GraphShowcaseSampleTests(unittest.TestCase):
         regular_response = {"results": [], "has_next": False, "next_cursor": None, "turn_count": 0, "showcase": False}
         with app.app.test_client() as client:
             with patch.object(app, "query_resonance_page", return_value=showcase_response) as query:
-                response = client.get("/api/resonance?sample=1")
+                response = client.get(
+                    "/api/resonance?sample=1",
+                    headers={"X-Requested-With": "fetch"},
+                )
                 self.assertEqual(response.status_code, 200)
                 self.assertTrue(query.call_args.kwargs["showcase"])
                 self.assertTrue(response.get_json()["presentation_showcase"])
             with patch.object(app, "query_resonance_page", return_value=regular_response) as query:
-                response = client.get("/api/resonance?q=剧院")
+                response = client.get(
+                    "/api/resonance?q=剧院",
+                    headers={"X-Requested-With": "fetch"},
+                )
                 self.assertEqual(response.status_code, 200)
                 self.assertFalse(query.call_args.kwargs["showcase"])
                 self.assertFalse(response.get_json()["presentation_showcase"])
