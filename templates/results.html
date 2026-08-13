@@ -203,7 +203,9 @@
         if (!summary) {
             return;
         }
-        fetch(summary.dataset.searchCountUrl, { headers: { Accept: "application/json" } })
+        fetch(summary.dataset.searchCountUrl, {
+            headers: { Accept: "application/json", "X-Requested-With": "fetch" }
+        })
             .then((response) => response.ok ? response.json() : null)
             .then((data) => {
                 if (!data || data.ok !== true || typeof data.total !== "number") {

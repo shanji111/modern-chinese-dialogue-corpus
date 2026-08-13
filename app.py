@@ -18,6 +18,7 @@ import corpus_repository
 from database import DATABASE_BACKEND, DATABASE_PATH, DATABASE_URL, get_db_connection, print_database_identity
 from db_utils import compute_content_hash, utc_timestamp
 from services.audio_service import build_corpus_audio_url, get_corpus_audio_response
+from services.anti_scraping_service import evaluate_request, get_anti_scraping_status
 from services.browse_service import build_browse_context, build_home_context
 from services.guide_service import build_guide_context
 from services.dialogue_syntax_bert_service import (
@@ -242,6 +243,62 @@ def enforce_blocked_ip():
 
 
 @app.before_request
+def enforce_anti_scraping_policy():
+    client_ip = getattr(g, "client_ip", "") or get_request_client_ip(
+        request.headers,
+        request.remote_addr,
+    )
+    g.client_ip = client_ip
+    try:
+        page = int(request.args.get("page", "1") or 1)
+    except (TypeError, ValueError):
+        page = 1
+
+    decision = evaluate_request(
+        path=request.path,
+        method=request.method,
+        client_ip=client_ip,
+        visitor_id=normalize_visitor_id(request.cookies.get(VISITOR_COOKIE_NAME)),
+        user_agent=request.headers.get("User-Agent", ""),
+        fetch_site=request.headers.get("Sec-Fetch-Site", ""),
+        requested_with=request.headers.get("X-Requested-With", ""),
+        page=page,
+        is_admin=bool(session.get("admin_logged_in")),
+    )
+    g.anti_scrape_decision = decision
+    g.anti_scrape_blocked = not decision.allowed
+    if decision.allowed:
+        return None
+
+    print(
+        f"[anti-scrape] blocked ip={client_ip or '-'} "
+        f"path={request.path} policy={decision.policy} reason={decision.reason}",
+        flush=True,
+    )
+    if decision.status_code == 429:
+        message = "访问过于频繁，请稍后再试。"
+        code = "rate_limited"
+    else:
+        message = "该请求已被安全策略拒绝。"
+        code = "request_rejected"
+
+    expects_json = (
+        request.path.startswith("/api/")
+        or request.path == "/resonance/data"
+        or request.path.startswith("/resonance/context/")
+    )
+    response = jsonify({"ok": False, "error": message, "code": code}) if expects_json else app.response_class(
+        message,
+        mimetype="text/plain; charset=utf-8",
+    )
+    response.status_code = decision.status_code
+    if decision.retry_after:
+        response.headers["Retry-After"] = str(decision.retry_after)
+    response.headers["Cache-Control"] = "no-store, max-age=0"
+    return response
+
+
+@app.before_request
 def require_admin_login():
     if not request.path.startswith("/admin"):
         return None
@@ -261,7 +318,10 @@ def record_request_ip_activity(response):
             request.path,
             request.method,
             response.status_code,
-            blocked=bool(getattr(g, "ip_was_blocked", False)),
+            blocked=bool(
+                getattr(g, "ip_was_blocked", False)
+                or getattr(g, "anti_scrape_blocked", False)
+            ),
         )
     except Exception as exc:
         print(f"[visitor-security] IP activity logging skipped: {exc!r}", flush=True)
@@ -269,6 +329,20 @@ def record_request_ip_activity(response):
         response.headers["Cache-Control"] = "no-store, max-age=0"
         response.headers["Pragma"] = "no-cache"
         response.headers["Referrer-Policy"] = "same-origin"
+    decision = getattr(g, "anti_scrape_decision", None)
+    if decision and decision.limit:
+        response.headers["RateLimit-Limit"] = str(decision.limit)
+        response.headers["RateLimit-Remaining"] = str(decision.remaining)
+        response.headers["RateLimit-Reset"] = str(decision.reset_after)
+    if (
+        request.path in {"/search", "/browse", "/resonance", "/resonance/data"}
+        or request.path.startswith("/api/")
+        or request.path.startswith("/resonance/context/")
+        or request.path.startswith("/audio/")
+        or request.path.startswith("/corpus/audio/")
+    ):
+        response.headers["Cache-Control"] = "private, no-store, max-age=0"
+        response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive, nosnippet"
     return response
 
 
@@ -1934,6 +2008,30 @@ def privacy():
     return render_template("privacy.html")
 
 
+@app.route("/robots.txt")
+def robots_txt():
+    body = """User-agent: *
+Disallow: /admin/
+Disallow: /api/
+Disallow: /search
+Disallow: /browse
+Disallow: /resonance
+Disallow: /corpus-export-all
+
+User-agent: GPTBot
+Disallow: /
+
+User-agent: CCBot
+Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+"""
+    response = app.response_class(body, mimetype="text/plain; charset=utf-8")
+    response.headers["Cache-Control"] = "public, max-age=3600"
+    return response
+
+
 @app.route("/browse")
 def browse_dialogues():
     requested_view = request.args.get("view")
@@ -2386,6 +2484,7 @@ def admin_visitors():
         show_full_ip=show_full_ip,
         selected_epoch=selected_epoch,
     )
+    dashboard["anti_scraping"] = get_anti_scraping_status()
     return render_template(
         "admin_visitors.html",
         **dashboard,
